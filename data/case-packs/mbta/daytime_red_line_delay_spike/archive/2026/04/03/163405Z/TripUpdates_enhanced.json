@@ -1,0 +1,268 @@
+{
+  "entity": [
+    {
+      "id": "trip-75937154",
+      "trip_update": {
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 718,
+              "time": 1775233918
+            },
+            "departure": {
+              "delay": 718,
+              "time": 1775233918
+            },
+            "stop_id": "70067",
+            "stop_sequence": 30
+          }
+        ],
+        "timestamp": 1775233918,
+        "trip": {
+          "direction_id": 0,
+          "route_id": "Red",
+          "start_date": "20260403",
+          "trip_id": "75937154"
+        },
+        "vehicle": {
+          "id": "R-5488C3CA"
+        }
+      }
+    },
+    {
+      "id": "trip-75937192",
+      "trip_update": {
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 1387,
+              "time": 1775233927
+            },
+            "departure": {
+              "delay": 1387,
+              "time": 1775233927
+            },
+            "stop_id": "70095",
+            "stop_sequence": 120
+          }
+        ],
+        "timestamp": 1775233927,
+        "trip": {
+          "direction_id": 0,
+          "route_id": "Red",
+          "start_date": "20260403",
+          "trip_id": "75937192"
+        },
+        "vehicle": {
+          "id": "R-5488CEAA"
+        }
+      }
+    },
+    {
+      "id": "trip-75937340",
+      "trip_update": {
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 1511,
+              "time": 1775233931
+            },
+            "departure": {
+              "delay": 1511,
+              "time": 1775233931
+            },
+            "stop_id": "70087",
+            "stop_sequence": 140
+          }
+        ],
+        "timestamp": 1775233931,
+        "trip": {
+          "direction_id": 0,
+          "route_id": "Red",
+          "start_date": "20260403",
+          "trip_id": "75937340"
+        },
+        "vehicle": {
+          "id": "R-5488D9E1"
+        }
+      }
+    },
+    {
+      "id": "trip-75937485",
+      "trip_update": {
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 714,
+              "time": 1775233974
+            },
+            "departure": {
+              "delay": 714,
+              "time": 1775233974
+            },
+            "stop_id": "70063",
+            "stop_sequence": 10
+          }
+        ],
+        "timestamp": 1775233974,
+        "trip": {
+          "direction_id": 0,
+          "route_id": "Red",
+          "start_date": "20260403",
+          "trip_id": "75937485"
+        },
+        "vehicle": {
+          "id": "R-5488D7ED"
+        }
+      }
+    },
+    {
+      "id": "trip-75937522",
+      "trip_update": {
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 923,
+              "time": 1775234003
+            },
+            "departure": {
+              "delay": 923,
+              "time": 1775234003
+            },
+            "stop_id": "70079",
+            "stop_sequence": 90
+          }
+        ],
+        "timestamp": 1775234003,
+        "trip": {
+          "direction_id": 0,
+          "route_id": "Red",
+          "start_date": "20260403",
+          "trip_id": "75937522"
+        },
+        "vehicle": {
+          "id": "R-5488D9B5"
+        }
+      }
+    },
+    {
+      "id": "trip-75937177",
+      "trip_update": {
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 987,
+              "time": 1775234007
+            },
+            "departure": {
+              "delay": 987,
+              "time": 1775234007
+            },
+            "stop_id": "70083",
+            "stop_sequence": 110
+          }
+        ],
+        "timestamp": 1775234007,
+        "trip": {
+          "direction_id": 0,
+          "route_id": "Red",
+          "start_date": "20260403",
+          "trip_id": "75937177"
+        },
+        "vehicle": {
+          "id": "R-5488D4CF"
+        }
+      }
+    },
+    {
+      "id": "trip-75937206",
+      "trip_update": {
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 1410,
+              "time": 1775234010
+            },
+            "departure": {
+              "delay": 1410,
+              "time": 1775234010
+            },
+            "stop_id": "70101",
+            "stop_sequence": 200
+          }
+        ],
+        "timestamp": 1775234010,
+        "trip": {
+          "direction_id": 0,
+          "route_id": "Red",
+          "start_date": "20260403",
+          "trip_id": "75937206"
+        },
+        "vehicle": {
+          "id": "R-5488D3EB"
+        }
+      }
+    },
+    {
+      "id": "trip-75937165",
+      "trip_update": {
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 880,
+              "time": 1775234020
+            },
+            "departure": {
+              "delay": 880,
+              "time": 1775234020
+            },
+            "stop_id": "70075",
+            "stop_sequence": 70
+          }
+        ],
+        "timestamp": 1775234020,
+        "trip": {
+          "direction_id": 0,
+          "route_id": "Red",
+          "start_date": "20260403",
+          "trip_id": "75937165"
+        },
+        "vehicle": {
+          "id": "R-5488C681"
+        }
+      }
+    },
+    {
+      "id": "trip-75937499",
+      "trip_update": {
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 665,
+              "time": 1775234045
+            },
+            "departure": {
+              "delay": 665,
+              "time": 1775234045
+            },
+            "stop_id": "70073",
+            "stop_sequence": 60
+          }
+        ],
+        "timestamp": 1775234045,
+        "trip": {
+          "direction_id": 0,
+          "route_id": "Red",
+          "start_date": "20260403",
+          "trip_id": "75937499"
+        },
+        "vehicle": {
+          "id": "R-5488D4F1"
+        }
+      }
+    }
+  ],
+  "header": {
+    "timestamp": 1775234045
+  }
+}

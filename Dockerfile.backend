@@ -1,0 +1,29 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        g++ \
+        libtbb12 \
+        libtbb-dev \
+        nlohmann-json3-dev \
+    || apt-get install -y --no-install-recommends ca-certificates curl g++ libtbb2 libtbb-dev nlohmann-json3-dev; \
+    update-ca-certificates; \
+    rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY scripts/ ./scripts/
+COPY src/ ./src/
+RUN sh /app/scripts/build_manifold_engine.sh
+
+RUN mkdir -p logs output
+
+ENV PYTHONUNBUFFERED=1
+
+CMD ["python3", "scripts/cluster/api.py"]

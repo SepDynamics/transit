@@ -1,0 +1,87 @@
+services:
+  valkey:
+    image: redis:7-alpine
+    container_name: transit-sentinel-valkey
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - valkey-data:/data
+
+  archive:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: transit-sentinel-archive
+    restart: unless-stopped
+    environment:
+      PYTHONPATH: /app
+      TRANSIT_ARCHIVE_INTERVAL_SECONDS: "30"
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - ./src:/app/src:ro
+      - ./data:/app/data
+      - ./logs/transit:/app/logs
+    command: ["python3", "/app/scripts/transit/archive.py"]
+
+  ingest:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: transit-sentinel-ingest
+    restart: unless-stopped
+    environment:
+      VALKEY_URL: redis://valkey:6379/0
+      PYTHONPATH: /app
+      TRANSIT_INGEST_INTERVAL_SECONDS: "5"
+      TRANSIT_HISTORY_RETENTION: "720"
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - ./src:/app/src:ro
+      - ./data:/app/data
+      - ./logs/transit:/app/logs
+    depends_on:
+      - valkey
+      - archive
+    command: ["python3", "/app/scripts/transit/ingest.py"]
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: transit-sentinel-api
+    restart: unless-stopped
+    environment:
+      VALKEY_URL: redis://valkey:6379/0
+      TRANSIT_API_PORT: "8000"
+      TRANSIT_SYSTEM_NAME: "MBTA"
+      PYTHONPATH: /app
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - ./src:/app/src:ro
+      - ./logs/transit:/app/logs
+    depends_on:
+      - valkey
+      - ingest
+    ports:
+      - "8000:8000"
+    command: ["python3", "/app/scripts/transit/api.py"]
+
+  frontend:
+    build:
+      context: ./apps/frontend
+    container_name: transit-sentinel-frontend
+    restart: unless-stopped
+    environment:
+      API_URL: ""
+      SERVER_NAME: "_"
+      BACKEND_UPSTREAM: "http://api:8000"
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+
+volumes:
+  valkey-data:
+    driver: local

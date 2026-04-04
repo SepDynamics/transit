@@ -1,0 +1,1726 @@
+{
+  "header": {
+    "timestamp": 1775286702,
+    "gtfs_realtime_version": "2.0",
+    "incrementality": "FULL_DATASET"
+  },
+  "entity": [
+    {
+      "id": "R-5488DB89",
+      "vehicle": {
+        "current_status": "IN_TRANSIT_TO",
+        "multi_carriage_details": [
+          {
+            "label": "1727",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "1726",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 2
+          },
+          {
+            "label": "1718",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 3
+          },
+          {
+            "label": "1719",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 4
+          },
+          {
+            "label": "1738",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 5
+          },
+          {
+            "label": "1739",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 6
+          }
+        ],
+        "position": {
+          "bearing": 85,
+          "latitude": 42.39652,
+          "longitude": -71.14338
+        },
+        "timestamp": 1775284327,
+        "trip": {
+          "start_time": "25:42:00",
+          "trip_id": "NONREV-1580760985",
+          "route_id": "Red",
+          "direction_id": 1,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": false
+        },
+        "vehicle": {
+          "id": "R-5488DB89",
+          "label": "1727"
+        }
+      }
+    },
+    {
+      "id": "R-5488D7ED",
+      "vehicle": {
+        "current_status": "IN_TRANSIT_TO",
+        "multi_carriage_details": [
+          {
+            "label": "1517",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "1516",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 2
+          },
+          {
+            "label": "1752",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 3
+          },
+          {
+            "label": "1753",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 4
+          },
+          {
+            "label": "1741",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 5
+          },
+          {
+            "label": "1740",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 6
+          }
+        ],
+        "position": {
+          "bearing": 85,
+          "latitude": 42.39652,
+          "longitude": -71.14338
+        },
+        "timestamp": 1775278821,
+        "trip": {
+          "start_time": "24:35:00",
+          "trip_id": "NONREV-1580760927",
+          "route_id": "Red",
+          "direction_id": 1,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": false
+        },
+        "vehicle": {
+          "id": "R-5488D7ED",
+          "label": "1517"
+        }
+      }
+    },
+    {
+      "id": "O-5488DBF0",
+      "vehicle": {
+        "current_status": "IN_TRANSIT_TO",
+        "multi_carriage_details": [
+          {
+            "label": "1432",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "1433",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 2
+          },
+          {
+            "label": "1455",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 3
+          },
+          {
+            "label": "1454",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 4
+          },
+          {
+            "label": "1425",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 5
+          },
+          {
+            "label": "1424",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 6
+          }
+        ],
+        "position": {
+          "bearing": 45,
+          "latitude": 42.29882,
+          "longitude": -71.11591
+        },
+        "timestamp": 1775279201,
+        "trip": {
+          "start_time": "24:58:00",
+          "trip_id": "NONREV-1580760944",
+          "route_id": "Orange",
+          "direction_id": 0,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": false
+        },
+        "vehicle": {
+          "id": "O-5488DBF0",
+          "label": "1432"
+        }
+      }
+    },
+    {
+      "id": "G-10335",
+      "vehicle": {
+        "current_status": "STOPPED_AT",
+        "current_stop_sequence": 1,
+        "multi_carriage_details": [
+          {
+            "label": "3631",
+            "occupancy_status": "NO_DATA_AVAILABLE",
+            "carriage_sequence": 1
+          }
+        ],
+        "position": {
+          "bearing": 135,
+          "latitude": 42.34018,
+          "longitude": -71.16709
+        },
+        "stop_id": "70106",
+        "timestamp": 1775285979,
+        "trip": {
+          "start_time": "25:19:01",
+          "trip_id": "ADDED-1583607915",
+          "route_id": "Green-B",
+          "direction_id": 1,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": true
+        },
+        "vehicle": {
+          "id": "G-10335",
+          "label": "3631"
+        }
+      }
+    },
+    {
+      "id": "B-5488D9C9",
+      "vehicle": {
+        "current_status": "IN_TRANSIT_TO",
+        "multi_carriage_details": [
+          {
+            "label": "0701",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "0700",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 2
+          },
+          {
+            "label": "0763",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 3
+          },
+          {
+            "label": "0762",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 4
+          },
+          {
+            "label": "0753",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 5
+          },
+          {
+            "label": "0752",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 6
+          }
+        ],
+        "position": {
+          "bearing": 90,
+          "latitude": 42.36122,
+          "longitude": -71.06384
+        },
+        "timestamp": 1775278983,
+        "trip": {
+          "start_time": "22:47:38",
+          "trip_id": "NONREV-1580760910",
+          "route_id": "Blue",
+          "direction_id": 0,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": false
+        },
+        "vehicle": {
+          "id": "B-5488D9C9",
+          "label": "0701"
+        }
+      }
+    },
+    {
+      "id": "G-10172",
+      "vehicle": {
+        "current_status": "STOPPED_AT",
+        "current_stop_sequence": 310,
+        "multi_carriage_details": [
+          {
+            "label": "3665",
+            "occupancy_status": "NO_DATA_AVAILABLE",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "3848",
+            "occupancy_status": "NO_DATA_AVAILABLE",
+            "carriage_sequence": 2
+          }
+        ],
+        "position": {
+          "bearing": 0,
+          "latitude": 42.34027,
+          "longitude": -71.16688
+        },
+        "stop_id": "70107",
+        "timestamp": 1775285979,
+        "trip": {
+          "start_time": "27:00:03",
+          "trip_id": "ADDED-1583607948",
+          "route_id": "Green-B",
+          "direction_id": 0,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": true
+        },
+        "vehicle": {
+          "id": "G-10172",
+          "label": "3665-3848"
+        }
+      }
+    },
+    {
+      "id": "R-5488DDD4",
+      "vehicle": {
+        "current_status": "IN_TRANSIT_TO",
+        "multi_carriage_details": [
+          {
+            "label": "1821",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "1820",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 2
+          },
+          {
+            "label": "1883",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 3
+          },
+          {
+            "label": "1882",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 4
+          },
+          {
+            "label": "1849",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 5
+          },
+          {
+            "label": "1848",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 6
+          }
+        ],
+        "position": {
+          "bearing": 190,
+          "latitude": 42.20457,
+          "longitude": -71.00208
+        },
+        "timestamp": 1775278983,
+        "trip": {
+          "start_time": "22:33:51",
+          "trip_id": "NONREV-1580760908",
+          "route_id": "Red",
+          "direction_id": 0,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": false
+        },
+        "vehicle": {
+          "id": "R-5488DDD4",
+          "label": "1821"
+        }
+      }
+    },
+    {
+      "id": "R-5488C3CA",
+      "vehicle": {
+        "current_status": "IN_TRANSIT_TO",
+        "current_stop_sequence": 220,
+        "multi_carriage_details": [
+          {
+            "label": "1958",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "1959",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 2
+          },
+          {
+            "label": "1948",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 3
+          },
+          {
+            "label": "1949",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 4
+          },
+          {
+            "label": "1923",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 5
+          },
+          {
+            "label": "1922",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 6
+          }
+        ],
+        "position": {
+          "bearing": 190,
+          "latitude": 42.20749,
+          "longitude": -71.00156
+        },
+        "stop_id": "Braintree-01",
+        "timestamp": 1775280366,
+        "trip": {
+          "start_time": "25:30:00",
+          "trip_id": "NONREV-1580760984",
+          "route_id": "Red",
+          "direction_id": 0,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": false
+        },
+        "vehicle": {
+          "id": "R-5488C3CA",
+          "label": "1958"
+        }
+      }
+    },
+    {
+      "id": "O-5488D4A3",
+      "vehicle": {
+        "current_status": "IN_TRANSIT_TO",
+        "current_stop_sequence": 190,
+        "multi_carriage_details": [
+          {
+            "label": "1448",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "1449",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 2
+          },
+          {
+            "label": "1409",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 3
+          },
+          {
+            "label": "1408",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 4
+          },
+          {
+            "label": "1467",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 5
+          },
+          {
+            "label": "1466",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 6
+          }
+        ],
+        "position": {
+          "bearing": 210,
+          "latitude": 42.30122,
+          "longitude": -71.11384
+        },
+        "stop_id": "Forest Hills-02",
+        "timestamp": 1775281533,
+        "trip": {
+          "start_time": "25:46:00",
+          "trip_id": "NONREV-1580760978",
+          "route_id": "Orange",
+          "direction_id": 0,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": false
+        },
+        "vehicle": {
+          "id": "O-5488D4A3",
+          "label": "1448"
+        }
+      }
+    },
+    {
+      "id": "R-5488DDED",
+      "vehicle": {
+        "current_status": "IN_TRANSIT_TO",
+        "multi_carriage_details": [
+          {
+            "label": "1885",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "1884",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 2
+          },
+          {
+            "label": "1864",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 3
+          },
+          {
+            "label": "1865",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 4
+          },
+          {
+            "label": "1843",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 5
+          },
+          {
+            "label": "1842",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 6
+          }
+        ],
+        "position": {
+          "bearing": 190,
+          "latitude": 42.20458,
+          "longitude": -71.00219
+        },
+        "timestamp": 1775278984,
+        "trip": {
+          "start_time": "22:51:01",
+          "trip_id": "NONREV-1580760912",
+          "route_id": "Red",
+          "direction_id": 0,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": false
+        },
+        "vehicle": {
+          "id": "R-5488DDED",
+          "label": "1885"
+        }
+      }
+    },
+    {
+      "id": "R-5488D9C0",
+      "vehicle": {
+        "current_status": "IN_TRANSIT_TO",
+        "multi_carriage_details": [
+          {
+            "label": "1815",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "1814",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 2
+          },
+          {
+            "label": "1822",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 3
+          },
+          {
+            "label": "1823",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 4
+          },
+          {
+            "label": "1871",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 5
+          },
+          {
+            "label": "1870",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 6
+          }
+        ],
+        "position": {
+          "bearing": 190,
+          "latitude": 42.20457,
+          "longitude": -71.00204
+        },
+        "timestamp": 1775279167,
+        "trip": {
+          "start_time": "25:04:36",
+          "trip_id": "NONREV-1580760977",
+          "route_id": "Red",
+          "direction_id": 0,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": false
+        },
+        "vehicle": {
+          "id": "R-5488D9C0",
+          "label": "1815"
+        }
+      }
+    },
+    {
+      "id": "G-10078",
+      "vehicle": {
+        "current_status": "IN_TRANSIT_TO",
+        "multi_carriage_details": [
+          {
+            "label": "3876",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "orientation": "BA",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "3685",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "orientation": "AB",
+            "carriage_sequence": 2
+          }
+        ],
+        "position": {
+          "bearing": 145,
+          "latitude": 42.37604,
+          "longitude": -71.08343
+        },
+        "timestamp": 1775286447,
+        "trip": {
+          "start_time": "26:13:45",
+          "trip_id": "NONREV-1580761013",
+          "route_id": "Green-E",
+          "direction_id": 0,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": false
+        },
+        "vehicle": {
+          "id": "G-10078",
+          "label": "3876-3685"
+        }
+      }
+    },
+    {
+      "id": "G-10018",
+      "vehicle": {
+        "current_status": "STOPPED_AT",
+        "current_stop_sequence": 310,
+        "multi_carriage_details": [
+          {
+            "label": "3678",
+            "occupancy_status": "NO_DATA_AVAILABLE",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "3864",
+            "occupancy_status": "NO_DATA_AVAILABLE",
+            "carriage_sequence": 2
+          }
+        ],
+        "position": {
+          "bearing": 0,
+          "latitude": 42.34027,
+          "longitude": -71.16688
+        },
+        "stop_id": "70107",
+        "timestamp": 1775285989,
+        "trip": {
+          "start_time": "26:56:46",
+          "trip_id": "ADDED-1583607942",
+          "route_id": "Green-B",
+          "direction_id": 0,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": true
+        },
+        "vehicle": {
+          "id": "G-10018",
+          "label": "3678-3864"
+        }
+      }
+    },
+    {
+      "id": "O-5488D9B1",
+      "vehicle": {
+        "current_status": "IN_TRANSIT_TO",
+        "multi_carriage_details": [
+          {
+            "label": "1404",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "1405",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 2
+          },
+          {
+            "label": "1510",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 3
+          },
+          {
+            "label": "1511",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 4
+          },
+          {
+            "label": "1417",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 5
+          },
+          {
+            "label": "1416",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 6
+          }
+        ],
+        "position": {
+          "bearing": 45,
+          "latitude": 42.29882,
+          "longitude": -71.11591
+        },
+        "timestamp": 1775277007,
+        "trip": {
+          "start_time": "24:32:00",
+          "trip_id": "NONREV-1580760926",
+          "route_id": "Orange",
+          "direction_id": 0,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": false
+        },
+        "vehicle": {
+          "id": "O-5488D9B1",
+          "label": "1404"
+        }
+      }
+    },
+    {
+      "id": "B-5488D9B2",
+      "vehicle": {
+        "current_status": "IN_TRANSIT_TO",
+        "multi_carriage_details": [
+          {
+            "label": "0740",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "0741",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 2
+          },
+          {
+            "label": "0707",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 3
+          },
+          {
+            "label": "0706",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 4
+          },
+          {
+            "label": "0709",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 5
+          },
+          {
+            "label": "0708",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 6
+          }
+        ],
+        "position": {
+          "bearing": 90,
+          "latitude": 42.36124,
+          "longitude": -71.06384
+        },
+        "timestamp": 1775278982,
+        "trip": {
+          "start_time": "22:25:05",
+          "trip_id": "NONREV-1580760907",
+          "route_id": "Blue",
+          "direction_id": 0,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": false
+        },
+        "vehicle": {
+          "id": "B-5488D9B2",
+          "label": "0740"
+        }
+      }
+    },
+    {
+      "id": "R-5488D9A2",
+      "vehicle": {
+        "current_status": "IN_TRANSIT_TO",
+        "current_stop_sequence": 220,
+        "multi_carriage_details": [
+          {
+            "label": "1872",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "1873",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 2
+          },
+          {
+            "label": "1875",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 3
+          },
+          {
+            "label": "1874",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 4
+          },
+          {
+            "label": "1860",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 5
+          },
+          {
+            "label": "1861",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 6
+          }
+        ],
+        "position": {
+          "bearing": 265,
+          "latitude": 42.39621,
+          "longitude": -71.14054
+        },
+        "stop_id": "Alewife-01",
+        "timestamp": 1775279539,
+        "trip": {
+          "start_time": "24:57:00",
+          "trip_id": "NONREV-1580760947",
+          "route_id": "Red",
+          "direction_id": 1,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": false
+        },
+        "vehicle": {
+          "id": "R-5488D9A2",
+          "label": "1872"
+        }
+      }
+    },
+    {
+      "id": "B-5485E671",
+      "vehicle": {
+        "current_status": "IN_TRANSIT_TO",
+        "position": {
+          "bearing": 20,
+          "latitude": 42.41575,
+          "longitude": -70.99035
+        },
+        "timestamp": 1775278981,
+        "trip": {
+          "start_time": "25:03:02",
+          "trip_id": "NONREV-1580760975",
+          "route_id": "Blue",
+          "direction_id": 1,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": false
+        },
+        "vehicle": {
+          "id": "B-5485E671",
+          "label": " OUT"
+        }
+      }
+    },
+    {
+      "id": "y1901",
+      "vehicle": {
+        "current_status": "STOPPED_AT",
+        "current_stop_sequence": 1,
+        "occupancy_percentage": 0,
+        "occupancy_status": "MANY_SEATS_AVAILABLE",
+        "position": {
+          "bearing": 285,
+          "latitude": 42.330585,
+          "longitude": -71.062407
+        },
+        "stop_id": "334",
+        "timestamp": 1775286696,
+        "trip": {
+          "start_time": "03:26:00",
+          "trip_id": "73389503",
+          "route_id": "15",
+          "direction_id": 1,
+          "start_date": "20260404",
+          "schedule_relationship": "SCHEDULED",
+          "last_trip": false,
+          "revenue": true
+        },
+        "vehicle": {
+          "id": "y1901",
+          "label": "1901"
+        }
+      }
+    },
+    {
+      "id": "R-5488D4CF",
+      "vehicle": {
+        "current_status": "IN_TRANSIT_TO",
+        "multi_carriage_details": [
+          {
+            "label": "1946",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "1947",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 2
+          },
+          {
+            "label": "1931",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 3
+          },
+          {
+            "label": "1930",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 4
+          },
+          {
+            "label": "1917",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 5
+          },
+          {
+            "label": "1916",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 6
+          }
+        ],
+        "position": {
+          "bearing": 10,
+          "latitude": 42.20457,
+          "longitude": -71.00204
+        },
+        "timestamp": 1775278982,
+        "trip": {
+          "start_time": "24:11:02",
+          "trip_id": "NONREV-1580760940",
+          "route_id": "Red",
+          "direction_id": 1,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": false
+        },
+        "vehicle": {
+          "id": "R-5488D4CF",
+          "label": "1946"
+        }
+      }
+    },
+    {
+      "id": "O-5488D9A1",
+      "vehicle": {
+        "current_status": "IN_TRANSIT_TO",
+        "multi_carriage_details": [
+          {
+            "label": "1474",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "1475",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 2
+          },
+          {
+            "label": "1468",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 3
+          },
+          {
+            "label": "1469",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 4
+          },
+          {
+            "label": "1507",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 5
+          },
+          {
+            "label": "1506",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 6
+          }
+        ],
+        "position": {
+          "bearing": 45,
+          "latitude": 42.29879,
+          "longitude": -71.11588
+        },
+        "timestamp": 1775280837,
+        "trip": {
+          "start_time": "25:32:00",
+          "trip_id": "NONREV-1580760957",
+          "route_id": "Orange",
+          "direction_id": 0,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": false
+        },
+        "vehicle": {
+          "id": "O-5488D9A1",
+          "label": "1474"
+        }
+      }
+    },
+    {
+      "id": "O-5488D9B4",
+      "vehicle": {
+        "current_status": "IN_TRANSIT_TO",
+        "multi_carriage_details": [
+          {
+            "label": "1462",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "1463",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 2
+          },
+          {
+            "label": "1458",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 3
+          },
+          {
+            "label": "1459",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 4
+          },
+          {
+            "label": "1501",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 5
+          },
+          {
+            "label": "1500",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 6
+          }
+        ],
+        "position": {
+          "bearing": 45,
+          "latitude": 42.29885,
+          "longitude": -71.11595
+        },
+        "timestamp": 1775277945,
+        "trip": {
+          "start_time": "24:45:00",
+          "trip_id": "NONREV-1580760934",
+          "route_id": "Orange",
+          "direction_id": 0,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": false
+        },
+        "vehicle": {
+          "id": "O-5488D9B4",
+          "label": "1462"
+        }
+      }
+    },
+    {
+      "id": "G-10096",
+      "vehicle": {
+        "current_status": "STOPPED_AT",
+        "current_stop_sequence": 1,
+        "multi_carriage_details": [
+          {
+            "label": "3862",
+            "occupancy_status": "NO_DATA_AVAILABLE",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "3642",
+            "occupancy_status": "NO_DATA_AVAILABLE",
+            "carriage_sequence": 2
+          }
+        ],
+        "position": {
+          "bearing": 135,
+          "latitude": 42.34018,
+          "longitude": -71.16709
+        },
+        "stop_id": "70106",
+        "timestamp": 1775286162,
+        "trip": {
+          "start_time": "25:13:45",
+          "trip_id": "ADDED-1583607840",
+          "route_id": "Green-B",
+          "direction_id": 1,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": true
+        },
+        "vehicle": {
+          "id": "G-10096",
+          "label": "3862-3642"
+        }
+      }
+    },
+    {
+      "id": "R-5488DD4C",
+      "vehicle": {
+        "current_status": "IN_TRANSIT_TO",
+        "multi_carriage_details": [
+          {
+            "label": "1954",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "1955",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 2
+          },
+          {
+            "label": "1945",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 3
+          },
+          {
+            "label": "1944",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 4
+          },
+          {
+            "label": "1927",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 5
+          },
+          {
+            "label": "1926",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 6
+          }
+        ],
+        "position": {
+          "bearing": 10,
+          "latitude": 42.20457,
+          "longitude": -71.00208
+        },
+        "timestamp": 1775278983,
+        "trip": {
+          "start_time": "23:45:17",
+          "trip_id": "NONREV-1580760922",
+          "route_id": "Red",
+          "direction_id": 1,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": false
+        },
+        "vehicle": {
+          "id": "R-5488DD4C",
+          "label": "1954"
+        }
+      }
+    },
+    {
+      "id": "R-5488C681",
+      "vehicle": {
+        "current_status": "IN_TRANSIT_TO",
+        "current_stop_sequence": 220,
+        "multi_carriage_details": [
+          {
+            "label": "1942",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "1943",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 2
+          },
+          {
+            "label": "1924",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 3
+          },
+          {
+            "label": "1925",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 4
+          },
+          {
+            "label": "1939",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 5
+          },
+          {
+            "label": "1938",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 6
+          }
+        ],
+        "position": {
+          "bearing": 265,
+          "latitude": 42.39618,
+          "longitude": -71.14054
+        },
+        "stop_id": "Alewife-02",
+        "timestamp": 1775284313,
+        "trip": {
+          "start_time": "26:11:00",
+          "trip_id": "NONREV-1580760989",
+          "route_id": "Red",
+          "direction_id": 1,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": true,
+          "revenue": false
+        },
+        "vehicle": {
+          "id": "R-5488C681",
+          "label": "1942"
+        }
+      }
+    },
+    {
+      "id": "R-5488B7C9",
+      "vehicle": {
+        "current_status": "IN_TRANSIT_TO",
+        "multi_carriage_details": [
+          {
+            "label": "1950",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "1951",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 2
+          },
+          {
+            "label": "1917",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 3
+          },
+          {
+            "label": "1916",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 4
+          }
+        ],
+        "position": {
+          "bearing": 10,
+          "latitude": 42.20457,
+          "longitude": -71.00214
+        },
+        "timestamp": 1775278981,
+        "trip": {
+          "start_time": "24:03:27",
+          "trip_id": "NONREV-1580760931",
+          "route_id": "Red",
+          "direction_id": 1,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": false
+        },
+        "vehicle": {
+          "id": "R-5488B7C9",
+          "label": "1950"
+        }
+      }
+    },
+    {
+      "id": "R-5488CFAC",
+      "vehicle": {
+        "current_status": "IN_TRANSIT_TO",
+        "current_stop_sequence": 220,
+        "multi_carriage_details": [
+          {
+            "label": "1832",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "1833",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 2
+          },
+          {
+            "label": "1867",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 3
+          },
+          {
+            "label": "1866",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 4
+          },
+          {
+            "label": "1858",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 5
+          },
+          {
+            "label": "1859",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 6
+          }
+        ],
+        "position": {
+          "bearing": 190,
+          "latitude": 42.20749,
+          "longitude": -71.00173
+        },
+        "stop_id": "Braintree-02",
+        "timestamp": 1775285409,
+        "trip": {
+          "start_time": "26:00:00",
+          "trip_id": "NONREV-1580760998",
+          "route_id": "Red",
+          "direction_id": 0,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": false
+        },
+        "vehicle": {
+          "id": "R-5488CFAC",
+          "label": "1832"
+        }
+      }
+    },
+    {
+      "id": "R-5488D9E1",
+      "vehicle": {
+        "current_status": "IN_TRANSIT_TO",
+        "multi_carriage_details": [
+          {
+            "label": "1912",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "1913",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 2
+          },
+          {
+            "label": "1918",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 3
+          },
+          {
+            "label": "1919",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 4
+          },
+          {
+            "label": "1929",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 5
+          },
+          {
+            "label": "1928",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 6
+          }
+        ],
+        "position": {
+          "bearing": 85,
+          "latitude": 42.39636,
+          "longitude": -71.14275
+        },
+        "timestamp": 1775277515,
+        "trip": {
+          "start_time": "24:13:00",
+          "trip_id": "NONREV-1580760918",
+          "route_id": "Red",
+          "direction_id": 1,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": false
+        },
+        "vehicle": {
+          "id": "R-5488D9E1",
+          "label": "1912"
+        }
+      }
+    },
+    {
+      "id": "G-10016",
+      "vehicle": {
+        "current_status": "INCOMING_AT",
+        "current_stop_sequence": 9,
+        "multi_carriage_details": [
+          {
+            "label": "3683",
+            "occupancy_status": "NO_DATA_AVAILABLE",
+            "orientation": "BA",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "3824",
+            "occupancy_status": "NO_DATA_AVAILABLE",
+            "orientation": "AB",
+            "carriage_sequence": 2
+          }
+        ],
+        "position": {
+          "bearing": 145,
+          "latitude": 42.37604,
+          "longitude": -71.08343
+        },
+        "stop_id": "70502",
+        "timestamp": 1775286061,
+        "trip": {
+          "start_time": "26:50:34",
+          "trip_id": "ADDED-1583607932",
+          "route_id": "Green-E",
+          "direction_id": 0,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": true
+        },
+        "vehicle": {
+          "id": "G-10016",
+          "label": "3683-3824"
+        }
+      }
+    },
+    {
+      "id": "G-10090",
+      "vehicle": {
+        "current_status": "STOPPED_AT",
+        "current_stop_sequence": 310,
+        "multi_carriage_details": [
+          {
+            "label": "3869",
+            "occupancy_status": "NO_DATA_AVAILABLE",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "3695",
+            "occupancy_status": "NO_DATA_AVAILABLE",
+            "carriage_sequence": 2
+          }
+        ],
+        "position": {
+          "bearing": 0,
+          "latitude": 42.34027,
+          "longitude": -71.16688
+        },
+        "stop_id": "70107",
+        "timestamp": 1775286041,
+        "trip": {
+          "start_time": "26:57:38",
+          "trip_id": "ADDED-1583607943",
+          "route_id": "Green-B",
+          "direction_id": 0,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": true
+        },
+        "vehicle": {
+          "id": "G-10090",
+          "label": "3869-3695"
+        }
+      }
+    },
+    {
+      "id": "R-5488CEAA",
+      "vehicle": {
+        "current_status": "IN_TRANSIT_TO",
+        "multi_carriage_details": [
+          {
+            "label": "1835",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "1834",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 2
+          },
+          {
+            "label": "1800",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 3
+          },
+          {
+            "label": "1801",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 4
+          },
+          {
+            "label": "1826",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 5
+          },
+          {
+            "label": "1827",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 6
+          }
+        ],
+        "position": {
+          "bearing": 190,
+          "latitude": 42.20457,
+          "longitude": -71.00214
+        },
+        "timestamp": 1775278981,
+        "trip": {
+          "start_time": "24:48:30",
+          "trip_id": "NONREV-1580760964",
+          "route_id": "Red",
+          "direction_id": 0,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": false
+        },
+        "vehicle": {
+          "id": "R-5488CEAA",
+          "label": "1835"
+        }
+      }
+    },
+    {
+      "id": "O-5488D9B0",
+      "vehicle": {
+        "current_status": "IN_TRANSIT_TO",
+        "multi_carriage_details": [
+          {
+            "label": "1546",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "1547",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 2
+          },
+          {
+            "label": "1497",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 3
+          },
+          {
+            "label": "1496",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 4
+          },
+          {
+            "label": "1535",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 5
+          },
+          {
+            "label": "1534",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 6
+          }
+        ],
+        "position": {
+          "bearing": 45,
+          "latitude": 42.29876,
+          "longitude": -71.11584
+        },
+        "timestamp": 1775276459,
+        "trip": {
+          "start_time": "24:19:00",
+          "trip_id": "NONREV-1580760920",
+          "route_id": "Orange",
+          "direction_id": 0,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": false
+        },
+        "vehicle": {
+          "id": "O-5488D9B0",
+          "label": "1546"
+        }
+      }
+    },
+    {
+      "id": "R-5488DC2B",
+      "vehicle": {
+        "current_status": "IN_TRANSIT_TO",
+        "multi_carriage_details": [
+          {
+            "label": "1730",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "1731",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 2
+          },
+          {
+            "label": "1728",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 3
+          },
+          {
+            "label": "1729",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 4
+          }
+        ],
+        "position": {
+          "bearing": 85,
+          "latitude": 42.39652,
+          "longitude": -71.14338
+        },
+        "timestamp": 1775276716,
+        "trip": {
+          "start_time": "24:02:00",
+          "trip_id": "NONREV-1580760916",
+          "route_id": "Red",
+          "direction_id": 1,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": false,
+          "revenue": false
+        },
+        "vehicle": {
+          "id": "R-5488DC2B",
+          "label": "1730"
+        }
+      }
+    },
+    {
+      "id": "O-5488D9A0",
+      "vehicle": {
+        "current_status": "IN_TRANSIT_TO",
+        "current_stop_sequence": 190,
+        "multi_carriage_details": [
+          {
+            "label": "1514",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 1
+          },
+          {
+            "label": "1515",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 2
+          },
+          {
+            "label": "1430",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 3
+          },
+          {
+            "label": "1431",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 4
+          },
+          {
+            "label": "1445",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 5
+          },
+          {
+            "label": "1444",
+            "occupancy_status": "NOT_ACCEPTING_PASSENGERS",
+            "carriage_sequence": 6
+          }
+        ],
+        "position": {
+          "bearing": 210,
+          "latitude": 42.30119,
+          "longitude": -71.11376
+        },
+        "stop_id": "Forest Hills-01",
+        "timestamp": 1775282394,
+        "trip": {
+          "start_time": "26:00:00",
+          "trip_id": "NONREV-1580760991",
+          "route_id": "Orange",
+          "direction_id": 0,
+          "start_date": "20260403",
+          "schedule_relationship": "ADDED",
+          "last_trip": true,
+          "revenue": false
+        },
+        "vehicle": {
+          "id": "O-5488D9A0",
+          "label": "1514"
+        }
+      }
+    }
+  ]
+}

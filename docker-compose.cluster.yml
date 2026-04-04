@@ -1,0 +1,112 @@
+services:
+  valkey:
+    image: redis:7-alpine
+    container_name: cluster-sentinel-valkey
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - valkey-data:/data
+
+  collector:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: cluster-sentinel-collector
+    restart: unless-stopped
+    environment:
+      VALKEY_URL: redis://valkey:6379/0
+      CLUSTER_TELEMETRY_SOURCE: auto
+      CLUSTER_COLLECTION_INTERVAL: "5"
+      CLUSTER_SAMPLE_RETENTION: "720"
+      PYTHONPATH: /app
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - ./src:/app/src:ro
+      - ./logs/cluster:/app/logs
+    depends_on:
+      - valkey
+    command: ["python3", "/app/scripts/cluster/telemetry_collector.py"]
+
+  regime:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: cluster-sentinel-regime
+    restart: unless-stopped
+    environment:
+      VALKEY_URL: redis://valkey:6379/0
+      REGIME_WINDOW_SAMPLES: "6"
+      REGIME_LOOP_SECONDS: "5"
+      REGIME_HISTORY_RETENTION: "720"
+      PYTHONPATH: /app
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - ./src:/app/src:ro
+      - ./logs/cluster:/app/logs
+    depends_on:
+      - valkey
+      - collector
+    command: ["python3", "/app/scripts/cluster/regime_service.py"]
+
+  policy:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: cluster-sentinel-policy
+    restart: unless-stopped
+    environment:
+      VALKEY_URL: redis://valkey:6379/0
+      POLICY_LOOP_SECONDS: "5"
+      POLICY_STALE_AFTER_SECONDS: "30"
+      CLUSTER_NAME: "Cluster Sentinel Demo"
+      PYTHONPATH: /app
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - ./src:/app/src:ro
+      - ./logs/cluster:/app/logs
+    depends_on:
+      - valkey
+      - regime
+    command: ["python3", "/app/scripts/cluster/policy_engine.py"]
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: cluster-sentinel-api
+    restart: unless-stopped
+    environment:
+      VALKEY_URL: redis://valkey:6379/0
+      CLUSTER_API_PORT: "8000"
+      CLUSTER_NAME: "Cluster Sentinel Demo"
+      PYTHONPATH: /app
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - ./src:/app/src:ro
+      - ./logs/cluster:/app/logs
+    depends_on:
+      - valkey
+      - policy
+    ports:
+      - "8000:8000"
+    command: ["python3", "/app/scripts/cluster/api.py"]
+
+  frontend:
+    build:
+      context: ./apps/frontend
+    container_name: cluster-sentinel-frontend
+    restart: unless-stopped
+    environment:
+      API_URL: ""
+      SERVER_NAME: "_"
+      BACKEND_UPSTREAM: "http://api:8000"
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+
+volumes:
+  valkey-data:
+    driver: local

@@ -1,0 +1,47 @@
+{
+  "agency": "MBTA",
+  "local_time_window": "12:30-12:35 America/New_York",
+  "reconstructed_at": "2026-04-04T07:38:49.122890+00:00",
+  "selected_trip_ids": [
+    "75937340",
+    "75937206",
+    "75937192",
+    "75937177",
+    "75937522",
+    "75937165",
+    "75937154",
+    "75937485",
+    "75937499"
+  ],
+  "service_date": "2026-04-03",
+  "snapshot_path": "archive/2026/04/03/163405Z",
+  "snapshot_timestamp_utc": "2026-04-03T16:34:05+00:00",
+  "source_files": [
+    {
+      "name": "subway_on_time_performance",
+      "rows_selected": 9,
+      "url": "https://performancedata.mbta.com/lamp/subway-on-time-performance-v1/2026-04-03-subway-on-time-performance-v1.parquet"
+    },
+    {
+      "name": "gtfs_routes_archive",
+      "url": "https://performancedata.mbta.com/lamp/gtfs_archive/2026/routes.parquet"
+    },
+    {
+      "name": "gtfs_trips_archive",
+      "url": "https://performancedata.mbta.com/lamp/gtfs_archive/2026/trips.parquet"
+    },
+    {
+      "name": "gtfs_stop_times_archive",
+      "url": "https://performancedata.mbta.com/lamp/gtfs_archive/2026/stop_times.parquet"
+    },
+    {
+      "name": "gtfs_stops_archive",
+      "url": "https://performancedata.mbta.com/lamp/gtfs_archive/2026/stops.parquet"
+    },
+    {
+      "name": "gtfs_calendar_archive",
+      "url": "https://performancedata.mbta.com/lamp/gtfs_archive/2026/calendar.parquet"
+    }
+  ],
+  "source_type": "historical_public_exports"
+}

@@ -1,0 +1,24 @@
+{
+  "dataset_id": "mbta-accessibility-advisory-controls",
+  "use_case": "Accessibility and facility advisories alone should not create live corridor incidents when train movement is normal.",
+  "incidents": [
+    {
+      "incident_id": "red-dir0-accessibility-control",
+      "snapshot_path": "archive/2026/04/04/071140Z",
+      "entity_id": "route:Red:0",
+      "route_id": "Red",
+      "direction_id": 0,
+      "expected_detection": false,
+      "note": "Red Line riders saw elevator and escalator advisories, but the live route state carried no delay or high-impact service alert."
+    },
+    {
+      "incident_id": "blue-dir0-accessibility-control",
+      "snapshot_path": "archive/2026/04/04/071140Z",
+      "entity_id": "route:Blue:0",
+      "route_id": "Blue",
+      "direction_id": 0,
+      "expected_detection": false,
+      "note": "Blue Line advisories were facility-only and should remain non-incident controls."
+    }
+  ]
+}

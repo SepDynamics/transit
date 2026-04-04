@@ -1,0 +1,307 @@
+export interface TransitFeedStatus {
+  feed_label?: string;
+  updated_at?: string | null;
+  vehicle_count?: number;
+  trip_update_count?: number;
+  alert_count?: number;
+  collection_source?: string;
+  status?: string;
+}
+
+export interface ProvenanceFactor {
+  factor: string;
+  label?: string;
+  score?: number;
+  weight?: number;
+  weighted_score?: number;
+}
+
+export interface ProvenancePayload {
+  feature_coverage?: number;
+  signal_agreement?: number;
+  feed_freshness?: number;
+  metrics?: {
+    position_coverage?: number;
+    trip_update_coverage?: number;
+    feed_age_seconds?: number;
+  };
+  hazard_components?: Record<string, number>;
+  top_factors?: ProvenanceFactor[];
+}
+
+export interface TransitRegimeMetrics {
+  vehicle_count?: number;
+  trip_update_count?: number;
+  active_alert_count?: number;
+  avg_delay_seconds?: number;
+  median_delay_seconds?: number;
+  p90_delay_seconds?: number;
+  delay_spread_seconds?: number;
+  scheduled_headway_seconds?: number | null;
+  compressed_headway_share?: number;
+  terminal_backlog_count?: number;
+  dwell_overrun_share?: number;
+  position_coverage?: number;
+  trip_update_coverage?: number;
+  feed_age_seconds?: number;
+}
+
+export interface TransitRegimePayload {
+  timestamp_ms?: number;
+  entity_id: string;
+  entity_type?: string;
+  label?: string;
+  route_id?: string | null;
+  regime?: string;
+  hazard?: number;
+  action?: string;
+  scoring_backend?: string;
+  confidence?: number;
+  signature?: string;
+  reasons?: string[];
+  provenance?: ProvenancePayload;
+  metrics?: TransitRegimeMetrics;
+  source?: string;
+  collection_source?: string;
+  trace_id?: string | null;
+}
+
+export interface TransitHealthResponse {
+  system_name?: string;
+  generated_at?: string;
+  status?: string;
+  line_count?: number;
+  active_line_count?: number;
+  scheduled_later_line_count?: number;
+  inactive_line_count?: number;
+  visible_line_count?: number;
+  vehicle_count?: number;
+  incident_count?: number;
+  critical_incidents?: number;
+  avg_hazard?: number;
+  avg_confidence?: number;
+  max_hazard?: number;
+  action_counts?: Record<string, number>;
+  regime_counts?: Record<string, number>;
+  feed_status?: TransitFeedStatus;
+  worst_corridor?: TransitRegimePayload | null;
+}
+
+export interface TransitCorridorSnapshot {
+  entity_id: string;
+  route_id?: string | null;
+  direction_id?: number | null;
+  label: string;
+  vehicle_count: number;
+  median_delay_seconds: number;
+  scheduled_headway_seconds?: number | null;
+  avg_delay_seconds: number;
+  top_action: string;
+  avg_hazard: number;
+  active_alert_count: number;
+  activity_status?: string;
+  activity_reason?: string;
+  route_mode?: string | null;
+  source?: string;
+  collection_source?: string;
+  trace_id?: string | null;
+  timestamp_ms?: number;
+}
+
+export interface ObservationPayload {
+  timestamp_ms?: number;
+  route_id?: string | null;
+  trip_id?: string | null;
+  vehicle_id?: string;
+  vehicle_label?: string | null;
+  stop_id?: string | null;
+  current_status?: string | null;
+  occupancy_status?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  delay_seconds?: number | null;
+  source?: string;
+  collection_source?: string;
+  trace_id?: string | null;
+}
+
+export interface TransitVehicleSnapshot {
+  entity_id: string;
+  label: string;
+  vehicle_id: string;
+  corridor_entity_id?: string | null;
+  route_id?: string | null;
+  route_label?: string;
+  trip_id?: string | null;
+  direction_id?: number | null;
+  stop_id?: string | null;
+  status?: string | null;
+  delay_seconds?: number | null;
+  occupancy_status?: string | null;
+  source?: string;
+  collection_source?: string;
+  regime?: TransitRegimePayload | null;
+  observation?: ObservationPayload | null;
+}
+
+export interface TransitEntitiesResponse {
+  generated_at?: string;
+  lines: TransitCorridorSnapshot[];
+  active_lines?: TransitCorridorSnapshot[];
+  scheduled_later_lines?: TransitCorridorSnapshot[];
+  inactive_lines?: TransitCorridorSnapshot[];
+  vehicles: TransitVehicleSnapshot[];
+}
+
+export interface TransitIncidentRecord {
+  incident_id: string;
+  timestamp_ms?: number;
+  entity_id: string;
+  entity_type?: string;
+  label: string;
+  route_id?: string | null;
+  severity: string;
+  action: string;
+  regime: string;
+  hazard: number;
+  confidence?: number;
+  provenance?: ProvenancePayload;
+  summary: string;
+  recommended_action: string;
+  reasons?: string[];
+  source?: string;
+  trace_id?: string | null;
+}
+
+export interface TransitIncidentResponse {
+  generated_at?: string;
+  incidents: TransitIncidentRecord[];
+}
+
+export interface SignaturePayload {
+  signature: string;
+  entity_count: number;
+  hazard_max: number;
+  regimes: string[];
+  actions: string[];
+}
+
+export interface TransitRegimeResponse {
+  generated_at?: string;
+  regimes: TransitRegimePayload[];
+  recurring_regimes: SignaturePayload[];
+}
+
+export interface SourceOption {
+  id: string;
+  label: string;
+}
+
+export interface TransitReplayTrace {
+  trace_id: string;
+  snapshot_count?: number;
+  first_snapshot_path?: string | null;
+  latest_snapshot_path?: string | null;
+  latest_snapshot_timestamp_ms?: number | null;
+  updated_at?: string | null;
+  system_name?: string | null;
+}
+
+export interface TransitSourceResponse {
+  scopes: SourceOption[];
+  available?: {
+    live?: boolean;
+    replay?: boolean;
+  };
+  configured_feeds?: Record<string, boolean>;
+  traces?: TransitReplayTrace[];
+  trace_ids?: string[];
+}
+
+export interface CorridorObservation {
+  timestamp_ms?: number;
+  entity_id: string;
+  route_id?: string | null;
+  direction_id?: number | null;
+  label?: string;
+  vehicle_count?: number;
+  median_delay_seconds?: number;
+  scheduled_headway_seconds?: number | null;
+  avg_delay_seconds?: number;
+  top_action?: string;
+  avg_hazard?: number;
+  active_alert_count?: number;
+  activity_status?: string;
+  activity_reason?: string;
+  source?: string;
+  collection_source?: string;
+  trace_id?: string | null;
+}
+
+export interface HistoryEntity {
+  entity_id: string;
+  label?: string;
+  vehicle_count?: number;
+  median_delay_seconds?: number;
+  avg_hazard?: number;
+  top_action?: string;
+  activity_status?: string;
+}
+
+export interface TransitVehicleHistoryResponse {
+  entity?: HistoryEntity | null;
+  observations: ObservationPayload[];
+  regimes: TransitRegimePayload[];
+  incidents: TransitIncidentRecord[];
+}
+
+export interface TransitCorridorHistoryResponse {
+  entity?: HistoryEntity | null;
+  observations: CorridorObservation[];
+  regimes: TransitRegimePayload[];
+  incidents: TransitIncidentRecord[];
+}
+
+export interface CorridorTrend {
+  entity_id: string;
+  label: string;
+  route_id?: string | null;
+  snapshot_count: number;
+  incident_count: number;
+  avg_hazard: number;
+  max_hazard: number;
+  latest_hazard: number;
+  latest_action: string;
+  latest_regime: string;
+  latest_delay_seconds?: number | null;
+  latest_activity_status?: string;
+  hazard_series: number[];
+  delay_series: number[];
+  recent_actions: string[];
+}
+
+export interface TrendSummary {
+  corridor_count: number;
+  unstable_corridor_count: number;
+  recent_incident_count: number;
+  recent_action_counts: Record<string, number>;
+  recent_regime_counts: Record<string, number>;
+}
+
+export interface TransitTrendResponse {
+  generated_at?: string;
+  summary: TrendSummary;
+  corridors: CorridorTrend[];
+}
+
+export type TransitHealth = TransitHealthResponse;
+export type LineCard = TransitCorridorSnapshot;
+export type VehicleCard = TransitVehicleSnapshot;
+export type EntitiesResponse = TransitEntitiesResponse;
+export type IncidentPayload = TransitIncidentRecord;
+export type IncidentResponse = TransitIncidentResponse;
+export type RegimeResponse = TransitRegimeResponse;
+export type SourceResponse = TransitSourceResponse;
+export type VehicleHistoryResponse = TransitVehicleHistoryResponse;
+export type CorridorHistoryResponse = TransitCorridorHistoryResponse;
+export type TrendResponse = TransitTrendResponse;

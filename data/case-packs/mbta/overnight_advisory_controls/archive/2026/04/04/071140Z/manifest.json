@@ -1,0 +1,33 @@
+{
+  "agency": "MBTA",
+  "captured_at": "2026-04-04T07:11:40.756000+00:00",
+  "timestamp_ms": 1775286700756,
+  "snapshot_path": "archive/2026/04/04/071140Z",
+  "source_manifest": "source_manifest.json",
+  "retained_routes": [
+    "15",
+    "Blue",
+    "Green-B",
+    "Green-E",
+    "Orange",
+    "Red"
+  ],
+  "feeds": [
+    {
+      "name": "static_gtfs",
+      "path": "archive/2026/04/04/071140Z/MBTA_GTFS.zip"
+    },
+    {
+      "name": "vehicle_positions",
+      "path": "archive/2026/04/04/071140Z/VehiclePositions_enhanced.json"
+    },
+    {
+      "name": "trip_updates",
+      "path": "archive/2026/04/04/071140Z/TripUpdates_enhanced.json"
+    },
+    {
+      "name": "alerts",
+      "path": "archive/2026/04/04/071140Z/Alerts_enhanced.json"
+    }
+  ]
+}

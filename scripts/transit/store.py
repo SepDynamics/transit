@@ -1,0 +1,903 @@
+"""Valkey storage wrapper for Transit Sentinel runtime payloads."""
+from __future__ import annotations
+
+import copy
+import json
+import os
+import time
+from collections import Counter
+from typing import Any, Dict, List, Optional
+
+try:
+    import redis  # type: ignore
+except ImportError:  # pragma: no cover
+    redis = None
+
+from scripts.shared.runtime import isoformat_ms, scope_matches
+from scripts.transit.types import (
+    TransitCorridorSnapshot,
+    TransitFeedStatus,
+    TransitIncidentRecord,
+    TransitRegimeRecord,
+    TransitReplayTrace,
+    TransitVehicleSnapshot,
+)
+
+SNAPSHOT_PARTS = ("health", "entities", "regimes", "incidents", "feed_status", "errors")
+
+
+class TransitStore:
+    """Persist latest transit payloads plus rolling per-vehicle history."""
+
+    def __init__(self, redis_url: Optional[str] = None, client: Any = None) -> None:
+        if client is not None:
+            self.client = client
+            return
+        if redis is None:
+            raise RuntimeError("redis dependency is not installed")
+        url = redis_url or os.getenv("VALKEY_URL") or os.getenv("REDIS_URL")
+        if not url:
+            raise RuntimeError("VALKEY_URL or REDIS_URL must be configured")
+        self.client = redis.from_url(url, decode_responses=True)
+
+    def write_snapshot(
+        self,
+        payload: Dict[str, Any],
+        *,
+        configured_feeds: Optional[Dict[str, bool]] = None,
+        retention: int = 720,
+        source: Optional[str] = None,
+        trace_id: Optional[str] = None,
+    ) -> None:
+        health = copy.deepcopy(dict(payload.get("health") or {}))
+        entities = copy.deepcopy(dict(payload.get("entities") or {}))
+        regimes = copy.deepcopy(dict(payload.get("regimes") or {}))
+        incidents = copy.deepcopy(dict(payload.get("incidents") or {}))
+        feed_status = dict(payload.get("feed_status") or {})
+        errors = list(payload.get("errors") or [])
+        snapshot_source = str(source or self._infer_snapshot_source(payload) or "live")
+        snapshot_trace_id = str(trace_id or self._infer_snapshot_trace_id(payload) or "").strip() or None
+        snapshot_timestamp_ms = self._infer_snapshot_timestamp_ms(payload)
+        self._apply_snapshot_context(
+            health,
+            entities,
+            regimes,
+            incidents,
+            source=snapshot_source,
+            trace_id=snapshot_trace_id,
+            timestamp_ms=snapshot_timestamp_ms,
+        )
+        feed_status = TransitFeedStatus.from_mapping(feed_status).to_json()
+        if isinstance(health.get("feed_status"), dict):
+            health["feed_status"] = TransitFeedStatus.from_mapping(health["feed_status"]).to_json()
+        entities = self._normalize_entities_payload(entities)
+        regimes["regimes"] = [
+            TransitRegimeRecord.from_mapping(row).to_json()
+            for row in (regimes.get("regimes") or [])
+            if isinstance(row, dict)
+        ]
+        incidents["incidents"] = [
+            TransitIncidentRecord.from_mapping(row).to_json()
+            for row in (incidents.get("incidents") or [])
+            if isinstance(row, dict)
+        ]
+        corridor_regimes_by_entity = {
+            str(row.get("entity_id") or ""): dict(row)
+            for row in (regimes.get("regimes") or [])
+            if isinstance(row, dict)
+        }
+
+        self.client.set("transit:health:last", self._dumps(health))
+        self.client.set("transit:entities:last", self._dumps(entities))
+        self.client.set("transit:regimes:last", self._dumps(regimes))
+        self.client.set("transit:incidents:last", self._dumps(incidents))
+        self.client.set("transit:feed_status:last", self._dumps(feed_status))
+        self.client.set("transit:errors:last", self._dumps({"errors": errors}))
+        self._write_latest_snapshot_part("health", health, source=snapshot_source, trace_id=snapshot_trace_id, timestamp_ms=snapshot_timestamp_ms)
+        self._write_latest_snapshot_part("entities", entities, source=snapshot_source, trace_id=snapshot_trace_id, timestamp_ms=snapshot_timestamp_ms)
+        self._write_latest_snapshot_part("regimes", regimes, source=snapshot_source, trace_id=snapshot_trace_id, timestamp_ms=snapshot_timestamp_ms)
+        self._write_latest_snapshot_part("incidents", incidents, source=snapshot_source, trace_id=snapshot_trace_id, timestamp_ms=snapshot_timestamp_ms)
+        self._write_latest_snapshot_part("feed_status", feed_status, source=snapshot_source, trace_id=snapshot_trace_id, timestamp_ms=snapshot_timestamp_ms)
+        self._write_latest_snapshot_part(
+            "errors",
+            {"errors": errors},
+            source=snapshot_source,
+            trace_id=snapshot_trace_id,
+            timestamp_ms=snapshot_timestamp_ms,
+        )
+        if configured_feeds is not None:
+            self.client.set(self.configured_feeds_key(), self._dumps(dict(configured_feeds)))
+
+        for vehicle in entities.get("vehicles") or []:
+            if not isinstance(vehicle, dict):
+                continue
+            entity_id = str(vehicle.get("entity_id") or "").strip()
+            if not entity_id:
+                continue
+            self.client.set(self.vehicle_meta_key(entity_id, trace_id=snapshot_trace_id), self._dumps(vehicle))
+            if snapshot_trace_id:
+                self.client.sadd(self.trace_vehicle_entities_key(snapshot_trace_id), entity_id)
+            observation = dict(vehicle.get("observation") or {})
+            if observation:
+                self.client.zadd(
+                    self.observation_history_key(entity_id),
+                    {self._dumps(observation): int(observation.get("timestamp_ms") or 0)},
+                )
+                self._trim_sorted_set(self.observation_history_key(entity_id), retention)
+            regime = dict(vehicle.get("regime") or {})
+            if regime:
+                self.client.zadd(
+                    self.vehicle_regime_history_key(entity_id),
+                    {self._dumps(regime): int(regime.get("timestamp_ms") or observation.get("timestamp_ms") or 0)},
+                )
+                self._trim_sorted_set(self.vehicle_regime_history_key(entity_id), retention)
+
+        for regime in regimes.get("regimes") or []:
+            if not isinstance(regime, dict):
+                continue
+            entity_id = str(regime.get("entity_id") or "").strip()
+            if not entity_id:
+                continue
+            self.client.zadd(
+                self.corridor_regime_history_key(entity_id),
+                {self._dumps(regime): int(regime.get("timestamp_ms") or 0)},
+            )
+            self._trim_sorted_set(self.corridor_regime_history_key(entity_id), retention)
+
+        for line in entities.get("lines") or []:
+            if not isinstance(line, dict):
+                continue
+            entity_id = str(line.get("entity_id") or "").strip()
+            if not entity_id:
+                continue
+            merged_line = {
+                **line,
+                "timestamp_ms": int(
+                    line.get("timestamp_ms")
+                    or corridor_regimes_by_entity.get(entity_id, {}).get("timestamp_ms")
+                    or int(time.time() * 1000)
+                ),
+                "source": str(line.get("source") or corridor_regimes_by_entity.get(entity_id, {}).get("source") or "live"),
+                "collection_source": str(
+                    line.get("collection_source")
+                    or corridor_regimes_by_entity.get(entity_id, {}).get("collection_source")
+                    or "gtfs_rt"
+                ),
+                "trace_id": line.get("trace_id", corridor_regimes_by_entity.get(entity_id, {}).get("trace_id")),
+            }
+            self.client.set(self.corridor_meta_key(entity_id, trace_id=snapshot_trace_id), self._dumps(merged_line))
+            if snapshot_trace_id:
+                self.client.sadd(self.trace_corridor_entities_key(snapshot_trace_id), entity_id)
+            self.client.zadd(
+                self.corridor_summary_history_key(entity_id),
+                {self._dumps(merged_line): int(merged_line.get("timestamp_ms") or 0)},
+            )
+            self._trim_sorted_set(self.corridor_summary_history_key(entity_id), retention)
+
+        for incident in incidents.get("incidents") or []:
+            if not isinstance(incident, dict):
+                continue
+            entity_id = str(incident.get("entity_id") or "").strip()
+            if not entity_id:
+                continue
+            self.client.zadd(
+                self.corridor_incident_history_key(entity_id),
+                {self._dumps(incident): int(incident.get("timestamp_ms") or 0)},
+            )
+            self._trim_sorted_set(self.corridor_incident_history_key(entity_id), retention)
+
+        if snapshot_trace_id:
+            self.client.sadd("transit:trace_ids", snapshot_trace_id)
+            self.client.zadd("transit:trace_timestamps", {snapshot_trace_id: snapshot_timestamp_ms})
+        self.client.set("transit:sources:last", self._dumps(self.sources()))
+
+    def write_replay_trace(self, trace: TransitReplayTrace) -> None:
+        payload = trace.to_json()
+        self.client.set(self.trace_meta_key(trace.trace_id), self._dumps(payload))
+        self.client.sadd("transit:trace_ids", trace.trace_id)
+        if trace.latest_snapshot_timestamp_ms is not None:
+            self.client.zadd("transit:trace_timestamps", {trace.trace_id: int(trace.latest_snapshot_timestamp_ms)})
+        self.client.set("transit:sources:last", self._dumps(self.sources()))
+
+    def write_status(self, key: str, payload: Dict[str, Any]) -> None:
+        self.client.set(key, self._dumps(payload))
+
+    def read_status(self, key: str) -> Dict[str, Any]:
+        return self.read_json_key(key, default={})
+
+    def health(self, *, scope: str = "all", trace_id: str | None = None) -> Dict[str, Any]:
+        resolved_trace_id = self._resolve_trace_id(scope=scope, trace_id=trace_id)
+        payload = self._read_latest_snapshot_part("health", scope=scope, trace_id=trace_id, default=self._default_health())
+        payload["scope"] = scope
+        payload["trace_id"] = resolved_trace_id
+        return payload
+
+    def entities(self, *, scope: str = "all", trace_id: str | None = None) -> Dict[str, Any]:
+        resolved_trace_id = self._resolve_trace_id(scope=scope, trace_id=trace_id)
+        payload = self._read_latest_snapshot_part("entities", scope=scope, trace_id=trace_id, default=self._default_entities())
+        lines = [
+            TransitCorridorSnapshot.from_mapping(row).to_json()
+            for row in (payload.get("lines") or [])
+            if isinstance(row, dict)
+            and scope_matches(row, scope)
+            and (resolved_trace_id in (None, "") or str(row.get("trace_id") or "") == resolved_trace_id)
+        ]
+        active_lines = [
+            TransitCorridorSnapshot.from_mapping(row).to_json()
+            for row in (payload.get("active_lines") or [])
+            if isinstance(row, dict)
+            and scope_matches(row, scope)
+            and (resolved_trace_id in (None, "") or str(row.get("trace_id") or "") == resolved_trace_id)
+        ]
+        scheduled_later_lines = [
+            TransitCorridorSnapshot.from_mapping(row).to_json()
+            for row in (payload.get("scheduled_later_lines") or [])
+            if isinstance(row, dict)
+            and scope_matches(row, scope)
+            and (resolved_trace_id in (None, "") or str(row.get("trace_id") or "") == resolved_trace_id)
+        ]
+        inactive_lines = [
+            TransitCorridorSnapshot.from_mapping(row).to_json()
+            for row in (payload.get("inactive_lines") or [])
+            if isinstance(row, dict)
+            and scope_matches(row, scope)
+            and (resolved_trace_id in (None, "") or str(row.get("trace_id") or "") == resolved_trace_id)
+        ]
+        vehicles = [
+            TransitVehicleSnapshot.from_mapping(row).to_json()
+            for row in (payload.get("vehicles") or [])
+            if isinstance(row, dict)
+            and scope_matches(row.get("observation") or row, scope)
+            and (resolved_trace_id in (None, "") or str((row.get("observation") or row).get("trace_id") or "") == resolved_trace_id)
+        ]
+        return {
+            **payload,
+            "scope": scope,
+            "trace_id": resolved_trace_id,
+            "lines": lines,
+            "active_lines": active_lines,
+            "scheduled_later_lines": scheduled_later_lines,
+            "inactive_lines": inactive_lines,
+            "vehicles": vehicles,
+        }
+
+    def regimes(self, *, scope: str = "all", trace_id: str | None = None) -> Dict[str, Any]:
+        resolved_trace_id = self._resolve_trace_id(scope=scope, trace_id=trace_id)
+        payload = self._read_latest_snapshot_part("regimes", scope=scope, trace_id=trace_id, default=self._default_regimes())
+        regimes = [
+            row
+            for row in (payload.get("regimes") or [])
+            if isinstance(row, dict)
+            and scope_matches(row, scope)
+            and (resolved_trace_id in (None, "") or str(row.get("trace_id") or "") == resolved_trace_id)
+        ]
+        recurring = list(payload.get("recurring_regimes") or []) if resolved_trace_id in (None, "") and scope in ("", "all", "live", None) else []
+        return {
+            **payload,
+            "scope": scope,
+            "trace_id": resolved_trace_id,
+            "regimes": regimes,
+            "recurring_regimes": recurring,
+        }
+
+    def incidents(self, *, scope: str = "all", trace_id: str | None = None) -> Dict[str, Any]:
+        resolved_trace_id = self._resolve_trace_id(scope=scope, trace_id=trace_id)
+        payload = self._read_latest_snapshot_part("incidents", scope=scope, trace_id=trace_id, default=self._default_incidents())
+        incidents = [
+            TransitIncidentRecord.from_mapping(row).to_json()
+            for row in (payload.get("incidents") or [])
+            if isinstance(row, dict)
+            and scope_matches(row, scope)
+            and (resolved_trace_id in (None, "") or str(row.get("trace_id") or "") == resolved_trace_id)
+        ]
+        return {
+            **payload,
+            "scope": scope,
+            "trace_id": resolved_trace_id,
+            "incidents": incidents,
+        }
+
+    def sources(self) -> Dict[str, Any]:
+        traces = self.list_replay_traces()
+        trace_ids = [str(row.get("trace_id") or "") for row in traces if row.get("trace_id")]
+        live_entities = self.read_json_key(self.live_payload_key("entities"), default={})
+        live_regimes = self.read_json_key(self.live_payload_key("regimes"), default={})
+        configured_feeds = self.read_json_key(self.configured_feeds_key(), default={})
+        has_live = bool((live_entities.get("vehicles") or []) or (live_regimes.get("regimes") or []))
+        has_replay = bool(traces)
+        return {
+            "generated_at": isoformat_ms(),
+            "scopes": [
+                {"id": "all", "label": "All feeds"},
+                {"id": "live", "label": "Live feed"},
+                {"id": "replay", "label": "Replay"},
+            ],
+            "available": {"live": has_live, "replay": has_replay},
+            "configured_feeds": configured_feeds,
+            "traces": traces,
+            "trace_ids": trace_ids,
+        }
+
+    def trends(
+        self,
+        *,
+        scope: str = "all",
+        trace_id: str | None = None,
+        limit: int = 6,
+        window: int = 24,
+    ) -> Dict[str, Any]:
+        resolved_trace_id = self._resolve_trace_id(scope=scope, trace_id=trace_id)
+        entities = self.entities(scope=scope, trace_id=resolved_trace_id)
+        corridors: List[Dict[str, Any]] = []
+        recent_action_counts: Counter[str] = Counter()
+        recent_regime_counts: Counter[str] = Counter()
+        recent_incident_total = 0
+
+        for line in entities.get("lines") or []:
+            if not isinstance(line, dict):
+                continue
+            entity_id = str(line.get("entity_id") or "").strip()
+            if not entity_id:
+                continue
+            summaries = [
+                row
+                for row in self.get_recent_corridor_summaries(entity_id, limit=window)
+                if scope_matches(row, scope) and (resolved_trace_id in (None, "") or str(row.get("trace_id") or "") == resolved_trace_id)
+            ]
+            regimes = [
+                row
+                for row in self.get_recent_corridor_regimes(entity_id, limit=window)
+                if scope_matches(row, scope) and (resolved_trace_id in (None, "") or str(row.get("trace_id") or "") == resolved_trace_id)
+            ]
+            incidents = [
+                row
+                for row in self.get_recent_corridor_incidents(entity_id, limit=window)
+                if scope_matches(row, scope) and (resolved_trace_id in (None, "") or str(row.get("trace_id") or "") == resolved_trace_id)
+            ]
+            if not summaries and not regimes and not incidents:
+                continue
+
+            latest_summary = summaries[-1] if summaries else dict(line)
+            hazard_series = [round(float(row.get("avg_hazard") or row.get("hazard") or 0.0), 4) for row in summaries[-12:]]
+            delay_series = [int(row.get("median_delay_seconds") or 0) for row in summaries[-12:]]
+            snapshot_actions = [str(row.get("top_action") or "") for row in summaries if row.get("top_action")]
+            regime_names = [str(row.get("regime") or "") for row in regimes if row.get("regime")]
+            top_regime = Counter(regime_names).most_common(1)[0][0] if regime_names else str(latest_summary.get("top_regime") or "healthy")
+            latest_action = str(latest_summary.get("top_action") or (snapshot_actions[-1] if snapshot_actions else "monitor"))
+            latest_hazard = round(float(latest_summary.get("avg_hazard") or latest_summary.get("hazard") or 0.0), 4)
+            avg_hazard = round(sum(hazard_series) / len(hazard_series), 4) if hazard_series else latest_hazard
+            incident_count = len(incidents)
+
+            recent_action_counts.update(snapshot_actions[-6:])
+            recent_regime_counts.update(regime_names[-6:])
+            recent_incident_total += incident_count
+            corridors.append(
+                {
+                    "entity_id": entity_id,
+                    "label": str(latest_summary.get("label") or line.get("label") or entity_id),
+                    "route_id": latest_summary.get("route_id"),
+                    "snapshot_count": len(summaries),
+                    "incident_count": incident_count,
+                    "avg_hazard": avg_hazard,
+                    "max_hazard": round(max(hazard_series or [latest_hazard]), 4),
+                    "latest_hazard": latest_hazard,
+                    "latest_action": latest_action,
+                    "latest_regime": top_regime,
+                    "latest_delay_seconds": latest_summary.get("median_delay_seconds"),
+                    "latest_activity_status": latest_summary.get("activity_status"),
+                    "hazard_series": hazard_series,
+                    "delay_series": delay_series,
+                    "recent_actions": [action for action in snapshot_actions[-4:] if action],
+                }
+            )
+
+        corridors.sort(
+            key=lambda row: (
+                -float(row.get("latest_hazard") or 0.0),
+                -int(row.get("incident_count") or 0),
+                str(row.get("label") or ""),
+            )
+        )
+        return {
+            "generated_at": isoformat_ms(),
+            "scope": scope,
+            "trace_id": resolved_trace_id,
+            "summary": {
+                "corridor_count": len(corridors),
+                "unstable_corridor_count": sum(1 for row in corridors if float(row.get("latest_hazard") or 0.0) >= 0.5),
+                "recent_incident_count": recent_incident_total,
+                "recent_action_counts": dict(sorted(recent_action_counts.items())),
+                "recent_regime_counts": dict(sorted(recent_regime_counts.items())),
+            },
+            "corridors": corridors[: max(1, int(limit or 1))],
+        }
+
+    def history(
+        self,
+        entity_id: str,
+        *,
+        scope: str = "all",
+        trace_id: str | None = None,
+        limit: int = 72,
+    ) -> Dict[str, Any]:
+        resolved_trace_id = self._resolve_trace_id(scope=scope, trace_id=trace_id)
+        entities = self.entities(scope=scope, trace_id=resolved_trace_id)
+        if entity_id.startswith("route:"):
+            observations = [
+                row
+                for row in self.get_recent_corridor_summaries(entity_id, limit=limit)
+                if scope_matches(row, scope) and (resolved_trace_id in (None, "") or str(row.get("trace_id") or "") == resolved_trace_id)
+            ]
+            regimes = [
+                row
+                for row in self.get_recent_corridor_regimes(entity_id, limit=limit)
+                if scope_matches(row, scope) and (resolved_trace_id in (None, "") or str(row.get("trace_id") or "") == resolved_trace_id)
+            ]
+            incidents = [
+                row
+                for row in self.get_recent_corridor_incidents(entity_id, limit=limit)
+                if scope_matches(row, scope) and (resolved_trace_id in (None, "") or str(row.get("trace_id") or "") == resolved_trace_id)
+            ]
+            entity = next(
+                (row for row in (entities.get("lines") or []) if str(row.get("entity_id") or "") == entity_id),
+                None,
+            ) or self.get_corridor(entity_id, scope=scope, trace_id=resolved_trace_id) or {"entity_id": entity_id}
+            return {
+                "generated_at": isoformat_ms(),
+                "scope": scope,
+                "trace_id": resolved_trace_id,
+                "entity": entity,
+                "observations": observations,
+                "regimes": regimes,
+                "incidents": incidents,
+            }
+
+        observations = [
+            row
+            for row in self.get_recent_observations(entity_id, limit=limit)
+            if scope_matches(row, scope) and (resolved_trace_id in (None, "") or str(row.get("trace_id") or "") == resolved_trace_id)
+        ]
+        regimes = [
+            row
+            for row in self.get_recent_vehicle_regimes(entity_id, limit=limit)
+            if scope_matches(row, scope) and (resolved_trace_id in (None, "") or str(row.get("trace_id") or "") == resolved_trace_id)
+        ]
+        entity = next(
+            (row for row in (entities.get("vehicles") or []) if str(row.get("entity_id") or "") == entity_id),
+            None,
+        ) or self.get_vehicle(entity_id, scope=scope, trace_id=resolved_trace_id) or {"entity_id": entity_id}
+        return {
+            "generated_at": isoformat_ms(),
+            "scope": scope,
+            "trace_id": resolved_trace_id,
+            "entity": entity,
+            "observations": observations,
+            "regimes": regimes,
+            "incidents": [],
+        }
+
+    def get_vehicle(self, entity_id: str, *, scope: str = "all", trace_id: str | None = None) -> Dict[str, Any]:
+        payload = self.read_json_key(self.vehicle_meta_key(entity_id, trace_id=self._resolve_trace_id(scope=scope, trace_id=trace_id)), default={})
+        return TransitVehicleSnapshot.from_mapping(payload).to_json() if payload else {}
+
+    def get_corridor(self, entity_id: str, *, scope: str = "all", trace_id: str | None = None) -> Dict[str, Any]:
+        payload = self.read_json_key(self.corridor_meta_key(entity_id, trace_id=self._resolve_trace_id(scope=scope, trace_id=trace_id)), default={})
+        return TransitCorridorSnapshot.from_mapping(payload).to_json() if payload else {}
+
+    def get_recent_observations(self, entity_id: str, *, limit: int = 72) -> List[Dict[str, Any]]:
+        rows = self.client.zrange(self.observation_history_key(entity_id), -limit, -1) or []
+        return [payload for payload in (self._loads(row) for row in rows) if payload]
+
+    def get_recent_vehicle_regimes(self, entity_id: str, *, limit: int = 72) -> List[Dict[str, Any]]:
+        rows = self.client.zrange(self.vehicle_regime_history_key(entity_id), -limit, -1) or []
+        return [TransitRegimeRecord.from_mapping(payload).to_json() for payload in (self._loads(row) for row in rows) if payload]
+
+    def get_recent_corridor_summaries(self, entity_id: str, *, limit: int = 72) -> List[Dict[str, Any]]:
+        rows = self.client.zrange(self.corridor_summary_history_key(entity_id), -limit, -1) or []
+        return [TransitCorridorSnapshot.from_mapping(payload).to_json() for payload in (self._loads(row) for row in rows) if payload]
+
+    def get_recent_corridor_regimes(self, entity_id: str, *, limit: int = 72) -> List[Dict[str, Any]]:
+        rows = self.client.zrange(self.corridor_regime_history_key(entity_id), -limit, -1) or []
+        return [TransitRegimeRecord.from_mapping(payload).to_json() for payload in (self._loads(row) for row in rows) if payload]
+
+    def get_recent_corridor_incidents(self, entity_id: str, *, limit: int = 72) -> List[Dict[str, Any]]:
+        rows = self.client.zrange(self.corridor_incident_history_key(entity_id), -limit, -1) or []
+        return [TransitIncidentRecord.from_mapping(payload).to_json() for payload in (self._loads(row) for row in rows) if payload]
+
+    def list_trace_ids(self) -> List[str]:
+        ranked = [str(value) for value in (self.client.zrevrange("transit:trace_timestamps", 0, -1) or []) if value]
+        if ranked:
+            return ranked
+        return sorted(str(value) for value in (self.client.smembers("transit:trace_ids") or set()) if value)
+
+    def list_replay_traces(self) -> List[Dict[str, Any]]:
+        traces: List[Dict[str, Any]] = []
+        for trace_id in self.list_trace_ids():
+            payload = self.read_json_key(self.trace_meta_key(trace_id), default={})
+            if payload:
+                traces.append(TransitReplayTrace.from_mapping(payload).to_json())
+                continue
+            timestamp_ms = self._optional_sorted_set_score("transit:trace_timestamps", trace_id)
+            traces.append(
+                TransitReplayTrace(
+                    trace_id=trace_id,
+                    latest_snapshot_timestamp_ms=timestamp_ms,
+                ).to_json()
+            )
+        return traces
+
+    def read_json_key(self, key: str, *, default: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        raw = self.client.get(key)
+        if not raw:
+            return dict(default or {})
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            return dict(default or {})
+
+    @staticmethod
+    def vehicle_meta_key(entity_id: str, *, trace_id: str | None = None) -> str:
+        if trace_id:
+            return f"transit:trace:{trace_id}:vehicle:meta:{entity_id}"
+        return f"transit:vehicle:meta:{entity_id}"
+
+    @staticmethod
+    def corridor_meta_key(entity_id: str, *, trace_id: str | None = None) -> str:
+        if trace_id:
+            return f"transit:trace:{trace_id}:corridor:meta:{entity_id}"
+        return f"transit:corridor:meta:{entity_id}"
+
+    @staticmethod
+    def live_payload_key(kind: str) -> str:
+        return f"transit:live:last:{kind}"
+
+    @staticmethod
+    def replay_payload_key(kind: str) -> str:
+        return f"transit:replay:last:{kind}"
+
+    @staticmethod
+    def trace_payload_key(trace_id: str, kind: str) -> str:
+        return f"transit:trace:{trace_id}:last:{kind}"
+
+    @staticmethod
+    def trace_meta_key(trace_id: str) -> str:
+        return f"transit:trace:{trace_id}:meta"
+
+    @staticmethod
+    def configured_feeds_key() -> str:
+        return "transit:configured_feeds:last"
+
+    @staticmethod
+    def trace_vehicle_entities_key(trace_id: str) -> str:
+        return f"transit:trace:{trace_id}:vehicles"
+
+    @staticmethod
+    def trace_corridor_entities_key(trace_id: str) -> str:
+        return f"transit:trace:{trace_id}:corridors"
+
+    @staticmethod
+    def observation_history_key(entity_id: str) -> str:
+        return f"transit:vehicle:history:observations:{entity_id}"
+
+    @staticmethod
+    def vehicle_regime_history_key(entity_id: str) -> str:
+        return f"transit:vehicle:history:regimes:{entity_id}"
+
+    @staticmethod
+    def corridor_summary_history_key(entity_id: str) -> str:
+        return f"transit:corridor:history:summaries:{entity_id}"
+
+    @staticmethod
+    def corridor_regime_history_key(entity_id: str) -> str:
+        return f"transit:corridor:history:regimes:{entity_id}"
+
+    @staticmethod
+    def corridor_incident_history_key(entity_id: str) -> str:
+        return f"transit:corridor:history:incidents:{entity_id}"
+
+    def clear_replay_trace(self, trace_id: str) -> None:
+        vehicle_ids = sorted(str(value) for value in (self.client.smembers(self.trace_vehicle_entities_key(trace_id)) or set()) if value)
+        corridor_ids = sorted(str(value) for value in (self.client.smembers(self.trace_corridor_entities_key(trace_id)) or set()) if value)
+        for entity_id in vehicle_ids:
+            self._prune_trace_rows(self.observation_history_key(entity_id), trace_id)
+            self._prune_trace_rows(self.vehicle_regime_history_key(entity_id), trace_id)
+            self.client.delete(self.vehicle_meta_key(entity_id, trace_id=trace_id))
+        for entity_id in corridor_ids:
+            self._prune_trace_rows(self.corridor_summary_history_key(entity_id), trace_id)
+            self._prune_trace_rows(self.corridor_regime_history_key(entity_id), trace_id)
+            self._prune_trace_rows(self.corridor_incident_history_key(entity_id), trace_id)
+            self.client.delete(self.corridor_meta_key(entity_id, trace_id=trace_id))
+        self.client.delete(
+            self.trace_vehicle_entities_key(trace_id),
+            self.trace_corridor_entities_key(trace_id),
+            self.trace_meta_key(trace_id),
+            *[self.trace_payload_key(trace_id, kind) for kind in SNAPSHOT_PARTS],
+        )
+        self.client.srem("transit:trace_ids", trace_id)
+        self.client.zrem("transit:trace_timestamps", trace_id)
+        self._refresh_replay_latest_payloads()
+        self.client.set("transit:sources:last", self._dumps(self.sources()))
+
+    def latest_replay_trace_id(self) -> str | None:
+        values = self.client.zrevrange("transit:trace_timestamps", 0, 0) or []
+        if values:
+            return str(values[0])
+        trace_ids = self.list_trace_ids()
+        return trace_ids[0] if trace_ids else None
+
+    def _read_latest_snapshot_part(
+        self,
+        kind: str,
+        *,
+        scope: str,
+        trace_id: str | None,
+        default: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        explicit_trace = trace_id not in (None, "")
+        resolved_trace_id = self._resolve_trace_id(scope=scope, trace_id=trace_id)
+        keys: List[str] = []
+        if resolved_trace_id:
+            keys.append(self.trace_payload_key(resolved_trace_id, kind))
+        if explicit_trace:
+            pass
+        elif scope == "replay":
+            keys.append(self.replay_payload_key(kind))
+        else:
+            keys.append(self.live_payload_key(kind))
+            if scope == "all":
+                keys.append(self.replay_payload_key(kind))
+        legacy_key = f"transit:{kind}:last"
+        keys.append(legacy_key)
+        for key in keys:
+            payload = self.read_json_key(key, default={})
+            if payload:
+                return payload
+        return dict(default)
+
+    def _write_latest_snapshot_part(
+        self,
+        kind: str,
+        payload: Dict[str, Any],
+        *,
+        source: str,
+        trace_id: str | None,
+        timestamp_ms: int,
+    ) -> None:
+        normalized_source = str(source or "live")
+        if normalized_source == "replay" and trace_id:
+            self.client.set(self.trace_payload_key(trace_id, kind), self._dumps(payload))
+            self.client.set(self.replay_payload_key(kind), self._dumps(payload))
+            self.client.sadd("transit:trace_ids", trace_id)
+            self.client.zadd("transit:trace_timestamps", {trace_id: timestamp_ms})
+            return
+        self.client.set(self.live_payload_key(kind), self._dumps(payload))
+
+    def _resolve_trace_id(self, *, scope: str, trace_id: str | None) -> str | None:
+        if trace_id not in (None, ""):
+            return str(trace_id)
+        if scope == "replay":
+            return self.latest_replay_trace_id()
+        return None
+
+    def _refresh_replay_latest_payloads(self) -> None:
+        latest_trace_id = self.latest_replay_trace_id()
+        if not latest_trace_id:
+            self.client.delete(*[self.replay_payload_key(kind) for kind in SNAPSHOT_PARTS])
+            return
+        for kind in SNAPSHOT_PARTS:
+            payload = self.read_json_key(self.trace_payload_key(latest_trace_id, kind), default={})
+            if payload:
+                self.client.set(self.replay_payload_key(kind), self._dumps(payload))
+
+    def _prune_trace_rows(self, key: str, trace_id: str) -> None:
+        rows = self.client.zrange(key, 0, -1) or []
+        to_remove = [
+            row
+            for row in rows
+            if str((self._loads(row) or {}).get("trace_id") or "") == trace_id
+        ]
+        if to_remove:
+            self.client.zrem(key, *to_remove)
+
+    def _normalize_entities_payload(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        normalized = dict(payload)
+        for key in ["lines", "active_lines", "scheduled_later_lines", "inactive_lines"]:
+            normalized[key] = [
+                TransitCorridorSnapshot.from_mapping(row).to_json()
+                for row in (payload.get(key) or [])
+                if isinstance(row, dict)
+            ]
+        normalized["vehicles"] = [
+            TransitVehicleSnapshot.from_mapping(row).to_json()
+            for row in (payload.get("vehicles") or [])
+            if isinstance(row, dict)
+        ]
+        return normalized
+
+    def _optional_sorted_set_score(self, key: str, member: str) -> int | None:
+        raw = self.client.zscore(key, member)
+        if raw is None:
+            return None
+        return int(raw)
+
+    @staticmethod
+    def _apply_snapshot_context(
+        health: Dict[str, Any],
+        entities: Dict[str, Any],
+        regimes: Dict[str, Any],
+        incidents: Dict[str, Any],
+        *,
+        source: str,
+        trace_id: str | None,
+        timestamp_ms: int,
+    ) -> None:
+        def _mark(row: Dict[str, Any]) -> None:
+            row["source"] = source
+            row["trace_id"] = trace_id
+            if "timestamp_ms" not in row or not row.get("timestamp_ms"):
+                row["timestamp_ms"] = timestamp_ms
+
+        worst = health.get("worst_corridor")
+        if isinstance(worst, dict):
+            _mark(worst)
+
+        for key in ["lines", "active_lines", "scheduled_later_lines", "inactive_lines"]:
+            for row in entities.get(key) or []:
+                if isinstance(row, dict):
+                    _mark(row)
+
+        for vehicle in entities.get("vehicles") or []:
+            if not isinstance(vehicle, dict):
+                continue
+            _mark(vehicle)
+            observation = vehicle.get("observation")
+            if isinstance(observation, dict):
+                _mark(observation)
+            regime = vehicle.get("regime")
+            if isinstance(regime, dict):
+                _mark(regime)
+
+        for row in regimes.get("regimes") or []:
+            if isinstance(row, dict):
+                _mark(row)
+
+        for row in incidents.get("incidents") or []:
+            if isinstance(row, dict):
+                _mark(row)
+
+    @staticmethod
+    def _infer_snapshot_source(payload: Dict[str, Any]) -> str:
+        for collection in [
+            ((payload.get("entities") or {}).get("vehicles") or []),
+            ((payload.get("entities") or {}).get("lines") or []),
+            ((payload.get("regimes") or {}).get("regimes") or []),
+            ((payload.get("incidents") or {}).get("incidents") or []),
+        ]:
+            for row in collection:
+                if not isinstance(row, dict):
+                    continue
+                source = row.get("source")
+                if isinstance(source, str) and source:
+                    return source
+                nested = row.get("observation")
+                if isinstance(nested, dict) and nested.get("source"):
+                    return str(nested["source"])
+        return "live"
+
+    @staticmethod
+    def _infer_snapshot_trace_id(payload: Dict[str, Any]) -> str | None:
+        for collection in [
+            ((payload.get("entities") or {}).get("vehicles") or []),
+            ((payload.get("entities") or {}).get("lines") or []),
+            ((payload.get("regimes") or {}).get("regimes") or []),
+            ((payload.get("incidents") or {}).get("incidents") or []),
+        ]:
+            for row in collection:
+                if not isinstance(row, dict):
+                    continue
+                value = str(row.get("trace_id") or "").strip()
+                if value:
+                    return value
+                nested = row.get("observation")
+                if isinstance(nested, dict):
+                    nested_value = str(nested.get("trace_id") or "").strip()
+                    if nested_value:
+                        return nested_value
+        return None
+
+    @staticmethod
+    def _infer_snapshot_timestamp_ms(payload: Dict[str, Any]) -> int:
+        candidates: List[int] = []
+        for collection in [
+            ((payload.get("entities") or {}).get("vehicles") or []),
+            ((payload.get("entities") or {}).get("lines") or []),
+            ((payload.get("regimes") or {}).get("regimes") or []),
+            ((payload.get("incidents") or {}).get("incidents") or []),
+        ]:
+            for row in collection:
+                if not isinstance(row, dict):
+                    continue
+                timestamp_ms = int(row.get("timestamp_ms") or 0)
+                if timestamp_ms > 0:
+                    candidates.append(timestamp_ms)
+                nested = row.get("observation")
+                if isinstance(nested, dict):
+                    nested_timestamp_ms = int(nested.get("timestamp_ms") or 0)
+                    if nested_timestamp_ms > 0:
+                        candidates.append(nested_timestamp_ms)
+        return max(candidates) if candidates else int(time.time() * 1000)
+
+    def _trim_sorted_set(self, key: str, retention: int) -> None:
+        retention = max(1, int(retention or 1))
+        count = int(self.client.zcard(key) or 0)
+        if count > retention:
+            self.client.zremrangebyrank(key, 0, count - retention - 1)
+
+    @staticmethod
+    def _default_health() -> Dict[str, Any]:
+        return {
+            "generated_at": isoformat_ms(),
+            "status": "idle",
+            "line_count": 0,
+            "active_line_count": 0,
+            "scheduled_later_line_count": 0,
+            "inactive_line_count": 0,
+            "visible_line_count": 0,
+            "vehicle_count": 0,
+            "incident_count": 0,
+            "critical_incidents": 0,
+            "avg_hazard": 0.0,
+            "avg_confidence": 0.0,
+            "max_hazard": 0.0,
+            "action_counts": {},
+            "regime_counts": {},
+            "feed_status": {
+                "feed_label": None,
+                "updated_at": None,
+                "vehicle_count": 0,
+                "trip_update_count": 0,
+                "alert_count": 0,
+                "collection_source": "gtfs_rt",
+                "status": "idle",
+            },
+            "worst_corridor": None,
+        }
+
+    @staticmethod
+    def _default_entities() -> Dict[str, Any]:
+        return {
+            "generated_at": isoformat_ms(),
+            "lines": [],
+            "active_lines": [],
+            "scheduled_later_lines": [],
+            "inactive_lines": [],
+            "vehicles": [],
+        }
+
+    @staticmethod
+    def _default_regimes() -> Dict[str, Any]:
+        return {
+            "generated_at": isoformat_ms(),
+            "regimes": [],
+            "recurring_regimes": [],
+        }
+
+    @staticmethod
+    def _default_incidents() -> Dict[str, Any]:
+        return {
+            "generated_at": isoformat_ms(),
+            "incidents": [],
+        }
+
+    @staticmethod
+    def _dumps(payload: Dict[str, Any]) -> str:
+        return json.dumps(payload, separators=(",", ":"), sort_keys=True)
+
+    @staticmethod
+    def _loads(raw: Any) -> Dict[str, Any]:
+        if not raw:
+            return {}
+        try:
+            return json.loads(raw)
+        except (TypeError, json.JSONDecodeError):
+            return {}

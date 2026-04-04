@@ -1,0 +1,55 @@
+openapi: 3.0.3
+info:
+  title: Transit Sentinel API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8000
+paths:
+  /health:
+    get:
+      summary: Service health
+      responses:
+        '200':
+          description: Health payload
+  /api/transit/health:
+    get:
+      summary: Transit system health
+      responses:
+        '200':
+          description: Transit health payload
+  /api/transit/entities:
+    get:
+      summary: Transit entities and live vehicle inventory
+      responses:
+        '200':
+          description: Transit entity payload
+  /api/transit/regimes:
+    get:
+      summary: Current transit regimes
+      responses:
+        '200':
+          description: Transit regime payload
+  /api/transit/incidents:
+    get:
+      summary: Current transit incidents
+      responses:
+        '200':
+          description: Transit incident payload
+  /api/transit/trends:
+    get:
+      summary: Rolling corridor trends from the persisted transit store
+      responses:
+        '200':
+          description: Transit trend payload
+  /api/transit/history:
+    get:
+      summary: Corridor or vehicle history
+      responses:
+        '200':
+          description: Transit history payload
+  /api/transit/sources:
+    get:
+      summary: Available transit feed sources
+      responses:
+        '200':
+          description: Transit source payload

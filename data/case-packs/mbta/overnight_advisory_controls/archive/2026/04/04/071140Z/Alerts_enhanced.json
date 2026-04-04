@@ -1,0 +1,4106 @@
+{
+  "header": {
+    "timestamp": 1775286691,
+    "gtfs_realtime_version": "2.0",
+    "incrementality": "FULL_DATASET"
+  },
+  "entity": [
+    {
+      "id": "1001814",
+      "alert": {
+        "cause": "UNKNOWN_CAUSE",
+        "effect": "UNKNOWN_EFFECT",
+        "severity": 1,
+        "url": {
+          "translation": [
+            {
+              "text": "http://www.mbta.com/JacksonSquare",
+              "language": "en"
+            }
+          ]
+        },
+        "active_period": [
+          {
+            "start": 1758956400
+          }
+        ],
+        "informed_entity": [
+          {
+            "stop_id": "70006",
+            "route_id": "Orange",
+            "route_type": 1,
+            "agency_id": "1",
+            "activities": [
+              "BOARD"
+            ]
+          },
+          {
+            "stop_id": "70007",
+            "route_id": "Orange",
+            "route_type": 1,
+            "agency_id": "1",
+            "activities": [
+              "BOARD"
+            ]
+          }
+        ],
+        "header_text": {
+          "translation": [
+            {
+              "text": "The platform at Jackson Square is undergoing renovations to improve safety and accessibility. Sections of the platform are unlevel, which may make it difficult for some riders to board and exit trains.",
+              "language": "en"
+            }
+          ]
+        },
+        "description_text": {
+          "translation": [
+            {
+              "text": "Please see station personnel or use a station call box to request assistance.",
+              "language": "en"
+            }
+          ]
+        },
+        "cause_detail": "UNKNOWN_CAUSE",
+        "effect_detail": "STATION_ISSUE",
+        "severity_level": "INFO",
+        "service_effect_text": {
+          "translation": [
+            {
+              "text": "Station issue at Jackson Square",
+              "language": "en"
+            }
+          ]
+        },
+        "last_modified_timestamp": 1774575105,
+        "duration_certainty": "UNKNOWN",
+        "alert_lifecycle": "ONGOING",
+        "created_timestamp": 1774063255
+      }
+    },
+    {
+      "id": "1001817",
+      "alert": {
+        "cause": "MAINTENANCE",
+        "effect": "ACCESSIBILITY_ISSUE",
+        "severity": 1,
+        "active_period": [
+          {
+            "start": 1647353580
+          }
+        ],
+        "informed_entity": [
+          {
+            "stop_id": "door-bomnl-main",
+            "route_id": "Blue",
+            "route_type": 1,
+            "facility_id": "125",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          },
+          {
+            "stop_id": "70838",
+            "route_id": "Blue",
+            "route_type": 1,
+            "facility_id": "125",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          },
+          {
+            "stop_id": "70038",
+            "route_id": "Blue",
+            "route_type": 1,
+            "facility_id": "125",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          }
+        ],
+        "header_text": {
+          "translation": [
+            {
+              "text": "Bowdoin Escalator 125 (Lobby to street) is unavailable until further notice, pending replacement.",
+              "language": "en"
+            }
+          ]
+        },
+        "description_text": {
+          "translation": [
+            {
+              "text": "The escalator will remain out of service for the foreseeable future. This decision was made after a thorough inspection determined that corrosion on the escalator\u2019s steel truss was so severe that it could not be repaired further and that a complete replacement of the escalator would be required. Replacing the escalator at this location requires a more extended unit meeting modern escalator safety requirements. This longer unit will require significant alteration to the station entrance to meet code requirements. The MBTA has currently begun design work to understand what station upgrades will be needed.\r\n\r\nDue to these complexities, we expect the escalator will remain out of service for a significant time. We recognize the challenges this poses to our riders, and please know we are working to identify a solution as quickly as possible. In the meantime, Government Center Station, which is fully accessible and serves the Blue Line, is under a quarter-mile from Bowdoin Station.",
+              "language": "en"
+            }
+          ]
+        },
+        "cause_detail": "MAINTENANCE",
+        "effect_detail": "ESCALATOR_CLOSURE",
+        "severity_level": "INFO",
+        "service_effect_text": {
+          "translation": [
+            {
+              "text": "escalator unavailable",
+              "language": "en"
+            }
+          ]
+        },
+        "last_modified_timestamp": 1774575149,
+        "duration_certainty": "UNKNOWN",
+        "alert_lifecycle": "ONGOING",
+        "created_timestamp": 1774065853
+      }
+    },
+    {
+      "id": "1001818",
+      "alert": {
+        "cause": "MAINTENANCE",
+        "effect": "ACCESSIBILITY_ISSUE",
+        "severity": 1,
+        "active_period": [
+          {
+            "start": 1679494800
+          }
+        ],
+        "informed_entity": [
+          {
+            "stop_id": "door-andrw-busway",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "123",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          },
+          {
+            "stop_id": "70083",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "123",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          }
+        ],
+        "header_text": {
+          "translation": [
+            {
+              "text": "Andrew Escalator 123 (Ashmont/Braintree platform to busway) is unavailable until further notice, pending replacement.",
+              "language": "en"
+            }
+          ]
+        },
+        "cause_detail": "MAINTENANCE",
+        "effect_detail": "ESCALATOR_CLOSURE",
+        "severity_level": "INFO",
+        "service_effect_text": {
+          "translation": [
+            {
+              "text": "escalator unavailable",
+              "language": "en"
+            }
+          ]
+        },
+        "last_modified_timestamp": 1774575230,
+        "duration_certainty": "UNKNOWN",
+        "alert_lifecycle": "ONGOING",
+        "created_timestamp": 1774065952
+      }
+    },
+    {
+      "id": "1001820",
+      "alert": {
+        "cause": "UNKNOWN_CAUSE",
+        "effect": "ACCESSIBILITY_ISSUE",
+        "severity": 1,
+        "active_period": [
+          {
+            "start": 1743424620
+          }
+        ],
+        "informed_entity": [
+          {
+            "stop_id": "door-state-state",
+            "route_id": "Orange",
+            "route_type": 1,
+            "facility_id": "6",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          },
+          {
+            "stop_id": "70023",
+            "route_id": "Orange",
+            "route_type": 1,
+            "facility_id": "6",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          }
+        ],
+        "header_text": {
+          "translation": [
+            {
+              "text": "State Escalator 6 (Oak Grove platform to Old State House lobby) unavailable",
+              "language": "en"
+            }
+          ]
+        },
+        "cause_detail": "UNKNOWN_CAUSE",
+        "effect_detail": "ESCALATOR_CLOSURE",
+        "severity_level": "INFO",
+        "service_effect_text": {
+          "translation": [
+            {
+              "text": "escalator unavailable",
+              "language": "en"
+            }
+          ]
+        },
+        "last_modified_timestamp": 1774575534,
+        "duration_certainty": "UNKNOWN",
+        "alert_lifecycle": "ONGOING",
+        "created_timestamp": 1774066171
+      }
+    },
+    {
+      "id": "1001861",
+      "alert": {
+        "cause": "CONSTRUCTION",
+        "effect": "UNKNOWN_EFFECT",
+        "severity": 1,
+        "url": {
+          "translation": [
+            {
+              "text": "http://www.mbta.com/JacksonSquare",
+              "language": "en"
+            }
+          ]
+        },
+        "active_period": [
+          {
+            "start": 1751266800
+          }
+        ],
+        "informed_entity": [
+          {
+            "stop_id": "70007",
+            "route_id": "Orange",
+            "route_type": 1,
+            "agency_id": "1",
+            "activities": [
+              "BOARD"
+            ]
+          },
+          {
+            "stop_id": "70006",
+            "route_id": "Orange",
+            "route_type": 1,
+            "agency_id": "1",
+            "activities": [
+              "BOARD"
+            ]
+          }
+        ],
+        "header_text": {
+          "translation": [
+            {
+              "text": "The stairway connecting the Jackson Square lobby and the south end of the platform is closed until winter 2026. Use the stairway at the north end of the platform. This closure is for the construction of a new stairway and a second elevator.",
+              "language": "en"
+            }
+          ]
+        },
+        "description_text": {
+          "translation": [
+            {
+              "text": "Please see station personnel or use a station call box to request assistance.",
+              "language": "en"
+            }
+          ]
+        },
+        "cause_detail": "CONSTRUCTION",
+        "effect_detail": "STATION_ISSUE",
+        "severity_level": "INFO",
+        "service_effect_text": {
+          "translation": [
+            {
+              "text": "Station issue at Jackson Square",
+              "language": "en"
+            }
+          ]
+        },
+        "last_modified_timestamp": 1774575687,
+        "duration_certainty": "UNKNOWN",
+        "alert_lifecycle": "ONGOING",
+        "created_timestamp": 1774149790
+      }
+    },
+    {
+      "id": "1001862",
+      "alert": {
+        "cause": "CONSTRUCTION",
+        "effect": "OTHER_EFFECT",
+        "severity": 3,
+        "url": {
+          "translation": [
+            {
+              "text": "https://www.mbta.com/projects/south-station-transportation-center-improvements",
+              "language": "en"
+            }
+          ]
+        },
+        "active_period": [
+          {
+            "start": 1743523860
+          }
+        ],
+        "informed_entity": [
+          {
+            "stop_id": "node-6476-ground",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-6476-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-901-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-901-rl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-901-sl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-918-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-918-rl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-918-sl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-919-rl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-919-sl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-926-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-927-rl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-927-sl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-949-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-382stair-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-382stair-rl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-388stair-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-388stair-sl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-389stair-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-389stair-rl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-390stair-rl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-390stair-sl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-398stair-rl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-398stair-sl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-399stair-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-399stair-middle",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-400sl-middle",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-400sl-sl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-400stair-middle",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-400stair-rl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-411stair-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-411stair-sl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-419stair-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-419stair-middle",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-420sl-middle",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-420sl-sl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-420stair-middle",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-420stair-rl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-918stair-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-918stair-sl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-919stair-rl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-919stair-sl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-alewife-farepaid",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-alewife-fareunpaid",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-ashbrain-farepaid",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-ashbrain-fareunpaid",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-bldgescdown-ground",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-bldgescdown-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-bldgescup-ground",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-bldgescup-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-bldgstair-ground",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-bldgstair-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-cr-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-deweystair-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-finctrstair-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-north-farepaid",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-north-fareunpaid",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-outmainstair-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-reservestair-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-south-farepaid",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-sstat-south-fareunpaid",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "70079",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "70080",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "74611",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "74617",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "84611",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "NEC-2287",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "NEC-2287-01",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "NEC-2287-02",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "NEC-2287-03",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "NEC-2287-04",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "NEC-2287-05",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "NEC-2287-06",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "NEC-2287-07",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "NEC-2287-08",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "NEC-2287-09",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "NEC-2287-10",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "NEC-2287-11",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "NEC-2287-12",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "NEC-2287-13",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "NEC-2287-B",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "door-sstat-atlantic",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "door-sstat-bus",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "door-sstat-dewey",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "door-sstat-finctr",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "door-sstat-main",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "door-sstat-outmain",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "door-sstat-reserve",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "door-sstat-summer",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "door-sstat-usps",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-382-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-382-rl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-386-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-387-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-388-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-388-sl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-389-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-389-rl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-390-rl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-390-sl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-398-rl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-398-sl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-399-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-399-middle",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-400-middle",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-400-rl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-411-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-411-sl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-419-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-419-middle",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-420-middle",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-420-rl",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          },
+          {
+            "stop_id": "node-424-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "bike-sstat",
+            "activities": [
+              "BRINGING_BIKE",
+              "STORE_BIKE"
+            ]
+          }
+        ],
+        "header_text": {
+          "translation": [
+            {
+              "text": "South Station Pedal & Park is closed due to construction. Bicycle racks are currently available on Atlantic Ave adjacent to the South Station main entrance.",
+              "language": "en"
+            }
+          ]
+        },
+        "cause_detail": "CONSTRUCTION",
+        "effect_detail": "BIKE_ISSUE",
+        "severity_level": "WARNING",
+        "service_effect_text": {
+          "translation": [
+            {
+              "text": "bicycle issue",
+              "language": "en"
+            }
+          ]
+        },
+        "last_modified_timestamp": 1774575675,
+        "duration_certainty": "UNKNOWN",
+        "alert_lifecycle": "ONGOING",
+        "created_timestamp": 1774150174
+      }
+    },
+    {
+      "id": "1001865",
+      "alert": {
+        "cause": "MAINTENANCE",
+        "effect": "ACCESSIBILITY_ISSUE",
+        "severity": 3,
+        "active_period": [
+          {
+            "start": 1767794280
+          }
+        ],
+        "informed_entity": [
+          {
+            "stop_id": "70065",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "510",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          },
+          {
+            "stop_id": "70066",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "510",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          }
+        ],
+        "header_text": {
+          "translation": [
+            {
+              "text": "Porter Escalator 510 (Ashmont/Braintree platform to paid lobby) is unavailable due to maintenance.",
+              "language": "en"
+            }
+          ]
+        },
+        "cause_detail": "MAINTENANCE",
+        "effect_detail": "ESCALATOR_CLOSURE",
+        "severity_level": "WARNING",
+        "service_effect_text": {
+          "translation": [
+            {
+              "text": "escalator unavailable",
+              "language": "en"
+            }
+          ]
+        },
+        "last_modified_timestamp": 1774574794,
+        "duration_certainty": "UNKNOWN",
+        "alert_lifecycle": "ONGOING",
+        "created_timestamp": 1774151120
+      }
+    },
+    {
+      "id": "1001874",
+      "alert": {
+        "cause": "UNKNOWN_CAUSE",
+        "effect": "ACCESSIBILITY_ISSUE",
+        "severity": 3,
+        "active_period": [
+          {
+            "start": 1773775200
+          }
+        ],
+        "informed_entity": [
+          {
+            "stop_id": "70067",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "512",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          },
+          {
+            "stop_id": "70068",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "512",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          },
+          {
+            "stop_id": "76121",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "512",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          },
+          {
+            "stop_id": "76122",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "512",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          },
+          {
+            "stop_id": "76123",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "512",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          },
+          {
+            "stop_id": "76124",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "512",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          },
+          {
+            "stop_id": "76125",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "512",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          },
+          {
+            "stop_id": "76126",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "512",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          },
+          {
+            "stop_id": "76129",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "512",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          },
+          {
+            "stop_id": "door-harsq-square",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "512",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          }
+        ],
+        "header_text": {
+          "translation": [
+            {
+              "text": "Harvard Escalator 512 (Mezzanine to Harvard Square) unavailable",
+              "language": "en"
+            }
+          ]
+        },
+        "cause_detail": "UNKNOWN_CAUSE",
+        "effect_detail": "ESCALATOR_CLOSURE",
+        "severity_level": "WARNING",
+        "service_effect_text": {
+          "translation": [
+            {
+              "text": "escalator unavailable",
+              "language": "en"
+            }
+          ]
+        },
+        "last_modified_timestamp": 1774571884,
+        "duration_certainty": "UNKNOWN",
+        "alert_lifecycle": "ONGOING",
+        "created_timestamp": 1774187145
+      }
+    },
+    {
+      "id": "1001876",
+      "alert": {
+        "cause": "UNKNOWN_CAUSE",
+        "effect": "STOP_MOVED",
+        "severity": 1,
+        "active_period": [
+          {
+            "start": 1773385200
+          }
+        ],
+        "informed_entity": [
+          {
+            "stop_id": "323",
+            "route_id": "15",
+            "route_type": 3,
+            "agency_id": "1",
+            "activities": [
+              "BOARD"
+            ]
+          }
+        ],
+        "header_text": {
+          "translation": [
+            {
+              "text": "The Route 15 bus stop location at Fields Corner will be permanently changing in advance of the Spring schedule, which takes effect on April 5. Buses will pick up at Berth B.",
+              "language": "en"
+            }
+          ]
+        },
+        "description_text": {
+          "translation": [
+            {
+              "text": "Affected routes:\r\n15",
+              "language": "en"
+            }
+          ]
+        },
+        "cause_detail": "UNKNOWN_CAUSE",
+        "effect_detail": "STOP_MOVE",
+        "severity_level": "INFO",
+        "service_effect_text": {
+          "translation": [
+            {
+              "text": "Fields Corner stop moved",
+              "language": "en"
+            }
+          ]
+        },
+        "last_modified_timestamp": 1774576235,
+        "duration_certainty": "UNKNOWN",
+        "alert_lifecycle": "ONGOING",
+        "created_timestamp": 1774187576
+      }
+    },
+    {
+      "id": "1001896",
+      "alert": {
+        "cause": "MAINTENANCE",
+        "effect": "ACCESSIBILITY_ISSUE",
+        "severity": 1,
+        "active_period": [
+          {
+            "start": 1773644400,
+            "end": 1779778800
+          }
+        ],
+        "informed_entity": [
+          {
+            "stop_id": "70081",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "867",
+            "activities": [
+              "USING_WHEELCHAIR"
+            ]
+          },
+          {
+            "stop_id": "70082",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "867",
+            "activities": [
+              "USING_WHEELCHAIR"
+            ]
+          },
+          {
+            "stop_id": "door-brdwy-main",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "867",
+            "activities": [
+              "USING_WHEELCHAIR"
+            ]
+          }
+        ],
+        "header_text": {
+          "translation": [
+            {
+              "text": "Broadway Elevator 867 (Platform to lobby) is unavailable through May 25 for maintenance.",
+              "language": "en"
+            }
+          ]
+        },
+        "description_text": {
+          "translation": [
+            {
+              "text": "This elevator will be closed for major equipment upgrades that will significantly improve its long-term reliability.\r\n\r\nA shuttle bus will be available to transport riders between Broadway and Andrew.\r\n\r\nTo exit:\r\nTake the train to Andrew and find station personnel or use a station call box to request the shuttle bus to Broadway.\r\n\r\nTo board:\r\nFind station personnel or use a station call box at Broadway to request the shuttle bus to Andrew.",
+              "language": "en"
+            }
+          ]
+        },
+        "cause_detail": "MAINTENANCE",
+        "effect_detail": "ELEVATOR_CLOSURE",
+        "severity_level": "INFO",
+        "service_effect_text": {
+          "translation": [
+            {
+              "text": "elevator unavailable",
+              "language": "en"
+            }
+          ]
+        },
+        "last_modified_timestamp": 1774576086,
+        "duration_certainty": "KNOWN",
+        "alert_lifecycle": "ONGOING",
+        "created_timestamp": 1774199337
+      }
+    },
+    {
+      "id": "1001897",
+      "alert": {
+        "cause": "MAINTENANCE",
+        "effect": "ACCESSIBILITY_ISSUE",
+        "severity": 1,
+        "active_period": [
+          {
+            "start": 1773644400,
+            "end": 1779778800
+          }
+        ],
+        "informed_entity": [
+          {
+            "stop_id": "door-brdwy-main",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "868",
+            "activities": [
+              "USING_WHEELCHAIR"
+            ]
+          },
+          {
+            "stop_id": "70081",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "868",
+            "activities": [
+              "USING_WHEELCHAIR"
+            ]
+          },
+          {
+            "stop_id": "70082",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "868",
+            "activities": [
+              "USING_WHEELCHAIR"
+            ]
+          }
+        ],
+        "header_text": {
+          "translation": [
+            {
+              "text": "Broadway Elevator 868 (Lobby to street) is unavailable through May 25 for maintenance.",
+              "language": "en"
+            }
+          ]
+        },
+        "description_text": {
+          "translation": [
+            {
+              "text": "This elevator will be closed for major equipment upgrades that will significantly improve its long-term reliability.\r\n\r\nA shuttle bus will be available to transport riders between Broadway and Andrew.\r\n\r\nTo exit:\r\nTake the train to Andrew and find station personnel or use a station call box to request the shuttle bus to Broadway.\r\n\r\nTo board:\r\nFind station personnel or use a station call box at Broadway to request the shuttle bus to Andrew.",
+              "language": "en"
+            }
+          ]
+        },
+        "cause_detail": "MAINTENANCE",
+        "effect_detail": "ELEVATOR_CLOSURE",
+        "severity_level": "INFO",
+        "service_effect_text": {
+          "translation": [
+            {
+              "text": "elevator unavailable",
+              "language": "en"
+            }
+          ]
+        },
+        "last_modified_timestamp": 1774575891,
+        "duration_certainty": "KNOWN",
+        "alert_lifecycle": "ONGOING",
+        "created_timestamp": 1774199456
+      }
+    },
+    {
+      "id": "1001899",
+      "alert": {
+        "cause": "MAINTENANCE",
+        "effect": "DETOUR",
+        "severity": 7,
+        "active_period": [
+          {
+            "start": 1776841200,
+            "end": 1776927600
+          },
+          {
+            "start": 1776927600,
+            "end": 1777014000
+          },
+          {
+            "start": 1777014000,
+            "end": 1777100400
+          },
+          {
+            "start": 1777273200,
+            "end": 1777359600
+          },
+          {
+            "start": 1777359600,
+            "end": 1777446000
+          },
+          {
+            "start": 1777446000,
+            "end": 1777532400
+          },
+          {
+            "start": 1777532400,
+            "end": 1777618800
+          }
+        ],
+        "informed_entity": [
+          {
+            "stop_id": "71151",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70149",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70128",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70147",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70145",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "170141",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "170137",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70135",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70131",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70129",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70126",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70124",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "71150",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70148",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70146",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70144",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "170140",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70127",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "170136",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70134",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70130",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70120",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70116",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70114",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70112",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70110",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70106",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70107",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70111",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70113",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70115",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70117",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70121",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70125",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          }
+        ],
+        "header_text": {
+          "translation": [
+            {
+              "text": "Green Line B Branch: Shuttle buses will replace service between Kenmore and Boston College from Wednesday, April 22 through Thursday, April 30 due to infrastructure upgrades.",
+              "language": "en"
+            }
+          ]
+        },
+        "description_text": {
+          "translation": [
+            {
+              "text": "Weekend closure extension:\r\nRiders should note that the Green Line B Branch suspension will be extended to Copley during the weekend of April 25 \u2013 26.\r\n\r\nShuttle information:\r\nShuttle buses will not stop at Griggs Street, Allston Street, or Packard\u2019s Corner due to accessibility issues.\r\n\r\nAlternate service:\r\nOn April 22 \u2013 24 and April 27 \u2013 30, riders can also use free Route 57 bus service for alternate travel between Kenmore and Packard\u2019s Corner.\r\n\r\nAffected stops:\r\nKenmore\r\nBlandford Street\r\nBoston University East\r\nBoston University Central\r\nAmory Street\r\nBabcock Street\r\nPackard's Corner\r\nHarvard Avenue\r\nGriggs Street\r\nAllston Street\r\nWarren Street\r\nWashington Street\r\nSutherland Road\r\nChiswick Road\r\nChestnut Hill Avenue\r\nSouth Street\r\nBoston College",
+              "language": "en"
+            }
+          ]
+        },
+        "cause_detail": "MAINTENANCE",
+        "effect_detail": "SHUTTLE",
+        "severity_level": "SEVERE",
+        "service_effect_text": {
+          "translation": [
+            {
+              "text": "Green Line B shuttle",
+              "language": "en"
+            }
+          ]
+        },
+        "last_modified_timestamp": 1775049460,
+        "timeframe_text": {
+          "translation": [
+            {
+              "text": "April 22-30",
+              "language": "en"
+            }
+          ]
+        },
+        "recurrence_text": {
+          "translation": [
+            {
+              "text": "weekdays",
+              "language": "en"
+            }
+          ]
+        },
+        "duration_certainty": "KNOWN",
+        "alert_lifecycle": "UPCOMING",
+        "created_timestamp": 1774199821
+      }
+    },
+    {
+      "id": "1001900",
+      "alert": {
+        "cause": "MAINTENANCE",
+        "effect": "DETOUR",
+        "severity": 7,
+        "active_period": [
+          {
+            "start": 1777100400,
+            "end": 1777273200
+          }
+        ],
+        "informed_entity": [
+          {
+            "stop_id": "70146",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "170140",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "170136",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70134",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70130",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70128",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70126",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70124",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70120",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70116",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70114",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70112",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70110",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70106",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70107",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70111",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70113",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70115",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70117",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70121",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70125",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70127",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70129",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70131",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70135",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "170137",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "170141",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70145",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70147",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70149",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "71151",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70153",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70155",
+            "direction_id": 0,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70152",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "71150",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70148",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70144",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70154",
+            "direction_id": 1,
+            "route_id": "Green-E",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70155",
+            "direction_id": 0,
+            "route_id": "Green-E",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70154",
+            "direction_id": 1,
+            "route_id": "Green-B",
+            "route_type": 0,
+            "agency_id": "1",
+            "activities": [
+              "EXIT",
+              "RIDE"
+            ]
+          }
+        ],
+        "header_text": {
+          "translation": [
+            {
+              "text": "Green Line: Shuttle buses will replace service between Copley and Boston College (B), St. Mary's (C), and Brookline Hills (D), the weekend of April 25 - 26 due to infrastructure upgrades. Riders downtown can use the Orange Line for alternate service.",
+              "language": "en"
+            }
+          ]
+        },
+        "description_text": {
+          "translation": [
+            {
+              "text": "Travel Times:\r\nRiders using shuttles bus service should budget ample extra travel time. For example, a rider travelling to Park Street from Riverside should budget at least an additional 45 minutes of travel in additional to their regular commute. Riders downtown are encouraged to use the Orange Line between North Station and Back Bay.\r\n\r\nAffected stops:\r\nCopley\r\nHynes Convention Center\r\nKenmore\r\nBlandford Street\r\nBoston University East\r\nBoston University Central\r\nAmory Street\r\nBabcock Street\r\nPackard's Corner\r\nHarvard Avenue\r\nGriggs Street\r\nAllston Street\r\nWarren Street\r\nWashington Street\r\nSutherland Road\r\nChiswick Road\r\nChestnut Hill Avenue\r\nSouth Street\r\nBoston College\r\nSaint Mary's Street\r\nFenway\r\nLongwood\r\nBrookline Village\r\nBrookline Hills",
+              "language": "en"
+            }
+          ]
+        },
+        "cause_detail": "MAINTENANCE",
+        "effect_detail": "SHUTTLE",
+        "severity_level": "SEVERE",
+        "service_effect_text": {
+          "translation": [
+            {
+              "text": "Green Line shuttle",
+              "language": "en"
+            }
+          ]
+        },
+        "last_modified_timestamp": 1774972086,
+        "timeframe_text": {
+          "translation": [
+            {
+              "text": "April 25-26",
+              "language": "en"
+            }
+          ]
+        },
+        "duration_certainty": "KNOWN",
+        "alert_lifecycle": "UPCOMING",
+        "created_timestamp": 1774200095
+      }
+    },
+    {
+      "id": "1001912",
+      "alert": {
+        "cause": "MAINTENANCE",
+        "effect": "OTHER_EFFECT",
+        "severity": 4,
+        "url": {
+          "translation": [
+            {
+              "text": "http://mbta.com/ColumbiaJunction",
+              "language": "en"
+            }
+          ]
+        },
+        "active_period": [
+          {
+            "start": 1775347200,
+            "end": 1775372400
+          },
+          {
+            "start": 1775433600,
+            "end": 1775458800
+          },
+          {
+            "start": 1775520000,
+            "end": 1775545200
+          },
+          {
+            "start": 1775606400,
+            "end": 1775631600
+          },
+          {
+            "start": 1775692800,
+            "end": 1775718000
+          },
+          {
+            "start": 1775779200,
+            "end": 1775804400
+          }
+        ],
+        "informed_entity": [
+          {
+            "route_id": "Red",
+            "route_type": 1,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          }
+        ],
+        "header_text": {
+          "translation": [
+            {
+              "text": "Red Line riders can expect longer travel times nightly from 8 PM to end of service. Beginning on March 26, regular service will operate between Braintree and JFK/UMass. For continued service, please transfer to an Alewife-Ashmont train at JFK/UMass.",
+              "language": "en"
+            }
+          ]
+        },
+        "description_text": {
+          "translation": [
+            {
+              "text": "How long will the work take:\r\nTo accomplish this work, two more phases of evening service changes will continue through April. Each phase should take about two weeks to complete.\r\n\r\nHow much longer will my trip be:\r\nRiders should budget an additional 10 \u2013 15 minutes of travel time during this work.\r\n\r\nWhen is the next phase:\r\nLikely beginning April 9, with regular service operating between Ashmont and JFK/UMass. For service beyond JFK/UMass, transfer to an Alewife-Braintree train at JFK/UMass.\r\n\r\nWhy are we doing this:\r\nThis work is part of a signal modernization project in Columbia Junction near JFK/UMass. Signals in this area were significantly damaged by a derailment in 2019.",
+              "language": "en"
+            }
+          ]
+        },
+        "cause_detail": "MAINTENANCE",
+        "effect_detail": "DELAY",
+        "severity_level": "WARNING",
+        "service_effect_text": {
+          "translation": [
+            {
+              "text": "Red Line delay",
+              "language": "en"
+            }
+          ]
+        },
+        "last_modified_timestamp": 1775103214,
+        "recurrence_text": {
+          "translation": [
+            {
+              "text": "daily",
+              "language": "en"
+            }
+          ]
+        },
+        "duration_certainty": "KNOWN",
+        "alert_lifecycle": "ONGOING",
+        "created_timestamp": 1774234290
+      }
+    },
+    {
+      "id": "1002122",
+      "alert": {
+        "cause": "MAINTENANCE",
+        "effect": "ACCESSIBILITY_ISSUE",
+        "severity": 3,
+        "active_period": [
+          {
+            "start": 1776063600,
+            "end": 1776495600
+          }
+        ],
+        "informed_entity": [
+          {
+            "stop_id": "70059",
+            "route_id": "Blue",
+            "route_type": 1,
+            "facility_id": "702",
+            "activities": [
+              "USING_WHEELCHAIR"
+            ]
+          },
+          {
+            "stop_id": "15798",
+            "route_id": "Blue",
+            "route_type": 1,
+            "facility_id": "702",
+            "activities": [
+              "USING_WHEELCHAIR"
+            ]
+          },
+          {
+            "stop_id": "15799",
+            "route_id": "Blue",
+            "route_type": 1,
+            "facility_id": "702",
+            "activities": [
+              "USING_WHEELCHAIR"
+            ]
+          },
+          {
+            "stop_id": "15800",
+            "route_id": "Blue",
+            "route_type": 1,
+            "facility_id": "702",
+            "activities": [
+              "USING_WHEELCHAIR"
+            ]
+          },
+          {
+            "stop_id": "70060",
+            "route_id": "Blue",
+            "route_type": 1,
+            "facility_id": "702",
+            "activities": [
+              "USING_WHEELCHAIR"
+            ]
+          },
+          {
+            "stop_id": "15796",
+            "route_id": "Blue",
+            "route_type": 1,
+            "facility_id": "702",
+            "activities": [
+              "USING_WHEELCHAIR"
+            ]
+          },
+          {
+            "stop_id": "15797",
+            "route_id": "Blue",
+            "route_type": 1,
+            "facility_id": "702",
+            "activities": [
+              "USING_WHEELCHAIR"
+            ]
+          }
+        ],
+        "header_text": {
+          "translation": [
+            {
+              "text": "Wonderland Elevator 703 (Main lobby to garage) will be unavailable from Monday, April 13 through Friday, April 17 due to maintenance.",
+              "language": "en"
+            }
+          ]
+        },
+        "description_text": {
+          "translation": [
+            {
+              "text": "Please use nearby Wonderland Elevators 701 or 702.",
+              "language": "en"
+            }
+          ]
+        },
+        "cause_detail": "MAINTENANCE",
+        "effect_detail": "ELEVATOR_CLOSURE",
+        "severity_level": "WARNING",
+        "service_effect_text": {
+          "translation": [
+            {
+              "text": "elevator unavailable",
+              "language": "en"
+            }
+          ]
+        },
+        "last_modified_timestamp": 1775176619,
+        "timeframe_text": {
+          "translation": [
+            {
+              "text": "April 13-17",
+              "language": "en"
+            }
+          ]
+        },
+        "duration_certainty": "KNOWN",
+        "alert_lifecycle": "UPCOMING",
+        "created_timestamp": 1774456205
+      }
+    },
+    {
+      "id": "1002123",
+      "alert": {
+        "cause": "MAINTENANCE",
+        "effect": "ACCESSIBILITY_ISSUE",
+        "severity": 3,
+        "active_period": [
+          {
+            "start": 1775458800,
+            "end": 1775890800
+          }
+        ],
+        "informed_entity": [
+          {
+            "stop_id": "70060",
+            "route_id": "Blue",
+            "route_type": 1,
+            "facility_id": "702",
+            "activities": [
+              "USING_WHEELCHAIR"
+            ]
+          },
+          {
+            "stop_id": "70059",
+            "route_id": "Blue",
+            "route_type": 1,
+            "facility_id": "702",
+            "activities": [
+              "USING_WHEELCHAIR"
+            ]
+          },
+          {
+            "stop_id": "15800",
+            "route_id": "Blue",
+            "route_type": 1,
+            "facility_id": "702",
+            "activities": [
+              "USING_WHEELCHAIR"
+            ]
+          },
+          {
+            "stop_id": "15799",
+            "route_id": "Blue",
+            "route_type": 1,
+            "facility_id": "702",
+            "activities": [
+              "USING_WHEELCHAIR"
+            ]
+          },
+          {
+            "stop_id": "15798",
+            "route_id": "Blue",
+            "route_type": 1,
+            "facility_id": "702",
+            "activities": [
+              "USING_WHEELCHAIR"
+            ]
+          },
+          {
+            "stop_id": "15797",
+            "route_id": "Blue",
+            "route_type": 1,
+            "facility_id": "702",
+            "activities": [
+              "USING_WHEELCHAIR"
+            ]
+          },
+          {
+            "stop_id": "15796",
+            "route_id": "Blue",
+            "route_type": 1,
+            "facility_id": "702",
+            "activities": [
+              "USING_WHEELCHAIR"
+            ]
+          }
+        ],
+        "header_text": {
+          "translation": [
+            {
+              "text": "Wonderland Elevator 702 (Main lobby to garage) will be unavailable from Monday, April 6 through Friday, April 10 due to maintenance",
+              "language": "en"
+            }
+          ]
+        },
+        "description_text": {
+          "translation": [
+            {
+              "text": "Please use nearby Wonderland Elevators 701 or 703.",
+              "language": "en"
+            }
+          ]
+        },
+        "cause_detail": "MAINTENANCE",
+        "effect_detail": "ELEVATOR_CLOSURE",
+        "severity_level": "WARNING",
+        "service_effect_text": {
+          "translation": [
+            {
+              "text": "elevator unavailable",
+              "language": "en"
+            }
+          ]
+        },
+        "last_modified_timestamp": 1774790765,
+        "timeframe_text": {
+          "translation": [
+            {
+              "text": "Monday through Friday",
+              "language": "en"
+            }
+          ]
+        },
+        "duration_certainty": "KNOWN",
+        "alert_lifecycle": "UPCOMING",
+        "created_timestamp": 1774456351
+      }
+    },
+    {
+      "id": "1002245",
+      "alert": {
+        "cause": "MAINTENANCE",
+        "effect": "ACCESSIBILITY_ISSUE",
+        "severity": 3,
+        "active_period": [
+          {
+            "start": 1773253680
+          }
+        ],
+        "informed_entity": [
+          {
+            "stop_id": "70085",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "322",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          },
+          {
+            "stop_id": "70086",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "322",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          },
+          {
+            "stop_id": "door-jfk-columbia",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "322",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          }
+        ],
+        "header_text": {
+          "translation": [
+            {
+              "text": "JFK/UMass Escalator 322 (Ashmont platform to Columbia Road) unavailable due to maintenance",
+              "language": "en"
+            }
+          ]
+        },
+        "cause_detail": "MAINTENANCE",
+        "effect_detail": "ESCALATOR_CLOSURE",
+        "severity_level": "WARNING",
+        "service_effect_text": {
+          "translation": [
+            {
+              "text": "escalator unavailable",
+              "language": "en"
+            }
+          ]
+        },
+        "last_modified_timestamp": 1774572717,
+        "last_push_notification_timestamp": 1774572484,
+        "duration_certainty": "UNKNOWN",
+        "alert_lifecycle": "ONGOING",
+        "created_timestamp": 1774572484
+      }
+    },
+    {
+      "id": "1002246",
+      "alert": {
+        "cause": "MAINTENANCE",
+        "effect": "ACCESSIBILITY_ISSUE",
+        "severity": 3,
+        "active_period": [
+          {
+            "start": 1772018820
+          }
+        ],
+        "informed_entity": [
+          {
+            "stop_id": "70012",
+            "route_id": "Orange",
+            "route_type": 1,
+            "facility_id": "139",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          },
+          {
+            "stop_id": "70013",
+            "route_id": "Orange",
+            "route_type": 1,
+            "facility_id": "139",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          }
+        ],
+        "header_text": {
+          "translation": [
+            {
+              "text": "Massachusetts Avenue Escalator 139 (Platform to paid lobby) unavailable due to maintenance",
+              "language": "en"
+            }
+          ]
+        },
+        "cause_detail": "MAINTENANCE",
+        "effect_detail": "ESCALATOR_CLOSURE",
+        "severity_level": "WARNING",
+        "service_effect_text": {
+          "translation": [
+            {
+              "text": "escalator unavailable",
+              "language": "en"
+            }
+          ]
+        },
+        "last_modified_timestamp": 1774572655,
+        "last_push_notification_timestamp": 1774572485,
+        "duration_certainty": "UNKNOWN",
+        "alert_lifecycle": "ONGOING",
+        "created_timestamp": 1774572485
+      }
+    },
+    {
+      "id": "1002506",
+      "alert": {
+        "cause": "MAINTENANCE",
+        "effect": "REDUCED_SERVICE",
+        "severity": 1,
+        "active_period": [
+          {
+            "start": 1775428200,
+            "end": 1775458800
+          }
+        ],
+        "informed_entity": [
+          {
+            "stop_id": "70035",
+            "direction_id": 1,
+            "route_id": "Orange",
+            "route_type": 1,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70036",
+            "direction_id": 1,
+            "route_id": "Orange",
+            "route_type": 1,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70033",
+            "direction_id": 1,
+            "route_id": "Orange",
+            "route_type": 1,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70034",
+            "direction_id": 0,
+            "route_id": "Orange",
+            "route_type": 1,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70036",
+            "direction_id": 0,
+            "route_id": "Orange",
+            "route_type": 1,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          },
+          {
+            "stop_id": "70032",
+            "direction_id": 0,
+            "route_id": "Orange",
+            "route_type": 1,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT",
+              "RIDE"
+            ]
+          }
+        ],
+        "header_text": {
+          "translation": [
+            {
+              "text": "Orange Line: Trains in both directions will operate on a single track between Oak Grove and Wellington on Sunday, April 5, from 6:30 PM to the end of service. This is to allow for critical switch work.",
+              "language": "en"
+            }
+          ]
+        },
+        "description_text": {
+          "translation": [
+            {
+              "text": "Shuttle Train Information:\r\nAll Orange Line train service between Oak Grove and Wellington will operate with a shuttle train on the northbound track that operates approximately every 15 minutes. A shuttle train operates back and forth on a single track. \r\n \r\nThe shuttle train only operates between Oak Grove and Wellington. Riders travelling beyond Wellington will need to transfer between the shuttle train and regular Orange Line train service (across the platform at Wellington). Orange Line train service between Forest Hills and Wellington will operate as normal, approximately every 9 \u2013 10 minutes.\r\n\r\nAdditional Travel Time:\r\nRiders will experience longer wait times and should allow extra travel time. \r\nRiders should note that shuttle buses will not be offered as an alternative during this service change (because shuttle trains will be operating).\r\n",
+              "language": "en"
+            }
+          ]
+        },
+        "cause_detail": "SINGLE_TRACKING",
+        "effect_detail": "DELAY",
+        "severity_level": "INFO",
+        "service_effect_text": {
+          "translation": [
+            {
+              "text": "Single tracking on Orange Line",
+              "language": "en"
+            }
+          ]
+        },
+        "last_modified_timestamp": 1774789224,
+        "last_push_notification_timestamp": 1774737937,
+        "timeframe_text": {
+          "translation": [
+            {
+              "text": "Tomorrow through Sunday",
+              "language": "en"
+            }
+          ]
+        },
+        "duration_certainty": "KNOWN",
+        "reminder_times": [
+          1775424600
+        ],
+        "alert_lifecycle": "UPCOMING",
+        "created_timestamp": 1774737937
+      }
+    },
+    {
+      "id": "1002998",
+      "alert": {
+        "cause": "UNKNOWN_CAUSE",
+        "effect": "OTHER_EFFECT",
+        "severity": 3,
+        "active_period": [
+          {
+            "start": 1775047071,
+            "end": 1782889200
+          }
+        ],
+        "informed_entity": [
+          {
+            "stop_id": "node-383-street",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "node-897-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "node-897-street",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "node-898-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "node-898-street",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "node-899-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "node-899-platform",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "node-900-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "node-900-platform",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "node-nqncy-hstair-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "node-nqncy-hstair-street",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "node-nqncy-nhfareunpaid",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "node-nqncy-nhpstair-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "node-nqncy-nhpstair-platform",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "node-nqncy-nstair-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "node-nqncy-nstair-street",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "node-nqncy-senterramp-bus",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "node-nqncy-senterstair-bus",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "node-nqncy-sfarepaid",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "node-nqncy-sfareunpaid",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "node-nqncy-spstair-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "node-nqncy-spstair-platform",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "node-327-street",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "node-327-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "node-326-platform",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "node-326-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "node-325-platform",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "node-325-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "door-nqncy-squantum",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "node-nqncy-nhfarepaid",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "node-383-lobby",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "door-nqncy-newport",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "door-nqncy-hancock",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "70098",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "70097",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          },
+          {
+            "stop_id": "3125",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "park-nqncy-garage",
+            "activities": [
+              "PARK_CAR"
+            ]
+          }
+        ],
+        "header_text": {
+          "translation": [
+            {
+              "text": "North Quincy Hancock Street Garage: Use Hancock Street for station and garage vehicular access through the end of June due to road construction.",
+              "language": "en"
+            }
+          ]
+        },
+        "cause_detail": "UNKNOWN_CAUSE",
+        "effect_detail": "PARKING_ISSUE",
+        "severity_level": "WARNING",
+        "service_effect_text": {
+          "translation": [
+            {
+              "text": "North Quincy parking issue",
+              "language": "en"
+            }
+          ]
+        },
+        "last_modified_timestamp": 1775047071,
+        "last_push_notification_timestamp": 1775047071,
+        "duration_certainty": "KNOWN",
+        "alert_lifecycle": "NEW",
+        "created_timestamp": 1775047071
+      }
+    },
+    {
+      "id": "1003453",
+      "alert": {
+        "cause": "UNKNOWN_CAUSE",
+        "effect": "NO_SERVICE",
+        "severity": 5,
+        "active_period": [
+          {
+            "start": 1775239487,
+            "end": 1776668400
+          }
+        ],
+        "informed_entity": [
+          {
+            "stop_id": "555",
+            "route_id": "15",
+            "route_type": 3,
+            "agency_id": "1",
+            "activities": [
+              "BOARD",
+              "EXIT"
+            ]
+          }
+        ],
+        "header_text": {
+          "translation": [
+            {
+              "text": "Beginning April 5, the Geneva Ave @ Dakota St (outbound) stop will close. Riders are encouraged to utilize the bus stops at Geneva Ave @ Westville St or Geneva Ave @ Tonawanda St. ",
+              "language": "en"
+            }
+          ]
+        },
+        "description_text": {
+          "translation": [
+            {
+              "text": "Affected routes:\r\n15\r\n17\r\n19",
+              "language": "en"
+            }
+          ]
+        },
+        "cause_detail": "UNKNOWN_CAUSE",
+        "effect_detail": "STOP_CLOSURE",
+        "severity_level": "WARNING",
+        "service_effect_text": {
+          "translation": [
+            {
+              "text": "Geneva Ave @ Dakota St (outbound) closed",
+              "language": "en"
+            }
+          ]
+        },
+        "last_modified_timestamp": 1775239487,
+        "last_push_notification_timestamp": 1775239487,
+        "duration_certainty": "KNOWN",
+        "alert_lifecycle": "NEW",
+        "created_timestamp": 1775239487
+      }
+    },
+    {
+      "id": "1003474",
+      "alert": {
+        "cause": "MAINTENANCE",
+        "effect": "ACCESSIBILITY_ISSUE",
+        "severity": 3,
+        "active_period": [
+          {
+            "start": 1775245501
+          }
+        ],
+        "informed_entity": [
+          {
+            "stop_id": "70010",
+            "route_id": "Orange",
+            "route_type": 1,
+            "facility_id": "136",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          },
+          {
+            "stop_id": "70011",
+            "route_id": "Orange",
+            "route_type": 1,
+            "facility_id": "136",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          }
+        ],
+        "header_text": {
+          "translation": [
+            {
+              "text": "Ruggles Escalator 136 (Orange Line platform to upper lobby) unavailable due to maintenance",
+              "language": "en"
+            }
+          ]
+        },
+        "cause_detail": "MAINTENANCE",
+        "effect_detail": "ESCALATOR_CLOSURE",
+        "severity_level": "WARNING",
+        "service_effect_text": {
+          "translation": [
+            {
+              "text": "Ruggles escalator unavailable",
+              "language": "en"
+            }
+          ]
+        },
+        "last_modified_timestamp": 1775245501,
+        "last_push_notification_timestamp": 1775245501,
+        "duration_certainty": "UNKNOWN",
+        "alert_lifecycle": "NEW",
+        "created_timestamp": 1775245501
+      }
+    },
+    {
+      "id": "1003504",
+      "alert": {
+        "cause": "MAINTENANCE",
+        "effect": "ACCESSIBILITY_ISSUE",
+        "severity": 3,
+        "active_period": [
+          {
+            "start": 1775255581
+          }
+        ],
+        "informed_entity": [
+          {
+            "stop_id": "door-grnst-main",
+            "route_id": "Orange",
+            "route_type": 1,
+            "facility_id": "131",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          },
+          {
+            "stop_id": "70002",
+            "route_id": "Orange",
+            "route_type": 1,
+            "facility_id": "131",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          },
+          {
+            "stop_id": "70003",
+            "route_id": "Orange",
+            "route_type": 1,
+            "facility_id": "131",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          }
+        ],
+        "header_text": {
+          "translation": [
+            {
+              "text": "Green Street Escalator 131 (Platform to paid lobby) unavailable due to maintenance",
+              "language": "en"
+            }
+          ]
+        },
+        "cause_detail": "MAINTENANCE",
+        "effect_detail": "ESCALATOR_CLOSURE",
+        "severity_level": "WARNING",
+        "service_effect_text": {
+          "translation": [
+            {
+              "text": "Green Street escalator unavailable",
+              "language": "en"
+            }
+          ]
+        },
+        "last_modified_timestamp": 1775255581,
+        "last_push_notification_timestamp": 1775255581,
+        "duration_certainty": "UNKNOWN",
+        "alert_lifecycle": "NEW",
+        "created_timestamp": 1775255581
+      }
+    },
+    {
+      "id": "1003536",
+      "alert": {
+        "cause": "MAINTENANCE",
+        "effect": "ACCESSIBILITY_ISSUE",
+        "severity": 3,
+        "active_period": [
+          {
+            "start": 1775268481
+          }
+        ],
+        "informed_entity": [
+          {
+            "stop_id": "70103",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "345",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          },
+          {
+            "stop_id": "70104",
+            "route_id": "Red",
+            "route_type": 1,
+            "facility_id": "345",
+            "activities": [
+              "USING_ESCALATOR"
+            ]
+          }
+        ],
+        "header_text": {
+          "translation": [
+            {
+              "text": "Quincy Adams Escalator 345 (Paid lobby to platform) unavailable due to maintenance",
+              "language": "en"
+            }
+          ]
+        },
+        "cause_detail": "MAINTENANCE",
+        "effect_detail": "ESCALATOR_CLOSURE",
+        "severity_level": "WARNING",
+        "service_effect_text": {
+          "translation": [
+            {
+              "text": "Quincy Adams escalator unavailable",
+              "language": "en"
+            }
+          ]
+        },
+        "last_modified_timestamp": 1775268481,
+        "last_push_notification_timestamp": 1775268481,
+        "duration_certainty": "UNKNOWN",
+        "alert_lifecycle": "NEW",
+        "created_timestamp": 1775268481
+      }
+    }
+  ]
+}

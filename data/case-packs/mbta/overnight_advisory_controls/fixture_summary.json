@@ -1,0 +1,17 @@
+{
+  "source_manifest": "source_manifest.json",
+  "retained_routes": [
+    "15",
+    "Blue",
+    "Green-B",
+    "Green-E",
+    "Orange",
+    "Red"
+  ],
+  "vehicle_entity_count": 33,
+  "trip_update_entity_count": 7,
+  "alert_entity_count": 24,
+  "trip_count": 2,
+  "stop_time_count": 80,
+  "stop_count": 124
+}
