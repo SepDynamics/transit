@@ -1,0 +1,15 @@
+{
+  "dataset_id": "la-b-line-midday-bunching",
+  "incidents": [
+    {
+      "direction_id": 1,
+      "expected_action": "hold",
+      "expected_regime": "bunching_onset",
+      "incident_id": "la-b-line-northbound-bunching-2026-04-03",
+      "note": "At roughly 12:22 PDT on Friday, April 3, 2026, three northbound B Line trips compressed around Hollywood / Western with three to five minutes of delay and no service alerts.",
+      "route_id": "802",
+      "snapshot_path": "archive/2026/04/03/192200Z"
+    }
+  ],
+  "use_case": "Detect B Line bunching onset early enough to hold a trailing train before a naive alert-or-delay baseline escalates."
+}

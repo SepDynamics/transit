@@ -1,7 +1,12 @@
 """Transit-native runtime package."""
 
 from scripts.transit.api import TransitAPIService, start_transit_http_server
-from scripts.transit.archive import MBTAArchiveConfig, MBTAArchiveService
+from scripts.transit.archive import (
+    MBTAArchiveConfig,
+    MBTAArchiveService,
+    TransitAgencyArchiveConfig,
+    TransitAgencyArchiveService,
+)
 from scripts.transit.domain import TransitRuntimeConfig, TransitSnapshotService
 from scripts.transit.ingest import TransitIngestConfig, TransitIngestService
 from scripts.transit.replay import TransitReplayConfig, TransitReplayService
@@ -18,6 +23,8 @@ __all__ = [
     "MBTAArchiveConfig",
     "MBTAArchiveService",
     "TransitAPIService",
+    "TransitAgencyArchiveConfig",
+    "TransitAgencyArchiveService",
     "TransitCorridorSnapshot",
     "TransitFeedStatus",
     "TransitIngestConfig",

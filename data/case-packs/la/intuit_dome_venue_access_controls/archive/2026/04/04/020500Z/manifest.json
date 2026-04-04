@@ -1,0 +1,25 @@
+{
+  "agency": "LA Metro Bus",
+  "agency_key": "lametro-bus",
+  "feed_timezone": "America/Los_Angeles",
+  "feeds": [
+    {
+      "name": "static_gtfs",
+      "path": "archive/2026/04/04/020500Z/gtfs_bus.zip"
+    },
+    {
+      "name": "vehicle_positions",
+      "path": "archive/2026/04/04/020500Z/VehiclePositions_enhanced.json"
+    },
+    {
+      "name": "trip_updates",
+      "path": "archive/2026/04/04/020500Z/TripUpdates_enhanced.json"
+    },
+    {
+      "name": "alerts",
+      "path": "archive/2026/04/04/020500Z/Alerts_enhanced.json"
+    }
+  ],
+  "snapshot_path": "archive/2026/04/04/020500Z",
+  "timestamp_ms": 1775268300000
+}

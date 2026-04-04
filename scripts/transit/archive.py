@@ -20,13 +20,9 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from scripts.shared.runtime import isoformat_ms
+from scripts.transit.agencies import default_transit_agency_key, get_transit_agency_adapter
 
 logger = logging.getLogger("transit-archive")
-
-MBTA_STATIC_GTFS_URL = "https://cdn.mbta.com/MBTA_GTFS.zip"
-MBTA_VEHICLE_POSITIONS_URL = "https://cdn.mbta.com/realtime/VehiclePositions_enhanced.json"
-MBTA_TRIP_UPDATES_URL = "https://cdn.mbta.com/realtime/TripUpdates_enhanced.json"
-MBTA_ALERTS_URL = "https://cdn.mbta.com/realtime/Alerts_enhanced.json"
 
 
 @dataclass(frozen=True)
@@ -39,25 +35,31 @@ class FeedTarget:
 
 
 @dataclass
-class MBTAArchiveConfig:
-    root_dir: Path
-    interval_seconds: float
-    timeout_seconds: float
-    static_refresh_seconds: int
-    static_url: str
-    vehicle_positions_url: str
-    trip_updates_url: str
-    alerts_url: str
+class TransitAgencyArchiveConfig:
+    agency_key: str = default_transit_agency_key()
+    system_name: str = "MBTA"
+    root_dir: Path = Path("data/feeds/mbta")
+    interval_seconds: float = 30.0
+    timeout_seconds: float = 30.0
+    static_refresh_seconds: int = 21600
+    static_filename: str = "MBTA_GTFS.zip"
+    vehicle_positions_filename: str = "VehiclePositions_enhanced.json"
+    trip_updates_filename: str = "TripUpdates_enhanced.json"
+    alerts_filename: str = "Alerts_enhanced.json"
+    static_url: Optional[str] = None
+    vehicle_positions_url: Optional[str] = None
+    trip_updates_url: Optional[str] = None
+    alerts_url: Optional[str] = None
 
 
-class MBTAArchiveService:
-    def __init__(self, config: MBTAArchiveConfig, *, session: Optional[requests.Session] = None) -> None:
+class TransitAgencyArchiveService:
+    def __init__(self, config: TransitAgencyArchiveConfig, *, session: Optional[requests.Session] = None) -> None:
         self.cfg = config
         self.session = session or requests.Session()
         self._stop = False
 
     def run(self) -> None:
-        logger.info("MBTA archive service starting at root=%s", self.cfg.root_dir)
+        logger.info("Transit archive service starting for agency=%s root=%s", self.cfg.agency_key, self.cfg.root_dir)
         while not self._stop:
             started = time.time()
             try:
@@ -75,14 +77,16 @@ class MBTAArchiveService:
         current_dir.mkdir(parents=True, exist_ok=True)
 
         feeds = [
-            FeedTarget("static_gtfs", self.cfg.static_url, "MBTA_GTFS.zip", binary=True, static=True),
-            FeedTarget("vehicle_positions", self.cfg.vehicle_positions_url, "VehiclePositions_enhanced.json"),
-            FeedTarget("trip_updates", self.cfg.trip_updates_url, "TripUpdates_enhanced.json"),
-            FeedTarget("alerts", self.cfg.alerts_url, "Alerts_enhanced.json"),
+            FeedTarget("static_gtfs", self.cfg.static_url, self.cfg.static_filename, binary=True, static=True),
+            FeedTarget("vehicle_positions", self.cfg.vehicle_positions_url, self.cfg.vehicle_positions_filename),
+            FeedTarget("trip_updates", self.cfg.trip_updates_url, self.cfg.trip_updates_filename),
+            FeedTarget("alerts", self.cfg.alerts_url, self.cfg.alerts_filename),
         ]
 
         manifest_feeds: List[Dict[str, Any]] = []
         for feed in feeds:
+            if not feed.url:
+                continue
             if feed.static and not self._should_refresh_static(current_dir / feed.filename, timestamp_ms):
                 manifest_feeds.append(self._reuse_static_feed(feed, current_dir / feed.filename, snapshot_dir, timestamp_ms))
                 continue
@@ -110,7 +114,8 @@ class MBTAArchiveService:
             manifest_feeds.append(meta)
 
         manifest = {
-            "agency": "MBTA",
+            "agency": self.cfg.system_name,
+            "agency_key": self.cfg.agency_key,
             "captured_at": isoformat_ms(timestamp_ms),
             "timestamp_ms": timestamp_ms,
             "snapshot_path": str(snapshot_dir.relative_to(self.cfg.root_dir)),
@@ -118,7 +123,7 @@ class MBTAArchiveService:
         }
         _write_json(snapshot_dir / "manifest.json", manifest)
         _write_json(current_dir / "manifest.json", manifest)
-        logger.info("archived MBTA snapshot with %d feed results", len(manifest_feeds))
+        logger.info("archived transit snapshot for agency=%s with %d feed results", self.cfg.agency_key, len(manifest_feeds))
         return manifest
 
     def stop(self) -> None:
@@ -171,15 +176,22 @@ class MBTAArchiveService:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Archive MBTA GTFS and GTFS-RT feeds locally")
-    parser.add_argument("--root-dir", default=os.getenv("TRANSIT_ARCHIVE_ROOT", "data/feeds/mbta"))
+    adapter = get_transit_agency_adapter(os.getenv("TRANSIT_AGENCY", default_transit_agency_key()))
+    parser = argparse.ArgumentParser(description="Archive GTFS and GTFS-RT feeds locally for a configured transit agency")
+    parser.add_argument("--agency", default=os.getenv("TRANSIT_AGENCY", adapter.key))
+    parser.add_argument("--root-dir", default=os.getenv("TRANSIT_ARCHIVE_ROOT", adapter.archive_root))
     parser.add_argument("--interval", type=float, default=float(os.getenv("TRANSIT_ARCHIVE_INTERVAL_SECONDS", "30")))
     parser.add_argument("--timeout-seconds", type=float, default=float(os.getenv("TRANSIT_ARCHIVE_TIMEOUT_SECONDS", "30")))
     parser.add_argument("--static-refresh-seconds", type=int, default=int(os.getenv("TRANSIT_STATIC_REFRESH_SECONDS", "21600")))
-    parser.add_argument("--static-url", default=os.getenv("MBTA_STATIC_GTFS_URL", MBTA_STATIC_GTFS_URL))
-    parser.add_argument("--vehicle-positions-url", default=os.getenv("MBTA_VEHICLE_POSITIONS_URL", MBTA_VEHICLE_POSITIONS_URL))
-    parser.add_argument("--trip-updates-url", default=os.getenv("MBTA_TRIP_UPDATES_URL", MBTA_TRIP_UPDATES_URL))
-    parser.add_argument("--alerts-url", default=os.getenv("MBTA_ALERTS_URL", MBTA_ALERTS_URL))
+    parser.add_argument("--system-name", default=os.getenv("TRANSIT_SYSTEM_NAME", adapter.system_name))
+    parser.add_argument("--static-filename", default=os.getenv("TRANSIT_STATIC_FILENAME", adapter.static_feed_filename))
+    parser.add_argument("--vehicle-positions-filename", default=os.getenv("TRANSIT_VEHICLE_POSITIONS_FILENAME", adapter.vehicle_positions_filename))
+    parser.add_argument("--trip-updates-filename", default=os.getenv("TRANSIT_TRIP_UPDATES_FILENAME", adapter.trip_updates_filename))
+    parser.add_argument("--alerts-filename", default=os.getenv("TRANSIT_ALERTS_FILENAME", adapter.alerts_filename))
+    parser.add_argument("--static-url", default=os.getenv("TRANSIT_STATIC_GTFS_URL", adapter.static_url or ""))
+    parser.add_argument("--vehicle-positions-url", default=os.getenv("TRANSIT_VEHICLE_POSITIONS_URL", adapter.vehicle_positions_url or ""))
+    parser.add_argument("--trip-updates-url", default=os.getenv("TRANSIT_TRIP_UPDATES_URL", adapter.trip_updates_url or ""))
+    parser.add_argument("--alerts-url", default=os.getenv("TRANSIT_ALERTS_URL", adapter.alerts_url or ""))
     parser.add_argument("--once", action="store_true")
     return parser
 
@@ -187,17 +199,24 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper(), format="%(asctime)s %(levelname)s %(name)s :: %(message)s")
     args = build_parser().parse_args()
-    cfg = MBTAArchiveConfig(
+    adapter = get_transit_agency_adapter(str(args.agency))
+    cfg = TransitAgencyArchiveConfig(
+        agency_key=adapter.key,
+        system_name=str(args.system_name or adapter.system_name),
         root_dir=Path(args.root_dir).resolve(),
         interval_seconds=max(1.0, float(args.interval)),
         timeout_seconds=max(1.0, float(args.timeout_seconds)),
         static_refresh_seconds=max(60, int(args.static_refresh_seconds)),
-        static_url=str(args.static_url),
-        vehicle_positions_url=str(args.vehicle_positions_url),
-        trip_updates_url=str(args.trip_updates_url),
-        alerts_url=str(args.alerts_url),
+        static_filename=str(args.static_filename or adapter.static_feed_filename),
+        vehicle_positions_filename=str(args.vehicle_positions_filename or adapter.vehicle_positions_filename),
+        trip_updates_filename=str(args.trip_updates_filename or adapter.trip_updates_filename),
+        alerts_filename=str(args.alerts_filename or adapter.alerts_filename),
+        static_url=_optional_url(args.static_url),
+        vehicle_positions_url=_optional_url(args.vehicle_positions_url),
+        trip_updates_url=_optional_url(args.trip_updates_url),
+        alerts_url=_optional_url(args.alerts_url),
     )
-    service = MBTAArchiveService(cfg)
+    service = TransitAgencyArchiveService(cfg)
 
     def _handle_signal(signum: int, _frame: Any) -> None:
         logger.info("received signal %s, stopping archive service", signum)
@@ -232,3 +251,12 @@ def _write_json(path: Path, payload: Dict[str, Any]) -> None:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+def _optional_url(value: str | None) -> Optional[str]:
+    text = str(value or "").strip()
+    return text or None
+
+
+MBTAArchiveConfig = TransitAgencyArchiveConfig
+MBTAArchiveService = TransitAgencyArchiveService

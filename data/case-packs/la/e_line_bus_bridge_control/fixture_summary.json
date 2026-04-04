@@ -1,0 +1,10 @@
+{
+  "active_alert_count": 0,
+  "direction_id": 0,
+  "expected_detection": false,
+  "expected_regime": "healthy",
+  "route_id": "804",
+  "snapshot_path": "archive/2026/04/04/020800Z",
+  "trip_update_count": 3,
+  "vehicle_count": 0
+}

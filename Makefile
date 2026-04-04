@@ -1,4 +1,4 @@
-.PHONY: install install-cluster frontend-install frontend-typecheck frontend-build build-manifold-engine test test-all test-cluster test-legacy-cluster test-transit check check-all check-cluster check-legacy-cluster check-transit clean cluster-collector cluster-regime cluster-policy cluster-api cluster-replay cluster-trace-record cluster-trace-import cluster-compare cluster-generate-eval-fixture transit-mbta-archive transit-ingest transit-replay transit-api transit-history-report transit-calibration-report transit-calibration-summary
+.PHONY: install install-cluster frontend-install frontend-typecheck frontend-build build-manifold-engine test test-all test-cluster test-legacy-cluster test-transit check check-all check-cluster check-legacy-cluster check-transit check-transit-case-packs clean cluster-collector cluster-regime cluster-policy cluster-api cluster-replay cluster-trace-record cluster-trace-import cluster-compare cluster-generate-eval-fixture transit-archive transit-mbta-archive transit-ingest transit-replay transit-api transit-history-report transit-calibration-report transit-calibration-summary
 
 PYTHON ?= python3
 PIP ?= $(PYTHON) -m pip
@@ -50,7 +50,10 @@ check-cluster: check-legacy-cluster
 
 check-legacy-cluster: test-legacy-cluster
 
-check-transit: test-transit frontend-typecheck frontend-build
+check-transit: test-transit check-transit-case-packs frontend-typecheck frontend-build
+
+check-transit-case-packs:
+	@PYTHONPATH=. $(PYTHON) scripts/transit/grade_calibration.py --archive-root data/case-packs --labels data/case-packs --strict
 
 cluster-collector:
 	@PYTHONPATH=. $(PYTHON) scripts/cluster/telemetry_collector.py $(ARGS)
@@ -78,6 +81,9 @@ cluster-compare:
 
 cluster-generate-eval-fixture:
 	@PYTHONPATH=. $(PYTHON) scripts/cluster/generate_eval_fixture.py $(ARGS)
+
+transit-archive:
+	@PYTHONPATH=. $(PYTHON) scripts/transit/archive.py $(ARGS)
 
 transit-mbta-archive:
 	@PYTHONPATH=. $(PYTHON) scripts/transit/archive.py $(ARGS)

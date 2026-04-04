@@ -103,6 +103,49 @@ def test_transit_snapshot_history_links_vehicle_to_corridor_regime(tmp_path, mon
     assert history["regimes"][0]["entity_id"] == entities["vehicles"][0]["corridor_entity_id"]
 
 
+def test_transit_snapshot_attaches_agency_corridor_ids_and_event_overlays(tmp_path, monkeypatch):
+    static_zip = tmp_path / "mbta.zip"
+    static_zip.write_bytes(_build_static_feed())
+    vehicles_path = tmp_path / "vehicles.json"
+    trip_updates_path = tmp_path / "trip_updates.json"
+    alerts_path = tmp_path / "alerts.json"
+    overlays_path = tmp_path / "event_overlays.json"
+    vehicles_path.write_text(_vehicle_positions_payload(), encoding="utf-8")
+    trip_updates_path.write_text(_trip_updates_payload(), encoding="utf-8")
+    alerts_path.write_text(_alerts_payload(), encoding="utf-8")
+    overlays_path.write_text(
+        '{"overlays":[{"overlay_id":"mbta-red-proof","label":"Red Line event","agency_keys":["mbta"],"route_ids":["Red"],"corridor_ids":["corridor:mbta:Red:0"],"event_key":"test-event"}]}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("time.time", lambda: 1_710_000_160)
+
+    service = TransitSnapshotService(
+        TransitRuntimeConfig(
+            system_name="Transit Sentinel Test",
+            agency_key="mbta",
+            static_feed=str(static_zip),
+            vehicle_positions_feed=str(vehicles_path),
+            trip_updates_feed=str(trip_updates_path),
+            alerts_feed=str(alerts_path),
+            event_overlays_feed=str(overlays_path),
+            stale_after_seconds=120,
+        )
+    )
+
+    entities = service.entities()
+    regimes = service.regimes()
+    incidents = service.incidents()
+
+    assert entities["lines"][0]["agency_key"] == "mbta"
+    assert entities["lines"][0]["corridor_id"] == "corridor:mbta:Red:0"
+    assert entities["lines"][0]["event_overlays"][0]["overlay_id"] == "mbta-red-proof"
+    assert entities["vehicles"][0]["corridor_id"] == "corridor:mbta:Red:0"
+    assert entities["vehicles"][0]["event_overlays"][0]["overlay_id"] == "mbta-red-proof"
+    assert regimes["regimes"][0]["agency_key"] == "mbta"
+    assert regimes["regimes"][0]["corridor_id"] == "corridor:mbta:Red:0"
+    assert incidents["incidents"][0]["corridor_id"] == "corridor:mbta:Red:0"
+
+
 def test_transit_snapshot_suppresses_sparse_bus_delay_noise(tmp_path, monkeypatch):
     static_zip = tmp_path / "mbta-bus.zip"
     static_zip.write_bytes(_build_sparse_bus_static_feed())

@@ -1,0 +1,25 @@
+{
+  "overlays": [
+    {
+      "agency_keys": [
+        "lametro-rail"
+      ],
+      "category": "bus_bridge",
+      "city_key": "los-angeles",
+      "corridor_ids": [
+        "corridor:lametro-rail:804:0"
+      ],
+      "ends_at": "2026-04-04T04:00:00-07:00",
+      "event_key": "capital-work-bus-bridge",
+      "event_name": "E Line bus bridge service window",
+      "label": "E Line bus bridge advisory",
+      "note": "Historical published E Line bus bridge timetable used as an event overlay control, not as live disruption evidence.",
+      "overlay_id": "la-e-line-bus-bridge-2026-04-03",
+      "route_ids": [
+        "804"
+      ],
+      "source": "https://cdn.beta.metro.net/wp-content/uploads/2022/02/09202628/804_TT_04-09-23.pdf",
+      "starts_at": "2026-04-03T18:00:00-07:00"
+    }
+  ]
+}

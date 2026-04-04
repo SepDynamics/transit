@@ -132,10 +132,10 @@ Start Valkey first, then archive a local MBTA snapshot:
 docker run --rm -p 6379:6379 redis:7-alpine
 ```
 
-Archive one official MBTA snapshot locally:
+Archive one official transit snapshot locally:
 
 ```bash
-make transit-mbta-archive ARGS="--once"
+make transit-archive ARGS="--agency mbta --once"
 ```
 
 Persist the current feed set into the transit store:
@@ -195,4 +195,10 @@ Run the committed MBTA suite across the overnight controls and daytime positive 
 
 ```bash
 make transit-calibration-report ARGS="--archive-root data/case-packs/mbta --labels data/case-packs/mbta"
+```
+
+Run the full committed cross-city case-pack gate before pruning more legacy code:
+
+```bash
+make check-transit-case-packs
 ```

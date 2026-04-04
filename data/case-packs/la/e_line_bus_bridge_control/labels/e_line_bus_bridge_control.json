@@ -1,0 +1,14 @@
+{
+  "dataset_id": "la-e-line-bus-bridge-control",
+  "incidents": [
+    {
+      "direction_id": 0,
+      "expected_detection": false,
+      "incident_id": "la-e-line-bus-bridge-control-2026-04-03",
+      "note": "A published E Line bus bridge overlay should annotate the corridor context, but near-on-time trip updates without live burden should not generate an incident.",
+      "route_id": "804",
+      "snapshot_path": "archive/2026/04/04/020800Z"
+    }
+  ],
+  "use_case": "Do not turn a planned E Line bus bridge overlay into a live rider warning when the scheduled replacement service is operating normally."
+}

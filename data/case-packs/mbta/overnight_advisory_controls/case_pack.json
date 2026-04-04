@@ -1,0 +1,11 @@
+{
+  "agency_keys": [
+    "mbta"
+  ],
+  "case_pack_id": "mbta-overnight-advisory-controls",
+  "category": "overnight_control",
+  "city_key": "boston",
+  "city_name": "Boston",
+  "event_key": "overnight-advisories",
+  "event_name": "Overnight advisory controls"
+}

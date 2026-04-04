@@ -19,6 +19,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from scripts.shared.runtime import isoformat_ms
+from scripts.transit.agencies import default_transit_agency_key, get_transit_agency_adapter
 from scripts.transit.store import TransitStore
 
 logger = logging.getLogger("transit-api")
@@ -158,11 +159,12 @@ def start_transit_http_server(service: TransitAPIService, host: str = "0.0.0.0",
 
 
 def build_parser() -> argparse.ArgumentParser:
+    adapter = get_transit_agency_adapter(os.getenv("TRANSIT_AGENCY", default_transit_agency_key()))
     parser = argparse.ArgumentParser(description="Run the Transit Sentinel API server")
     parser.add_argument("--redis", default=os.getenv("VALKEY_URL", "redis://localhost:6379/0"))
     parser.add_argument("--host", default=os.getenv("TRANSIT_API_HOST", "0.0.0.0"))
     parser.add_argument("--port", type=int, default=int(os.getenv("TRANSIT_API_PORT", "8000")))
-    parser.add_argument("--system-name", default=os.getenv("TRANSIT_SYSTEM_NAME", "MBTA"))
+    parser.add_argument("--system-name", default=os.getenv("TRANSIT_SYSTEM_NAME", adapter.system_name))
     return parser
 
 

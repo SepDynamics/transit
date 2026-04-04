@@ -1,0 +1,11 @@
+{
+  "agency_keys": [
+    "mbta"
+  ],
+  "case_pack_id": "mbta-daytime-red-line-delay-spike",
+  "category": "rail_delay",
+  "city_key": "boston",
+  "city_name": "Boston",
+  "event_key": "weekday-rail-disruption",
+  "event_name": "Weekday rail disruption"
+}

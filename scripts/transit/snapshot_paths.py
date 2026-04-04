@@ -5,24 +5,31 @@ import json
 from pathlib import Path
 from typing import Dict
 
+from scripts.transit.agencies import default_transit_agency_key, get_transit_agency_adapter
 
-SNAPSHOT_FEED_FILENAMES = {
-    "static_gtfs": "MBTA_GTFS.zip",
-    "vehicle_positions": "VehiclePositions_enhanced.json",
-    "trip_updates": "TripUpdates_enhanced.json",
-    "alerts": "Alerts_enhanced.json",
-}
+
+def snapshot_feed_filenames(agency_key: str | None = None) -> Dict[str, str]:
+    adapter = get_transit_agency_adapter(agency_key or default_transit_agency_key())
+    return {
+        "static_gtfs": adapter.static_feed_filename,
+        "vehicle_positions": adapter.vehicle_positions_filename,
+        "trip_updates": adapter.trip_updates_filename,
+        "alerts": adapter.alerts_filename,
+    }
 
 
 def resolve_snapshot_feed_paths(snapshot_dir: Path) -> Dict[str, str]:
     snapshot_dir = Path(snapshot_dir)
-    resolved = {name: str(snapshot_dir / filename) for name, filename in SNAPSHOT_FEED_FILENAMES.items()}
     manifest_path = snapshot_dir / "manifest.json"
+    manifest: Dict[str, object] = {}
+    if manifest_path.exists():
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            manifest = {}
+    agency_key = _snapshot_agency_key(manifest)
+    resolved = {name: str(snapshot_dir / filename) for name, filename in snapshot_feed_filenames(agency_key).items()}
     if not manifest_path.exists():
-        return resolved
-    try:
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
         return resolved
 
     feeds = manifest.get("feeds")
@@ -52,3 +59,17 @@ def _archive_root_from_manifest(snapshot_dir: Path, manifest: Dict[str, object])
     for _ in Path(snapshot_path).parts:
         root_dir = root_dir.parent
     return root_dir
+
+
+def _snapshot_agency_key(manifest: Dict[str, object]) -> str:
+    explicit = str(manifest.get("agency_key") or "").strip().lower()
+    if explicit:
+        return explicit
+    agency = str(manifest.get("agency") or "").strip().lower()
+    if agency == "mbta":
+        return "mbta"
+    if agency in {"la metro rail", "los angeles metro rail"}:
+        return "lametro-rail"
+    if agency in {"la metro bus", "los angeles metro bus"}:
+        return "lametro-bus"
+    return default_transit_agency_key()

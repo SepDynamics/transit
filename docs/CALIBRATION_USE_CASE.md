@@ -16,9 +16,9 @@ This is the right first use case because it is:
 
 ## Calibration Workflow
 
-1. Archive one or more MBTA snapshots.
+1. Archive one or more transit snapshots for the target agency.
 2. Create one or more labels JSON files for bunching, collapse, congestion, or control cases.
-3. Group those files into a case-pack directory when you want a batch proof run.
+3. Group those files into a case-pack directory with `case_pack.json` when you want a batch proof run by city and event.
 4. Run the calibration report.
 5. Compare Transit Sentinel against the naive baseline.
 
@@ -80,11 +80,11 @@ PYTHONPATH=. python3 scripts/transit/render_calibration_summary.py \
   --labels path/to/labels.json
 ```
 
-Batch-grade a directory of MBTA case packs:
+Batch-grade a directory of city/event case packs:
 
 ```bash
 PYTHONPATH=. python3 scripts/transit/grade_calibration.py \
-  --archive-root data/feeds/mbta \
+  --archive-root data/case-packs \
   --labels path/to/case-packs
 ```
 
@@ -102,6 +102,15 @@ Run the committed combined MBTA suite in this repository:
 PYTHONPATH=. python3 scripts/transit/grade_calibration.py \
   --archive-root data/case-packs/mbta \
   --labels data/case-packs/mbta
+```
+
+Run the committed cross-city suite in this repository:
+
+```bash
+PYTHONPATH=. python3 scripts/transit/grade_calibration.py \
+  --archive-root data/case-packs \
+  --labels data/case-packs \
+  --strict
 ```
 
 ## Proof Standard

@@ -1,0 +1,76 @@
+{
+  "entity": [
+    {
+      "id": "tu-001",
+      "trip_update": {
+        "stop_time_update": [
+          {
+            "arrival": {
+              "time": 1775268360
+            },
+            "departure": {
+              "time": 1775268360
+            },
+            "stop_id": "5600",
+            "stop_sequence": 2
+          }
+        ],
+        "trip": {
+          "direction_id": 0,
+          "route_id": "696-13201",
+          "start_date": "20260403",
+          "trip_id": "10696000011850_730PM"
+        }
+      }
+    },
+    {
+      "id": "tu-002",
+      "trip_update": {
+        "stop_time_update": [
+          {
+            "arrival": {
+              "time": 1775269020
+            },
+            "departure": {
+              "time": 1775269020
+            },
+            "stop_id": "5600",
+            "stop_sequence": 2
+          }
+        ],
+        "trip": {
+          "direction_id": 0,
+          "route_id": "696-13201",
+          "start_date": "20260403",
+          "trip_id": "10696000011900_700PM"
+        }
+      }
+    },
+    {
+      "id": "tu-003",
+      "trip_update": {
+        "stop_time_update": [
+          {
+            "arrival": {
+              "time": 1775269620
+            },
+            "departure": {
+              "time": 1775269620
+            },
+            "stop_id": "5600",
+            "stop_sequence": 2
+          }
+        ],
+        "trip": {
+          "direction_id": 0,
+          "route_id": "696-13201",
+          "start_date": "20260403",
+          "trip_id": "10696000011910_730PM"
+        }
+      }
+    }
+  ],
+  "header": {
+    "timestamp": 1775268300
+  }
+}

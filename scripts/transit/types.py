@@ -76,6 +76,12 @@ def _list_of_strings(value: Any) -> List[str]:
     return [str(item) for item in value if item not in (None, "")]
 
 
+def _list_of_dicts(value: Any) -> List[Dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    return [dict(item) for item in value if isinstance(item, Mapping)]
+
+
 @dataclass
 class GTFSRoute:
     route_id: str
@@ -602,6 +608,8 @@ class TransitEntityRecord:
     entity_type: str
     timestamp_ms: int
     label: str
+    agency_key: Optional[str] = None
+    corridor_id: Optional[str] = None
     route_id: Optional[str] = None
     trip_id: Optional[str] = None
     vehicle_id: Optional[str] = None
@@ -633,9 +641,12 @@ class TransitRegimeRecord:
     reasons: List[str]
     provenance: Dict[str, Any]
     metrics: Dict[str, Any]
+    agency_key: Optional[str] = None
+    corridor_id: Optional[str] = None
     source: str = "live"
     collection_source: str = "gtfs_rt"
     trace_id: Optional[str] = None
+    event_overlays: List[Dict[str, Any]] = field(default_factory=list)
 
     def to_json(self) -> Dict[str, Any]:
         return asdict(self)
@@ -647,6 +658,8 @@ class TransitRegimeRecord:
             entity_id=_string_or_default(payload.get("entity_id"), "unknown"),
             entity_type=_string_or_default(payload.get("entity_type"), "corridor"),
             label=_string_or_default(payload.get("label"), "Unknown corridor"),
+            agency_key=_optional_string(payload.get("agency_key")),
+            corridor_id=_optional_string(payload.get("corridor_id")),
             route_id=_optional_string(payload.get("route_id")),
             regime=_string_or_default(payload.get("regime"), "healthy"),
             hazard=round(_float_or_default(payload.get("hazard")), 4),
@@ -660,6 +673,7 @@ class TransitRegimeRecord:
             source=_string_or_default(payload.get("source"), "live"),
             collection_source=_string_or_default(payload.get("collection_source"), "gtfs_rt"),
             trace_id=_optional_string(payload.get("trace_id")),
+            event_overlays=_list_of_dicts(payload.get("event_overlays")),
         )
 
 
@@ -680,8 +694,11 @@ class TransitIncidentRecord:
     recommended_action: str
     reasons: List[str]
     provenance: Dict[str, Any]
+    agency_key: Optional[str] = None
+    corridor_id: Optional[str] = None
     source: str = "live"
     trace_id: Optional[str] = None
+    event_overlays: List[Dict[str, Any]] = field(default_factory=list)
 
     def to_json(self) -> Dict[str, Any]:
         return asdict(self)
@@ -694,6 +711,8 @@ class TransitIncidentRecord:
             entity_id=_string_or_default(payload.get("entity_id"), "unknown"),
             entity_type=_string_or_default(payload.get("entity_type"), "corridor"),
             label=_string_or_default(payload.get("label"), "Unknown incident"),
+            agency_key=_optional_string(payload.get("agency_key")),
+            corridor_id=_optional_string(payload.get("corridor_id")),
             route_id=_optional_string(payload.get("route_id")),
             severity=_string_or_default(payload.get("severity"), "info"),
             action=_string_or_default(payload.get("action"), "monitor"),
@@ -706,6 +725,7 @@ class TransitIncidentRecord:
             provenance=_dict_or_empty(payload.get("provenance")),
             source=_string_or_default(payload.get("source"), "live"),
             trace_id=_optional_string(payload.get("trace_id")),
+            event_overlays=_list_of_dicts(payload.get("event_overlays")),
         )
 
 
@@ -713,6 +733,7 @@ class TransitIncidentRecord:
 class TransitFeedStatus:
     feed_label: Optional[str] = None
     updated_at: Optional[str] = None
+    agency_key: Optional[str] = None
     vehicle_count: int = 0
     trip_update_count: int = 0
     alert_count: int = 0
@@ -727,6 +748,7 @@ class TransitFeedStatus:
         return cls(
             feed_label=_optional_string(payload.get("feed_label")),
             updated_at=_optional_string(payload.get("updated_at")),
+            agency_key=_optional_string(payload.get("agency_key")),
             vehicle_count=_int_or_default(payload.get("vehicle_count")),
             trip_update_count=_int_or_default(payload.get("trip_update_count")),
             alert_count=_int_or_default(payload.get("alert_count")),
@@ -740,6 +762,8 @@ class TransitCorridorSnapshot:
     timestamp_ms: int
     entity_id: str
     label: str
+    agency_key: Optional[str] = None
+    corridor_id: Optional[str] = None
     route_id: Optional[str] = None
     direction_id: Optional[int] = None
     route_mode: Optional[str] = None
@@ -755,6 +779,7 @@ class TransitCorridorSnapshot:
     source: str = "live"
     collection_source: str = "gtfs_rt"
     trace_id: Optional[str] = None
+    event_overlays: List[Dict[str, Any]] = field(default_factory=list)
 
     def to_json(self) -> Dict[str, Any]:
         return asdict(self)
@@ -765,6 +790,8 @@ class TransitCorridorSnapshot:
             timestamp_ms=_int_or_default(payload.get("timestamp_ms")),
             entity_id=_string_or_default(payload.get("entity_id"), "route:unknown:all"),
             label=_string_or_default(payload.get("label"), "Unknown corridor"),
+            agency_key=_optional_string(payload.get("agency_key")),
+            corridor_id=_optional_string(payload.get("corridor_id")),
             route_id=_optional_string(payload.get("route_id")),
             direction_id=_optional_int(payload.get("direction_id")),
             route_mode=_optional_string(payload.get("route_mode")),
@@ -780,6 +807,7 @@ class TransitCorridorSnapshot:
             source=_string_or_default(payload.get("source"), "live"),
             collection_source=_string_or_default(payload.get("collection_source"), "gtfs_rt"),
             trace_id=_optional_string(payload.get("trace_id")),
+            event_overlays=_list_of_dicts(payload.get("event_overlays")),
         )
 
 
@@ -788,6 +816,8 @@ class TransitVehicleSnapshot:
     entity_id: str
     label: str
     vehicle_id: str
+    agency_key: Optional[str] = None
+    corridor_id: Optional[str] = None
     route_id: Optional[str] = None
     route_label: Optional[str] = None
     trip_id: Optional[str] = None
@@ -801,6 +831,7 @@ class TransitVehicleSnapshot:
     corridor_entity_id: Optional[str] = None
     regime: Optional[Dict[str, Any]] = None
     observation: Optional[Dict[str, Any]] = None
+    event_overlays: List[Dict[str, Any]] = field(default_factory=list)
 
     def to_json(self) -> Dict[str, Any]:
         return asdict(self)
@@ -811,6 +842,8 @@ class TransitVehicleSnapshot:
             entity_id=_string_or_default(payload.get("entity_id"), "vehicle:unknown"),
             label=_string_or_default(payload.get("label"), "Unknown vehicle"),
             vehicle_id=_string_or_default(payload.get("vehicle_id"), "unknown"),
+            agency_key=_optional_string(payload.get("agency_key")),
+            corridor_id=_optional_string(payload.get("corridor_id")),
             route_id=_optional_string(payload.get("route_id")),
             route_label=_optional_string(payload.get("route_label")),
             trip_id=_optional_string(payload.get("trip_id")),
@@ -824,6 +857,7 @@ class TransitVehicleSnapshot:
             corridor_entity_id=_optional_string(payload.get("corridor_entity_id")),
             regime=_dict_or_empty(payload.get("regime")) or None,
             observation=_dict_or_empty(payload.get("observation")) or None,
+            event_overlays=_list_of_dicts(payload.get("event_overlays")),
         )
 
 

@@ -17,7 +17,8 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from scripts.shared.runtime import isoformat_ms
-from scripts.transit.domain import MBTA_CURRENT_DIR, TransitRuntimeConfig, TransitSnapshotService
+from scripts.transit.agencies import default_transit_agency_key, get_transit_agency_adapter
+from scripts.transit.domain import TransitRuntimeConfig, TransitSnapshotService
 from scripts.transit.store import TransitStore
 
 logger = logging.getLogger("transit-ingest")
@@ -56,10 +57,12 @@ class TransitIngestService:
             "vehicle_positions": bool(self.cfg.runtime.vehicle_positions_feed),
             "trip_updates": bool(self.cfg.runtime.trip_updates_feed),
             "alerts": bool(self.cfg.runtime.alerts_feed),
+            "event_overlays": bool(self.cfg.runtime.event_overlays_feed),
         }
         self.store.write_snapshot(payload, configured_feeds=configured_feeds, retention=self.cfg.history_retention)
         status = {
             "system_name": self.cfg.runtime.system_name,
+            "agency_key": self.cfg.runtime.agency_key,
             "status": "ok" if not (payload.get("errors") or []) else "degraded",
             "updated_at": isoformat_ms(),
             "feed_status": payload.get("feed_status") or {},
@@ -81,26 +84,30 @@ class TransitIngestService:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    adapter = get_transit_agency_adapter(os.getenv("TRANSIT_AGENCY", default_transit_agency_key()))
+    default_feed_paths = adapter.default_feed_paths()
     parser = argparse.ArgumentParser(description="Persist current transit feeds into Valkey")
     parser.add_argument("--redis", default=os.getenv("VALKEY_URL", "redis://localhost:6379/0"))
     parser.add_argument("--interval", type=float, default=float(os.getenv("TRANSIT_INGEST_INTERVAL_SECONDS", "5")))
     parser.add_argument("--history-retention", type=int, default=int(os.getenv("TRANSIT_HISTORY_RETENTION", "720")))
-    parser.add_argument("--system-name", default=os.getenv("TRANSIT_SYSTEM_NAME", "MBTA"))
-    parser.add_argument("--static-feed", default=os.getenv("TRANSIT_GTFS_STATIC_PATH", str(MBTA_CURRENT_DIR / "MBTA_GTFS.zip")))
+    parser.add_argument("--agency", default=os.getenv("TRANSIT_AGENCY", adapter.key))
+    parser.add_argument("--system-name", default=os.getenv("TRANSIT_SYSTEM_NAME", adapter.system_name))
+    parser.add_argument("--static-feed", default=os.getenv("TRANSIT_GTFS_STATIC_PATH", default_feed_paths["static_gtfs"]))
     parser.add_argument(
         "--vehicle-positions-feed",
-        default=os.getenv("TRANSIT_GTFS_RT_VEHICLE_POSITIONS_PATH", str(MBTA_CURRENT_DIR / "VehiclePositions_enhanced.json")),
+        default=os.getenv("TRANSIT_GTFS_RT_VEHICLE_POSITIONS_PATH", default_feed_paths["vehicle_positions"]),
     )
     parser.add_argument(
         "--trip-updates-feed",
-        default=os.getenv("TRANSIT_GTFS_RT_TRIP_UPDATES_PATH", str(MBTA_CURRENT_DIR / "TripUpdates_enhanced.json")),
+        default=os.getenv("TRANSIT_GTFS_RT_TRIP_UPDATES_PATH", default_feed_paths["trip_updates"]),
     )
     parser.add_argument(
         "--alerts-feed",
-        default=os.getenv("TRANSIT_GTFS_RT_ALERTS_PATH", str(MBTA_CURRENT_DIR / "Alerts_enhanced.json")),
+        default=os.getenv("TRANSIT_GTFS_RT_ALERTS_PATH", default_feed_paths["alerts"]),
     )
+    parser.add_argument("--event-overlays-feed", default=os.getenv("TRANSIT_EVENT_OVERLAYS_PATH", ""))
     parser.add_argument("--stale-after-seconds", type=int, default=int(os.getenv("TRANSIT_FEED_STALE_AFTER_SECONDS", "90")))
-    parser.add_argument("--feed-timezone", default=os.getenv("TRANSIT_FEED_TIMEZONE", "America/New_York"))
+    parser.add_argument("--feed-timezone", default=os.getenv("TRANSIT_FEED_TIMEZONE", adapter.timezone_name))
     parser.add_argument("--once", action="store_true")
     return parser
 
@@ -108,18 +115,21 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper(), format="%(asctime)s %(levelname)s %(name)s :: %(message)s")
     args = build_parser().parse_args()
+    adapter = get_transit_agency_adapter(str(args.agency))
     cfg = TransitIngestConfig(
         redis_url=str(args.redis),
         interval_seconds=max(1.0, float(args.interval)),
         history_retention=max(12, int(args.history_retention)),
         runtime=TransitRuntimeConfig(
-            system_name=str(args.system_name),
+            system_name=str(args.system_name or adapter.system_name),
+            agency_key=adapter.key,
             static_feed=_optional_path(args.static_feed),
             vehicle_positions_feed=_optional_path(args.vehicle_positions_feed),
             trip_updates_feed=_optional_path(args.trip_updates_feed),
             alerts_feed=_optional_path(args.alerts_feed),
+            event_overlays_feed=_optional_path(args.event_overlays_feed),
             stale_after_seconds=max(30, int(args.stale_after_seconds)),
-            feed_timezone=str(args.feed_timezone or "UTC"),
+            feed_timezone=str(args.feed_timezone or adapter.timezone_name),
         ),
     )
     service = TransitIngestService(cfg)

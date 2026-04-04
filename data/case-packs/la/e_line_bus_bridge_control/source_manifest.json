@@ -1,0 +1,25 @@
+{
+  "agency": "LA Metro Rail",
+  "agency_key": "lametro-rail",
+  "selected_route_ids": [
+    "804"
+  ],
+  "selected_trip_ids": [
+    "63773411",
+    "63773362",
+    "63773225"
+  ],
+  "service_date": "20260403",
+  "snapshot_path": "archive/2026/04/04/020800Z",
+  "source_files": [
+    {
+      "name": "gtfs_rail",
+      "url": "https://gitlab.com/LACMTA/gtfs_rail/raw/master/gtfs_rail.zip"
+    },
+    {
+      "name": "historical_bus_bridge_notice",
+      "url": "https://cdn.beta.metro.net/wp-content/uploads/2022/02/09202628/804_TT_04-09-23.pdf"
+    }
+  ],
+  "source_type": "reconstructed_from_official_gtfs_schedule_and_historical_bus_bridge_notice"
+}

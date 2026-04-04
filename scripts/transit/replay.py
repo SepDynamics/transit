@@ -16,6 +16,8 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from scripts.shared.runtime import isoformat_ms
+from scripts.transit.agencies import default_transit_agency_key, get_transit_agency_adapter
+from scripts.transit.case_packs import resolve_case_pack_event_overlay_path, resolve_case_pack_root
 from scripts.transit.domain import TransitRuntimeConfig, TransitSnapshotService
 from scripts.transit.snapshot_paths import resolve_snapshot_feed_paths
 from scripts.transit.store import TransitStore
@@ -34,6 +36,7 @@ class TransitReplayConfig:
     system_name: str
     stale_after_seconds: int
     feed_timezone: str
+    agency_key: str = default_transit_agency_key()
     clear_trace: bool = False
 
 
@@ -53,14 +56,20 @@ class TransitReplayService:
         for snapshot_dir in snapshot_dirs:
             manifest = load_snapshot_manifest(snapshot_dir)
             resolved = resolve_snapshot_feed_paths(snapshot_dir)
+            snapshot_agency_key = str(manifest.get("agency_key") or self.cfg.agency_key).strip() or self.cfg.agency_key
+            adapter = get_transit_agency_adapter(snapshot_agency_key)
+            case_pack_root = resolve_case_pack_root(snapshot_dir)
+            event_overlay_path = resolve_case_pack_event_overlay_path(case_pack_root) if case_pack_root else None
             runtime = TransitRuntimeConfig(
-                system_name=self.cfg.system_name,
+                system_name=str(manifest.get("agency") or self.cfg.system_name or adapter.system_name),
+                agency_key=adapter.key,
                 static_feed=_optional_existing_path(resolved.get("static_gtfs")),
                 vehicle_positions_feed=_optional_existing_path(resolved.get("vehicle_positions")),
                 trip_updates_feed=_optional_existing_path(resolved.get("trip_updates")),
                 alerts_feed=_optional_existing_path(resolved.get("alerts")),
+                event_overlays_feed=str(event_overlay_path) if event_overlay_path else None,
                 stale_after_seconds=self.cfg.stale_after_seconds,
-                feed_timezone=self.cfg.feed_timezone,
+                feed_timezone=str(manifest.get("feed_timezone") or self.cfg.feed_timezone or adapter.timezone_name),
             )
             snapshot_time_ms = int(manifest.get("timestamp_ms") or _snapshot_timestamp_from_path(snapshot_dir))
             payload = TransitSnapshotService(runtime).snapshot(now_ms=snapshot_time_ms)
@@ -81,6 +90,7 @@ class TransitReplayService:
                 {
                     "snapshot_path": str(manifest.get("snapshot_path") or snapshot_dir.relative_to(self.cfg.archive_root)),
                     "timestamp_ms": snapshot_time_ms,
+                    "agency_key": adapter.key,
                     "vehicle_count": len((replay_payload.get("entities") or {}).get("vehicles") or []),
                     "incident_count": len((replay_payload.get("incidents") or {}).get("incidents") or []),
                 }
@@ -89,6 +99,7 @@ class TransitReplayService:
         status = {
             "status": "ok",
             "trace_id": self.cfg.trace_id,
+            "agency_key": self.cfg.agency_key,
             "updated_at": isoformat_ms(),
             "snapshot_count": len(imported),
             "first_snapshot_path": imported[0]["snapshot_path"],
@@ -112,16 +123,18 @@ class TransitReplayService:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    adapter = get_transit_agency_adapter(os.getenv("TRANSIT_AGENCY", default_transit_agency_key()))
     parser = argparse.ArgumentParser(description="Import archived transit snapshots into Valkey as a replay trace")
     parser.add_argument("--redis", default=os.getenv("VALKEY_URL", "redis://localhost:6379/0"))
-    parser.add_argument("--archive-root", default=os.getenv("TRANSIT_ARCHIVE_ROOT", "data/feeds/mbta"))
+    parser.add_argument("--agency", default=os.getenv("TRANSIT_AGENCY", adapter.key))
+    parser.add_argument("--archive-root", default=os.getenv("TRANSIT_ARCHIVE_ROOT", adapter.archive_root))
     parser.add_argument("--trace-id", required=True)
     parser.add_argument("--snapshot-dir", action="append", default=[])
     parser.add_argument("--max-snapshots", type=int, default=0, help="Import only the most recent N snapshots when snapshot dirs are auto-discovered")
     parser.add_argument("--history-retention", type=int, default=int(os.getenv("TRANSIT_HISTORY_RETENTION", "720")))
-    parser.add_argument("--system-name", default=os.getenv("TRANSIT_SYSTEM_NAME", "MBTA"))
+    parser.add_argument("--system-name", default=os.getenv("TRANSIT_SYSTEM_NAME", adapter.system_name))
     parser.add_argument("--stale-after-seconds", type=int, default=int(os.getenv("TRANSIT_FEED_STALE_AFTER_SECONDS", "90")))
-    parser.add_argument("--feed-timezone", default=os.getenv("TRANSIT_FEED_TIMEZONE", "America/New_York"))
+    parser.add_argument("--feed-timezone", default=os.getenv("TRANSIT_FEED_TIMEZONE", adapter.timezone_name))
     parser.add_argument("--clear-trace", action="store_true", help="Remove any existing replay data for this trace before importing")
     return parser
 
@@ -129,6 +142,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper(), format="%(asctime)s %(levelname)s %(name)s :: %(message)s")
     args = build_parser().parse_args()
+    adapter = get_transit_agency_adapter(str(args.agency))
     archive_root = Path(args.archive_root).expanduser().resolve()
     snapshot_dirs = [Path(value).expanduser().resolve() for value in (args.snapshot_dir or [])]
     if not snapshot_dirs:
@@ -142,9 +156,10 @@ def main() -> int:
         trace_id=str(args.trace_id),
         snapshot_dirs=snapshot_dirs,
         history_retention=max(12, int(args.history_retention)),
-        system_name=str(args.system_name),
+        agency_key=adapter.key,
+        system_name=str(args.system_name or adapter.system_name),
         stale_after_seconds=max(30, int(args.stale_after_seconds)),
-        feed_timezone=str(args.feed_timezone or "UTC"),
+        feed_timezone=str(args.feed_timezone or adapter.timezone_name),
         clear_trace=bool(args.clear_trace),
     )
     TransitReplayService(cfg).run_once()

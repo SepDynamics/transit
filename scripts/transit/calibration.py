@@ -6,6 +6,12 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence
 
+from scripts.transit.agencies import default_transit_agency_key, get_transit_agency_adapter
+from scripts.transit.case_packs import (
+    load_case_pack_metadata,
+    resolve_case_pack_event_overlay_path,
+    resolve_case_pack_root,
+)
 from scripts.transit.domain import TransitRuntimeConfig, TransitSnapshotService
 from scripts.transit.snapshot_paths import resolve_snapshot_feed_paths
 
@@ -170,6 +176,12 @@ def build_transit_calibration_report(
         if label_payload.get("labels_path")
         else None
     )
+    case_pack_root = (
+        resolve_case_pack_root(labels_source_path)
+        if labels_source_path is not None
+        else resolve_case_pack_root(root)
+    )
+    case_pack_metadata = load_case_pack_metadata(case_pack_root) if case_pack_root else {}
     labels_by_snapshot: Dict[str, List[Dict[str, Any]]] = {}
     for incident in label_payload["incidents"]:
         labels_by_snapshot.setdefault(str(incident["snapshot_path"]), []).append(dict(incident))
@@ -313,6 +325,14 @@ def build_transit_calibration_report(
     report = {
         "dataset_id": label_payload["dataset_id"],
         "use_case": label_payload.get("use_case") or "",
+        "case_pack_id": case_pack_metadata.get("case_pack_id"),
+        "case_pack_root": case_pack_metadata.get("case_pack_root"),
+        "city_key": case_pack_metadata.get("city_key"),
+        "city_name": case_pack_metadata.get("city_name"),
+        "event_key": case_pack_metadata.get("event_key"),
+        "event_name": case_pack_metadata.get("event_name"),
+        "category": case_pack_metadata.get("category"),
+        "agency_keys": list(case_pack_metadata.get("agency_keys") or []),
         "label_count": label_count,
         "positive_label_count": positive_label_count,
         "negative_label_count": negative_label_count,
@@ -363,6 +383,7 @@ def build_transit_calibration_suite_report(
 ) -> Dict[str, Any]:
     label_files = discover_transit_label_files(labels_root)
     case_packs: List[Dict[str, Any]] = []
+    case_pack_groups: Dict[str, Dict[str, Any]] = {}
     sentinel_match_count = 0
     baseline_match_count = 0
     sentinel_extra_alert_count = 0
@@ -377,14 +398,112 @@ def build_transit_calibration_suite_report(
     pass_count = 0
 
     for label_file in label_files:
-        report = build_transit_calibration_report(archive_root, label_file)
-        case_pack = dict(report)
-        case_pack["labels_path"] = str(label_file)
+        case_pack_root = resolve_case_pack_root(label_file) or label_file.parent
+        group = case_pack_groups.setdefault(
+            str(case_pack_root.resolve()),
+            {
+                "case_pack_root": case_pack_root.resolve(),
+                "label_files": [],
+            },
+        )
+        group["label_files"].append(label_file)
+
+    for group in sorted(case_pack_groups.values(), key=lambda row: str(row["case_pack_root"])):
+        case_pack_root = Path(group["case_pack_root"])
+        metadata = load_case_pack_metadata(case_pack_root)
+        datasets: List[Dict[str, Any]] = []
+        case_pack_label_count = 0
+        case_pack_positive_label_count = 0
+        case_pack_negative_label_count = 0
+        case_pack_sentinel_match_count = 0
+        case_pack_baseline_match_count = 0
+        case_pack_sentinel_extra_alert_count = 0
+        case_pack_baseline_extra_alert_count = 0
+        case_pack_sentinel_action_match_count = 0
+        case_pack_baseline_action_match_count = 0
+        case_pack_sentinel_satisfied_label_count = 0
+        case_pack_baseline_satisfied_label_count = 0
+        case_pack_sentinel_control_violation_count = 0
+        case_pack_baseline_control_violation_count = 0
+        case_pack_pass = True
+        for label_file in sorted(group["label_files"]):
+            report = build_transit_calibration_report(archive_root, label_file)
+            datasets.append(report)
+            case_pack_label_count += int(report.get("label_count") or 0)
+            case_pack_positive_label_count += int(report.get("positive_label_count") or 0)
+            case_pack_negative_label_count += int(report.get("negative_label_count") or 0)
+            sentinel = dict(report.get("sentinel") or {})
+            baseline = dict(report.get("baseline") or {})
+            comparison = dict(report.get("comparison") or {})
+            case_pack_sentinel_match_count += int(sentinel.get("matched_incident_count") or 0)
+            case_pack_baseline_match_count += int(baseline.get("matched_incident_count") or 0)
+            case_pack_sentinel_extra_alert_count += int(sentinel.get("extra_alert_count") or 0)
+            case_pack_baseline_extra_alert_count += int(baseline.get("extra_alert_count") or 0)
+            case_pack_sentinel_action_match_count += int(sentinel.get("action_match_count") or 0)
+            case_pack_baseline_action_match_count += int(baseline.get("action_match_count") or 0)
+            case_pack_sentinel_satisfied_label_count += int(sentinel.get("satisfied_label_count") or 0)
+            case_pack_baseline_satisfied_label_count += int(baseline.get("satisfied_label_count") or 0)
+            case_pack_sentinel_control_violation_count += int(sentinel.get("control_violation_count") or 0)
+            case_pack_baseline_control_violation_count += int(baseline.get("control_violation_count") or 0)
+            if not comparison.get("value_case_supported"):
+                case_pack_pass = False
+
+        case_pack = {
+            "case_pack_id": metadata.get("case_pack_id"),
+            "case_pack_root": metadata.get("case_pack_root"),
+            "labels_path": str((case_pack_root / "labels").resolve() if (case_pack_root / "labels").is_dir() else case_pack_root),
+            "city_key": metadata.get("city_key"),
+            "city_name": metadata.get("city_name"),
+            "event_key": metadata.get("event_key"),
+            "event_name": metadata.get("event_name"),
+            "category": metadata.get("category"),
+            "agency_keys": list(metadata.get("agency_keys") or []),
+            "dataset_count": len(datasets),
+            "dataset_ids": [str(report.get("dataset_id") or "") for report in datasets],
+            "label_count": case_pack_label_count,
+            "positive_label_count": case_pack_positive_label_count,
+            "negative_label_count": case_pack_negative_label_count,
+            "sentinel": {
+                "matched_incident_count": case_pack_sentinel_match_count,
+                "extra_alert_count": case_pack_sentinel_extra_alert_count,
+                "control_violation_count": case_pack_sentinel_control_violation_count,
+                "action_match_count": case_pack_sentinel_action_match_count,
+                "satisfied_label_count": case_pack_sentinel_satisfied_label_count,
+                "precision": round(
+                    case_pack_sentinel_match_count / max(1, case_pack_sentinel_match_count + case_pack_sentinel_extra_alert_count),
+                    4,
+                ),
+                "recall": round(case_pack_sentinel_match_count / max(1, case_pack_positive_label_count), 4),
+                "label_success_rate": round(case_pack_sentinel_satisfied_label_count / max(1, case_pack_label_count), 4),
+            },
+            "baseline": {
+                "matched_incident_count": case_pack_baseline_match_count,
+                "extra_alert_count": case_pack_baseline_extra_alert_count,
+                "control_violation_count": case_pack_baseline_control_violation_count,
+                "action_match_count": case_pack_baseline_action_match_count,
+                "satisfied_label_count": case_pack_baseline_satisfied_label_count,
+                "precision": round(
+                    case_pack_baseline_match_count / max(1, case_pack_baseline_match_count + case_pack_baseline_extra_alert_count),
+                    4,
+                ),
+                "recall": round(case_pack_baseline_match_count / max(1, case_pack_positive_label_count), 4),
+                "label_success_rate": round(case_pack_baseline_satisfied_label_count / max(1, case_pack_label_count), 4),
+            },
+            "comparison": {
+                "matched_incident_delta": case_pack_sentinel_match_count - case_pack_baseline_match_count,
+                "extra_alert_delta": case_pack_baseline_extra_alert_count - case_pack_sentinel_extra_alert_count,
+                "control_violation_delta": case_pack_baseline_control_violation_count - case_pack_sentinel_control_violation_count,
+                "action_match_delta": case_pack_sentinel_action_match_count - case_pack_baseline_action_match_count,
+                "satisfied_label_delta": case_pack_sentinel_satisfied_label_count - case_pack_baseline_satisfied_label_count,
+                "value_case_supported": case_pack_pass and case_pack_sentinel_satisfied_label_count == case_pack_label_count,
+            },
+            "datasets": datasets,
+        }
         case_packs.append(case_pack)
-        label_count += int(report.get("label_count") or 0)
-        sentinel = dict(report.get("sentinel") or {})
-        baseline = dict(report.get("baseline") or {})
-        comparison = dict(report.get("comparison") or {})
+        label_count += case_pack_label_count
+        sentinel = dict(case_pack.get("sentinel") or {})
+        baseline = dict(case_pack.get("baseline") or {})
+        comparison = dict(case_pack.get("comparison") or {})
         sentinel_match_count += int(sentinel.get("matched_incident_count") or 0)
         baseline_match_count += int(baseline.get("matched_incident_count") or 0)
         sentinel_extra_alert_count += int(sentinel.get("extra_alert_count") or 0)
@@ -402,7 +521,10 @@ def build_transit_calibration_suite_report(
     return {
         "mode": "suite",
         "case_pack_count": len(case_packs),
+        "label_set_count": len(label_files),
         "label_count": label_count,
+        "city_keys": sorted({str(pack.get("city_key") or "") for pack in case_packs if str(pack.get("city_key") or "").strip()}),
+        "event_keys": sorted({str(pack.get("event_key") or "") for pack in case_packs if str(pack.get("event_key") or "").strip()}),
         "sentinel": {
             "matched_incident_count": sentinel_match_count,
             "extra_alert_count": sentinel_extra_alert_count,
@@ -446,6 +568,9 @@ def render_transit_calibration_markdown(report: Mapping[str, Any]) -> str:
         "# Transit Calibration Summary",
         "",
         f"- Dataset: `{payload.get('dataset_id')}`",
+        f"- Case pack: `{payload.get('case_pack_id') or 'ad hoc'}`",
+        f"- City: `{payload.get('city_key') or 'unspecified'}`",
+        f"- Event: `{payload.get('event_key') or 'unspecified'}`",
         f"- Use case: {payload.get('use_case') or 'unspecified'}",
         f"- Labels: `{int(payload.get('label_count') or 0)}`",
         f"- Positive labels: `{int(payload.get('positive_label_count') or 0)}`",
@@ -494,6 +619,7 @@ def render_transit_calibration_suite_markdown(report: Mapping[str, Any]) -> str:
         "# Transit Calibration Suite Summary",
         "",
         f"- Case packs: `{int(payload.get('case_pack_count') or 0)}`",
+        f"- Label sets: `{int(payload.get('label_set_count') or 0)}`",
         f"- Labels: `{int(payload.get('label_count') or 0)}`",
         f"- Passing packs: `{int(comparison.get('passing_case_pack_count') or 0)}`",
         f"- Failing packs: `{int(comparison.get('failing_case_pack_count') or 0)}`",
@@ -512,11 +638,16 @@ def render_transit_calibration_suite_markdown(report: Mapping[str, Any]) -> str:
         pack = dict(case_pack)
         pack_comparison = dict(pack.get("comparison") or {})
         verdict = "PASS" if pack_comparison.get("value_case_supported") else "FAIL"
+        city = str(pack.get("city_key") or "unknown-city")
+        event = str(pack.get("event_key") or "general")
+        category = str(pack.get("category") or "unspecified")
+        dataset_ids = ", ".join(f"`{dataset_id}`" for dataset_id in (pack.get("dataset_ids") or []))
         lines.append(
-            f"- `{pack.get('dataset_id')}` from `{pack.get('labels_path')}`: `{verdict}`, "
+            f"- `{pack.get('case_pack_id') or pack.get('labels_path')}` [{city} / {event} / {category}] from `{pack.get('labels_path')}`: `{verdict}`, "
             f"matched delta `{int(pack_comparison.get('matched_incident_delta') or 0)}`, "
             f"extra alert delta `{int(pack_comparison.get('extra_alert_delta') or 0)}`, "
             f"action match delta `{int(pack_comparison.get('action_match_delta') or 0)}`"
+            + (f", datasets {dataset_ids}" if dataset_ids else "")
         )
     return "\n".join(lines) + "\n"
 
@@ -549,17 +680,24 @@ def transit_label_targets_detection(label: Mapping[str, Any], detection: Mapping
 
 def _service_for_snapshot(snapshot_dir: Path) -> TransitSnapshotService:
     manifest = _snapshot_manifest(snapshot_dir)
-    agency = str(manifest.get("agency") or "Transit Sentinel")
-    default_timezone = "America/New_York" if agency.strip().upper() == "MBTA" else "UTC"
+    manifest_agency_key = _manifest_agency_key(manifest)
+    adapter = get_transit_agency_adapter(manifest_agency_key or default_transit_agency_key())
     feed_paths = resolve_snapshot_feed_paths(snapshot_dir)
+    case_pack_root = resolve_case_pack_root(snapshot_dir)
+    event_overlay_path = resolve_case_pack_event_overlay_path(case_pack_root) if case_pack_root else None
     return TransitSnapshotService(
         TransitRuntimeConfig(
-            system_name="MBTA Calibration",
+            system_name=str(manifest.get("agency") or (adapter.system_name if manifest_agency_key else "Transit Calibration")),
+            agency_key=adapter.key,
             static_feed=feed_paths["static_gtfs"],
             vehicle_positions_feed=feed_paths["vehicle_positions"],
             trip_updates_feed=feed_paths["trip_updates"],
             alerts_feed=feed_paths["alerts"],
-            feed_timezone=os.getenv("TRANSIT_FEED_TIMEZONE", default_timezone),
+            event_overlays_feed=str(event_overlay_path) if event_overlay_path else None,
+            feed_timezone=os.getenv(
+                "TRANSIT_FEED_TIMEZONE",
+                str(manifest.get("feed_timezone") or (adapter.timezone_name if manifest_agency_key else "UTC")),
+            ),
         )
     )
 
@@ -593,3 +731,17 @@ def _resolve_snapshot_dir(root: Path, snapshot_path: str, labels_source_path: Pa
             if candidate.exists():
                 return candidate
     return direct
+
+
+def _manifest_agency_key(manifest: Mapping[str, Any]) -> Optional[str]:
+    explicit = str(manifest.get("agency_key") or "").strip().lower()
+    if explicit:
+        return explicit
+    agency = str(manifest.get("agency") or "").strip().lower()
+    if agency == "mbta":
+        return "mbta"
+    if agency in {"la metro rail", "los angeles metro rail"}:
+        return "lametro-rail"
+    if agency in {"la metro bus", "los angeles metro bus"}:
+        return "lametro-bus"
+    return None

@@ -1,0 +1,17 @@
+{
+  "event_overlay": "Intuit Dome access window",
+  "snapshots": [
+    {
+      "direction_id": 0,
+      "expected_detection": false,
+      "route_id": "696-13201",
+      "snapshot_path": "archive/2026/04/04/020500Z"
+    },
+    {
+      "direction_id": 0,
+      "expected_detection": false,
+      "route_id": "807",
+      "snapshot_path": "archive/2026/04/04/020200Z"
+    }
+  ]
+}

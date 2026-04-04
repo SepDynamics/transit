@@ -16,6 +16,7 @@ if __package__ in (None, ""):
 
 from scripts.transit.domain import TransitRuntimeConfig, TransitSnapshotService
 from scripts.transit.snapshot_paths import resolve_snapshot_feed_paths
+from scripts.transit.agencies import default_transit_agency_key, get_transit_agency_adapter
 
 
 @dataclass
@@ -38,6 +39,8 @@ def build_archive_report(root_dir: str | Path, *, max_snapshots: Optional[int] =
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         snapshot_dir = manifest_path.parent
         feed_paths = resolve_snapshot_feed_paths(snapshot_dir)
+        manifest_agency_key = _manifest_agency_key(manifest)
+        adapter = get_transit_agency_adapter(manifest_agency_key or default_transit_agency_key())
         snapshot_time_ms = (
             int(manifest.get("timestamp_ms"))
             if manifest.get("timestamp_ms") not in (None, "")
@@ -45,16 +48,14 @@ def build_archive_report(root_dir: str | Path, *, max_snapshots: Optional[int] =
         )
         service = TransitSnapshotService(
             TransitRuntimeConfig(
-                system_name=str(manifest.get("agency") or "Transit Sentinel"),
+                system_name=str(manifest.get("agency") or (adapter.system_name if manifest_agency_key else "Transit Sentinel")),
+                agency_key=adapter.key,
                 static_feed=feed_paths["static_gtfs"],
                 vehicle_positions_feed=feed_paths["vehicle_positions"],
                 trip_updates_feed=feed_paths["trip_updates"],
                 alerts_feed=feed_paths["alerts"],
                 stale_after_seconds=max(30, int(os.getenv("TRANSIT_FEED_STALE_AFTER_SECONDS", "90"))),
-                feed_timezone=os.getenv(
-                    "TRANSIT_FEED_TIMEZONE",
-                    "America/New_York" if str(manifest.get("agency") or "").strip().upper() == "MBTA" else "UTC",
-                ),
+                feed_timezone=os.getenv("TRANSIT_FEED_TIMEZONE", adapter.timezone_name if manifest_agency_key else "UTC"),
             )
         )
         regimes = service.regimes(now_ms=snapshot_time_ms)["regimes"]
@@ -134,8 +135,9 @@ def build_archive_report(root_dir: str | Path, *, max_snapshots: Optional[int] =
 
 
 def build_parser() -> argparse.ArgumentParser:
+    adapter = get_transit_agency_adapter(os.getenv("TRANSIT_AGENCY", default_transit_agency_key()))
     parser = argparse.ArgumentParser(description="Generate corridor history report from archived transit snapshots")
-    parser.add_argument("--root-dir", default=os.getenv("TRANSIT_ARCHIVE_ROOT", "data/feeds/mbta"))
+    parser.add_argument("--root-dir", default=os.getenv("TRANSIT_ARCHIVE_ROOT", adapter.archive_root))
     parser.add_argument("--max-snapshots", type=int, default=None)
     parser.add_argument("--output", default="-")
     return parser
@@ -154,3 +156,17 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+def _manifest_agency_key(manifest: Dict[str, Any]) -> Optional[str]:
+    explicit = str(manifest.get("agency_key") or "").strip().lower()
+    if explicit:
+        return explicit
+    agency = str(manifest.get("agency") or "").strip().lower()
+    if agency == "mbta":
+        return "mbta"
+    if agency in {"la metro rail", "los angeles metro rail"}:
+        return "lametro-rail"
+    if agency in {"la metro bus", "los angeles metro bus"}:
+        return "lametro-bus"
+    return None

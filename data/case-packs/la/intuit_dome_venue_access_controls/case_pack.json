@@ -1,0 +1,13 @@
+{
+  "agency_keys": [
+    "lametro-bus",
+    "lametro-rail"
+  ],
+  "case_pack_id": "la-intuit-dome-venue-access-controls",
+  "category": "venue_access",
+  "city_key": "los-angeles",
+  "city_name": "Los Angeles",
+  "event_key": "intuit-dome-event-service",
+  "event_name": "Intuit Dome event service",
+  "overlay_path": "event_overlays.json"
+}

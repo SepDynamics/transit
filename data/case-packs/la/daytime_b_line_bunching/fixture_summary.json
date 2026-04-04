@@ -1,0 +1,11 @@
+{
+  "active_alert_count": 0,
+  "direction_id": 1,
+  "expected_action": "hold",
+  "expected_baseline_detection": false,
+  "expected_regime": "bunching_onset",
+  "route_id": "802",
+  "snapshot_path": "archive/2026/04/03/192200Z",
+  "trip_update_count": 3,
+  "vehicle_count": 3
+}

@@ -13,6 +13,8 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 from zoneinfo import ZoneInfo
 
 from scripts.shared.runtime import clamp, isoformat_ms
+from scripts.transit.agencies import default_transit_agency_key, get_transit_agency_adapter
+from scripts.transit.case_packs import load_event_overlays, summarize_matching_overlays
 from scripts.transit.feeds import load_gtfs_catalog, load_gtfs_realtime_resource, merge_realtime_bundles
 from scripts.transit.types import (
     GTFSStaticCatalog,
@@ -39,7 +41,6 @@ TRANSIT_ACTION_PRIORITY = {
     "monitor": 0,
 }
 
-MBTA_CURRENT_DIR = Path(__file__).resolve().parents[2] / "data" / "feeds" / "mbta" / "current"
 SERVICE_IMPACT_ALERT_EFFECTS = {"DETOUR", "STOP_MOVED", "REDUCED_SERVICE", "NO_SERVICE", "MODIFIED_SERVICE"}
 HIGH_IMPACT_ALERT_EFFECTS = {"DETOUR", "REDUCED_SERVICE", "NO_SERVICE", "MODIFIED_SERVICE"}
 SERVICE_ALERT_KEYWORDS = (
@@ -82,10 +83,12 @@ FACILITY_ALERT_KEYWORDS = (
 @dataclass
 class TransitRuntimeConfig:
     system_name: str
+    agency_key: str = default_transit_agency_key()
     static_feed: Optional[str] = None
     vehicle_positions_feed: Optional[str] = None
     trip_updates_feed: Optional[str] = None
     alerts_feed: Optional[str] = None
+    event_overlays_feed: Optional[str] = None
     stale_after_seconds: int = 90
     feed_timezone: str = "UTC"
 
@@ -95,19 +98,23 @@ class TransitSnapshotService:
 
     def __init__(self, config: Optional[TransitRuntimeConfig] = None) -> None:
         if config is None:
-            system_name = os.getenv("TRANSIT_SYSTEM_NAME", "MBTA")
+            adapter = get_transit_agency_adapter(os.getenv("TRANSIT_AGENCY", default_transit_agency_key()))
+            system_name = os.getenv("TRANSIT_SYSTEM_NAME", adapter.system_name)
+            default_feed_paths = adapter.default_feed_paths()
             config = TransitRuntimeConfig(
                 system_name=system_name,
-                static_feed=_default_current_feed("TRANSIT_GTFS_STATIC_PATH", MBTA_CURRENT_DIR / "MBTA_GTFS.zip"),
+                agency_key=os.getenv("TRANSIT_AGENCY", adapter.key),
+                static_feed=_default_current_feed("TRANSIT_GTFS_STATIC_PATH", Path(default_feed_paths["static_gtfs"])),
                 vehicle_positions_feed=_default_current_feed(
-                    "TRANSIT_GTFS_RT_VEHICLE_POSITIONS_PATH", MBTA_CURRENT_DIR / "VehiclePositions_enhanced.json"
+                    "TRANSIT_GTFS_RT_VEHICLE_POSITIONS_PATH", Path(default_feed_paths["vehicle_positions"])
                 ),
                 trip_updates_feed=_default_current_feed(
-                    "TRANSIT_GTFS_RT_TRIP_UPDATES_PATH", MBTA_CURRENT_DIR / "TripUpdates_enhanced.json"
+                    "TRANSIT_GTFS_RT_TRIP_UPDATES_PATH", Path(default_feed_paths["trip_updates"])
                 ),
-                alerts_feed=_default_current_feed("TRANSIT_GTFS_RT_ALERTS_PATH", MBTA_CURRENT_DIR / "Alerts_enhanced.json"),
+                alerts_feed=_default_current_feed("TRANSIT_GTFS_RT_ALERTS_PATH", Path(default_feed_paths["alerts"])),
+                event_overlays_feed=os.getenv("TRANSIT_EVENT_OVERLAYS_PATH") or None,
                 stale_after_seconds=max(30, int(os.getenv("TRANSIT_FEED_STALE_AFTER_SECONDS", "90"))),
-                feed_timezone=os.getenv("TRANSIT_FEED_TIMEZONE", _default_feed_timezone(system_name)),
+                feed_timezone=os.getenv("TRANSIT_FEED_TIMEZONE", adapter.timezone_name or _default_feed_timezone(system_name)),
             )
         self.cfg = config
         self._catalog_cache: Dict[str, Any] = {}
@@ -173,12 +180,14 @@ class TransitSnapshotService:
             "vehicle_positions": bool(self.cfg.vehicle_positions_feed),
             "trip_updates": bool(self.cfg.trip_updates_feed),
             "alerts": bool(self.cfg.alerts_feed),
+            "event_overlays": bool(self.cfg.event_overlays_feed),
         }
         return {
             "generated_at": isoformat_ms(),
             "scopes": [{"id": "all", "label": "All feeds"}, {"id": "live", "label": "Live feed"}],
             "available": {"live": any(configured.values()), "replay": False},
             "configured_feeds": configured,
+            "agency_key": self.cfg.agency_key,
             "traces": [],
             "trace_ids": [],
         }
@@ -241,6 +250,7 @@ class TransitSnapshotService:
             collection_source="gtfs_rt",
         )
         snapshot_now_ms = int(now_ms if now_ms is not None else time.time() * 1000)
+        event_overlays = load_event_overlays(self.cfg.event_overlays_feed)
         augmented_trip_updates = _enrich_trip_updates(
             catalog,
             bundle.trip_updates,
@@ -267,14 +277,22 @@ class TransitSnapshotService:
             vehicles=augmented_vehicles,
             trip_updates=deduped_trip_updates,
             alerts=bundle.alerts,
+            agency_key=self.cfg.agency_key,
+            event_overlays=event_overlays,
             now_ms=snapshot_now_ms,
             stale_after_seconds=self.cfg.stale_after_seconds,
             feed_timezone=self.cfg.feed_timezone,
         )
         active_lines, scheduled_later_lines, inactive_lines = _partition_route_rows(route_rows)
-        vehicles = _build_vehicle_rows(catalog, augmented_vehicles, route_regimes)
+        vehicles = _build_vehicle_rows(
+            catalog,
+            augmented_vehicles,
+            route_regimes,
+            agency_key=self.cfg.agency_key,
+            event_overlays=event_overlays,
+        )
         recurring = _build_recurring_signatures(route_regimes)
-        feed_status = _build_feed_status(bundle, errors)
+        feed_status = _build_feed_status(bundle, errors, agency_key=self.cfg.agency_key)
         health = _build_health_payload(
             system_name=self.cfg.system_name,
             route_rows=route_rows,
@@ -292,11 +310,13 @@ class TransitSnapshotService:
             "health": health,
             "entities": {
                 "generated_at": isoformat_ms(),
+                "agency_key": self.cfg.agency_key,
                 "lines": active_lines,
                 "active_lines": active_lines,
                 "scheduled_later_lines": scheduled_later_lines,
                 "inactive_lines": inactive_lines,
                 "vehicles": vehicles,
+                "event_overlays": event_overlays,
             },
             "regimes": {
                 "generated_at": isoformat_ms(),
@@ -329,6 +349,7 @@ class TransitSnapshotService:
                 self.cfg.vehicle_positions_feed,
                 self.cfg.trip_updates_feed,
                 self.cfg.alerts_feed,
+                self.cfg.event_overlays_feed,
             ]
             if source
         )
@@ -646,6 +667,8 @@ def _score_routes(
     vehicles: Sequence[TransitVehicleObservation],
     trip_updates: Sequence[TransitTripUpdateObservation],
     alerts: Sequence[TransitAlertObservation],
+    agency_key: str,
+    event_overlays: Sequence[Dict[str, Any]],
     now_ms: int,
     stale_after_seconds: int,
     feed_timezone: str,
@@ -717,13 +740,17 @@ def _score_routes(
     for key, group in route_groups.items():
         route_id = str(group["route_id"])
         direction_id = group["direction_id"]
+        corridor_id = _corridor_id(agency_key, route_id, direction_id)
+        corridor_entity_id = _corridor_entity_id(route_id, direction_id)
         route_vehicles: List[TransitVehicleObservation] = list(group["vehicles"])
         route_updates: List[TransitTripUpdateObservation] = list(group["trip_updates"])
         route_alerts: List[TransitAlertObservation] = list(group["alerts"])
         route_label = _corridor_label(catalog, route_id, direction_id, route_vehicles, route_updates)
         metrics = _compute_route_metrics(
             catalog=catalog,
+            agency_key=agency_key,
             route_id=route_id,
+            corridor_id=corridor_id,
             direction_id=direction_id,
             vehicles=route_vehicles,
             trip_updates=route_updates,
@@ -749,6 +776,12 @@ def _score_routes(
         elif metrics["low_observation"]:
             hazard *= 0.72
         confidence, provenance = _build_provenance(metrics, hazard_components)
+        matched_event_overlays = summarize_matching_overlays(
+            list(event_overlays),
+            route_id=route_id,
+            corridor_id=corridor_id,
+            agency_key=agency_key,
+        )
         signature_basis = {
             "route_id": route_id,
             "direction_id": direction_id,
@@ -759,9 +792,11 @@ def _score_routes(
         signature = hashlib.sha1(json.dumps(signature_basis, sort_keys=True).encode("utf-8")).hexdigest()[:12]
         record = TransitRegimeRecord(
             timestamp_ms=int(metrics["latest_timestamp_ms"] or now_ms),
-            entity_id=f"route:{route_id}:{direction_id if direction_id is not None else 'all'}",
+            entity_id=corridor_entity_id,
             entity_type="corridor",
             label=route_label,
+            agency_key=agency_key,
+            corridor_id=corridor_id,
             route_id=route_id,
             regime=regime,
             hazard=round(hazard, 4),
@@ -773,12 +808,15 @@ def _score_routes(
             provenance=provenance,
             metrics=metrics,
             collection_source="gtfs_rt",
+            event_overlays=matched_event_overlays,
         )
         route_regimes.append(record)
         route_rows.append(
             TransitCorridorSnapshot(
                 timestamp_ms=record.timestamp_ms,
                 entity_id=record.entity_id,
+                agency_key=agency_key,
+                corridor_id=corridor_id,
                 route_id=route_id,
                 direction_id=direction_id,
                 label=route_label,
@@ -799,6 +837,7 @@ def _score_routes(
                 source=record.source,
                 collection_source=record.collection_source,
                 trace_id=record.trace_id,
+                event_overlays=matched_event_overlays,
             ).to_json()
         )
         if regime != "healthy" and (
@@ -812,6 +851,8 @@ def _score_routes(
                     entity_id=record.entity_id,
                     entity_type=record.entity_type,
                     label=record.label,
+                    agency_key=agency_key,
+                    corridor_id=corridor_id,
                     route_id=route_id,
                     severity=_severity_for_action(action, record.hazard),
                     action=action,
@@ -822,6 +863,7 @@ def _score_routes(
                     recommended_action=_recommended_text(action),
                     reasons=reasons,
                     provenance=record.provenance,
+                    event_overlays=matched_event_overlays,
                 )
             )
 
@@ -843,7 +885,9 @@ def _partition_route_rows(
 def _compute_route_metrics(
     *,
     catalog: GTFSStaticCatalog,
+    agency_key: str,
     route_id: str,
+    corridor_id: str,
     direction_id: Optional[int],
     vehicles: Sequence[TransitVehicleObservation],
     trip_updates: Sequence[TransitTripUpdateObservation],
@@ -919,6 +963,9 @@ def _compute_route_metrics(
         active_alert_count=active_alert_count,
     )
     return {
+        "agency_key": agency_key,
+        "corridor_id": corridor_id,
+        "direction_id": direction_id,
         "route_type": route_type,
         "route_mode": route_mode,
         "total_alert_count": alert_summary["total_alert_count"],
@@ -1284,17 +1331,33 @@ def _build_vehicle_rows(
     catalog: GTFSStaticCatalog,
     vehicles: Sequence[TransitVehicleObservation],
     route_regimes: Sequence[TransitRegimeRecord],
+    *,
+    agency_key: str,
+    event_overlays: Sequence[Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
-    regimes_by_route = {record.route_id: record for record in route_regimes if record.route_id}
+    regimes_by_corridor = {str(record.corridor_id or ""): record for record in route_regimes if record.corridor_id}
     rows: List[Dict[str, Any]] = []
     for vehicle in vehicles:
-        route_regime = regimes_by_route.get(vehicle.route_id or "")
+        corridor_id = _corridor_id(agency_key, vehicle.route_id, vehicle.direction_id)
+        route_regime = regimes_by_corridor.get(corridor_id)
+        matched_event_overlays = (
+            list(route_regime.event_overlays)
+            if route_regime and route_regime.event_overlays
+            else summarize_matching_overlays(
+                list(event_overlays),
+                route_id=vehicle.route_id,
+                corridor_id=corridor_id,
+                agency_key=agency_key,
+            )
+        )
         label = vehicle.vehicle_label or vehicle.vehicle_id
         rows.append(
             TransitVehicleSnapshot(
                 entity_id=vehicle.entity_id(),
                 label=label,
                 vehicle_id=vehicle.vehicle_id,
+                agency_key=agency_key,
+                corridor_id=corridor_id,
                 route_id=vehicle.route_id,
                 route_label=catalog.route_label(vehicle.route_id),
                 trip_id=vehicle.trip_id,
@@ -1308,6 +1371,7 @@ def _build_vehicle_rows(
                 corridor_entity_id=route_regime.entity_id if route_regime else None,
                 regime=route_regime.to_json() if route_regime else None,
                 observation=vehicle.to_json(),
+                event_overlays=matched_event_overlays,
             ).to_json()
         )
     rows.sort(
@@ -1350,11 +1414,12 @@ def _build_recurring_signatures(route_regimes: Sequence[TransitRegimeRecord]) ->
     return recurring
 
 
-def _build_feed_status(bundle: TransitRealtimeBundle, errors: Sequence[str]) -> Dict[str, Any]:
+def _build_feed_status(bundle: TransitRealtimeBundle, errors: Sequence[str], *, agency_key: str) -> Dict[str, Any]:
     latest_timestamp_ms = bundle.latest_timestamp_ms()
     return TransitFeedStatus(
         feed_label=bundle.feed_label,
         updated_at=isoformat_ms(latest_timestamp_ms) if latest_timestamp_ms else None,
+        agency_key=agency_key,
         vehicle_count=len(bundle.vehicles),
         trip_update_count=len(bundle.trip_updates),
         alert_count=len(bundle.alerts),
@@ -1629,6 +1694,14 @@ def _corridor_label(
     if direction_id is not None:
         return f"{base} direction {direction_id}"
     return base
+
+
+def _corridor_entity_id(route_id: str | None, direction_id: Optional[int]) -> str:
+    return f"route:{route_id or 'unassigned'}:{direction_id if direction_id is not None else 'all'}"
+
+
+def _corridor_id(agency_key: str | None, route_id: str | None, direction_id: Optional[int]) -> str:
+    return f"corridor:{agency_key or default_transit_agency_key()}:{route_id or 'unassigned'}:{direction_id if direction_id is not None else 'all'}"
 
 
 def _default_feed_timezone(system_name: str) -> str:

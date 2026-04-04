@@ -1,11 +1,28 @@
 export interface TransitFeedStatus {
   feed_label?: string;
   updated_at?: string | null;
+  agency_key?: string | null;
   vehicle_count?: number;
   trip_update_count?: number;
   alert_count?: number;
   collection_source?: string;
   status?: string;
+}
+
+export interface TransitEventOverlay {
+  overlay_id: string;
+  label?: string;
+  event_key?: string | null;
+  event_name?: string | null;
+  city_key?: string | null;
+  category?: string | null;
+  agency_keys?: string[];
+  route_ids?: string[];
+  corridor_ids?: string[];
+  starts_at?: string | null;
+  ends_at?: string | null;
+  note?: string | null;
+  source?: string | null;
 }
 
 export interface ProvenanceFactor {
@@ -51,6 +68,8 @@ export interface TransitRegimePayload {
   entity_id: string;
   entity_type?: string;
   label?: string;
+  agency_key?: string | null;
+  corridor_id?: string | null;
   route_id?: string | null;
   regime?: string;
   hazard?: number;
@@ -64,6 +83,7 @@ export interface TransitRegimePayload {
   source?: string;
   collection_source?: string;
   trace_id?: string | null;
+  event_overlays?: TransitEventOverlay[];
 }
 
 export interface TransitHealthResponse {
@@ -89,6 +109,8 @@ export interface TransitHealthResponse {
 
 export interface TransitCorridorSnapshot {
   entity_id: string;
+  agency_key?: string | null;
+  corridor_id?: string | null;
   route_id?: string | null;
   direction_id?: number | null;
   label: string;
@@ -106,6 +128,7 @@ export interface TransitCorridorSnapshot {
   collection_source?: string;
   trace_id?: string | null;
   timestamp_ms?: number;
+  event_overlays?: TransitEventOverlay[];
 }
 
 export interface ObservationPayload {
@@ -130,6 +153,8 @@ export interface TransitVehicleSnapshot {
   label: string;
   vehicle_id: string;
   corridor_entity_id?: string | null;
+  agency_key?: string | null;
+  corridor_id?: string | null;
   route_id?: string | null;
   route_label?: string;
   trip_id?: string | null;
@@ -142,15 +167,18 @@ export interface TransitVehicleSnapshot {
   collection_source?: string;
   regime?: TransitRegimePayload | null;
   observation?: ObservationPayload | null;
+  event_overlays?: TransitEventOverlay[];
 }
 
 export interface TransitEntitiesResponse {
   generated_at?: string;
+  agency_key?: string | null;
   lines: TransitCorridorSnapshot[];
   active_lines?: TransitCorridorSnapshot[];
   scheduled_later_lines?: TransitCorridorSnapshot[];
   inactive_lines?: TransitCorridorSnapshot[];
   vehicles: TransitVehicleSnapshot[];
+  event_overlays?: TransitEventOverlay[];
 }
 
 export interface TransitIncidentRecord {
@@ -159,6 +187,8 @@ export interface TransitIncidentRecord {
   entity_id: string;
   entity_type?: string;
   label: string;
+  agency_key?: string | null;
+  corridor_id?: string | null;
   route_id?: string | null;
   severity: string;
   action: string;
@@ -171,6 +201,7 @@ export interface TransitIncidentRecord {
   reasons?: string[];
   source?: string;
   trace_id?: string | null;
+  event_overlays?: TransitEventOverlay[];
 }
 
 export interface TransitIncidentResponse {
@@ -209,6 +240,7 @@ export interface TransitReplayTrace {
 
 export interface TransitSourceResponse {
   scopes: SourceOption[];
+  agency_key?: string | null;
   available?: {
     live?: boolean;
     replay?: boolean;
