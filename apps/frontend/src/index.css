@@ -56,3 +56,62 @@ pre {
 #root {
   isolation: isolate;
 }
+
+/* ---------------------------------------------------------------------------
+   App-level navigation
+   --------------------------------------------------------------------------- */
+
+.app-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  gap: 4px;
+  padding: 12px 20px;
+  background: rgba(7, 17, 22, 0.88);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(126, 169, 181, 0.1);
+}
+
+.app-nav__link {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 16px;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-family: var(--font-body);
+  text-decoration: none;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  transition:
+    color 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.app-nav__link:hover {
+  color: var(--text-strong);
+  border-color: rgba(126, 169, 181, 0.18);
+}
+
+.app-nav__link--active {
+  background: rgba(73, 198, 176, 0.12);
+  color: var(--accent-2);
+  border-color: rgba(73, 198, 176, 0.28);
+}
+
+@media (max-width: 480px) {
+  .app-nav {
+    padding: 10px 14px;
+    gap: 2px;
+  }
+
+  .app-nav__link {
+    padding: 7px 12px;
+    font-size: 0.82rem;
+    /* Minimum touch target */
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+  }
+}

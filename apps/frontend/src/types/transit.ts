@@ -428,3 +428,115 @@ export interface TransitScorecardResponse {
 }
 
 export type ScorecardResponse = TransitScorecardResponse;
+
+// ---------------------------------------------------------------------------
+// Public service-status API types (/api/status/*)
+// ---------------------------------------------------------------------------
+
+export interface RouteStatus {
+  entity_id: string;
+  route_id?: string | null;
+  direction_id?: number | null;
+  label: string;
+  severity: "good" | "advisory" | "delay" | "disruption" | "severe" | "unknown";
+  severity_label: string;
+  severity_color: string;
+  headline: string;
+  body: string;
+  short_summary: string;
+  hazard_score?: number | null;
+  regime?: string | null;
+  action?: string | null;
+  active_alert_count: number;
+  median_delay_seconds?: number | null;
+  agency_key?: string | null;
+  timestamp_ms?: number | null;
+  advisories: string[];
+}
+
+export interface PublicStatusRoutesResponse {
+  generated_at?: string;
+  scope?: string;
+  route_count: number;
+  routes: RouteStatus[];
+}
+
+export interface DisruptedRoute {
+  entity_id?: string;
+  label?: string;
+  severity?: string;
+}
+
+export interface PublicStatusNetworkResponse {
+  generated_at?: string;
+  scope?: string;
+  severity: string;
+  severity_label: string;
+  severity_color: string;
+  active_route_count: number;
+  incident_count: number;
+  critical_incident_count: number;
+  disrupted_route_count: number;
+  disrupted_routes: DisruptedRoute[];
+  feed_status?: TransitFeedStatus;
+}
+
+export interface PublicStatusAlert {
+  alert_id?: string | null;
+  entity_id?: string;
+  route_label?: string;
+  severity: string;
+  severity_label: string;
+  severity_color: string;
+  headline: string;
+  recommended_action?: string;
+  timestamp_ms?: number | null;
+}
+
+export interface PublicStatusAlertsResponse {
+  generated_at?: string;
+  scope?: string;
+  alert_count: number;
+  alerts: PublicStatusAlert[];
+}
+
+export interface PublicScorecardCorridor {
+  entity_id?: string;
+  label?: string;
+  route_id?: string | null;
+  on_time_pct?: number;
+  avg_delay_seconds?: number;
+  incident_count?: number;
+  snapshot_count?: number;
+  healthy_pct?: number;
+  unstable_pct?: number;
+}
+
+export interface PublicScorecardNetwork {
+  on_time_pct?: number;
+  avg_delay_seconds?: number;
+  unstable_corridor_count?: number;
+}
+
+export interface PublicStatusScorecardResponse {
+  generated_at?: string;
+  scope?: string;
+  window_snapshots?: number;
+  corridor_count?: number;
+  total_incidents?: number;
+  network: PublicScorecardNetwork;
+  corridors: PublicScorecardCorridor[];
+}
+
+// ---------------------------------------------------------------------------
+// Incident acknowledgement
+// ---------------------------------------------------------------------------
+
+export interface IncidentAckPayload {
+  acknowledged: boolean;
+  incident_id: string;
+  acknowledged_at?: string;
+  acknowledged_by?: string;
+  note?: string;
+  error?: string;
+}

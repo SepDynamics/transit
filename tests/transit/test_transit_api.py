@@ -32,7 +32,12 @@ class _FakeTransitService:
         }
 
     def transit_regimes(self, *, scope: str = "all", trace_id=None):
-        return {"scope": scope, "trace_id": trace_id, "regimes": [], "recurring_regimes": []}
+        return {
+            "scope": scope,
+            "trace_id": trace_id,
+            "regimes": [],
+            "recurring_regimes": [],
+        }
 
     def transit_incidents(self, *, scope: str = "all", trace_id=None):
         return {"scope": scope, "trace_id": trace_id, "incidents": []}
@@ -41,11 +46,19 @@ class _FakeTransitService:
         return {
             "scope": scope,
             "trace_id": trace_id,
-            "summary": {"corridor_count": 1, "unstable_corridor_count": 1, "recent_incident_count": 2},
-            "corridors": [{"entity_id": "route:Red:0", "label": "Red Line", "latest_hazard": 0.81}],
+            "summary": {
+                "corridor_count": 1,
+                "unstable_corridor_count": 1,
+                "recent_incident_count": 2,
+            },
+            "corridors": [
+                {"entity_id": "route:Red:0", "label": "Red Line", "latest_hazard": 0.81}
+            ],
         }
 
-    def transit_history(self, *, entity_id: str, scope: str = "all", trace_id=None, limit: int = 72):
+    def transit_history(
+        self, *, entity_id: str, scope: str = "all", trace_id=None, limit: int = 72
+    ):
         return {
             "scope": scope,
             "trace_id": trace_id,
@@ -66,7 +79,10 @@ class _FakeTransitService:
                 {
                     "type": "Feature",
                     "geometry": {"type": "Point", "coordinates": [-71.06, 42.36]},
-                    "properties": {"entity_id": "vehicle:1811", "regime": "bunching_onset"},
+                    "properties": {
+                        "entity_id": "vehicle:1811",
+                        "regime": "bunching_onset",
+                    },
                 }
             ],
             "corridor_summaries": [{"entity_id": "route:Red:0", "label": "Red Line"}],
@@ -111,11 +127,127 @@ class _FakeTransitService:
             ],
         }
 
+    def public_status_routes(self, *, scope: str = "live", trace_id=None):
+        return {
+            "generated_at": "2024-01-01T00:00:00.000Z",
+            "scope": scope,
+            "route_count": 2,
+            "routes": [
+                {
+                    "entity_id": "route:Red:0",
+                    "route_id": "Red",
+                    "direction_id": 0,
+                    "label": "Red Line",
+                    "severity": "delay",
+                    "severity_label": "Delays",
+                    "severity_color": "orange",
+                    "headline": "Red Line: Delays",
+                    "body": "Delays are reported on Red Line.",
+                    "short_summary": "Delays reported",
+                    "hazard_score": 0.61,
+                    "regime": "bunching_onset",
+                    "action": "hold",
+                    "active_alert_count": 1,
+                    "median_delay_seconds": 165.0,
+                    "agency_key": "mbta",
+                    "timestamp_ms": 1700000000000,
+                    "advisories": ["Minor bunching detected"],
+                },
+                {
+                    "entity_id": "route:Green-B:0",
+                    "route_id": "Green-B",
+                    "direction_id": 0,
+                    "label": "Green Line B",
+                    "severity": "good",
+                    "severity_label": "Good Service",
+                    "severity_color": "green",
+                    "headline": "Green Line B: Good service",
+                    "body": "Green Line B is operating normally.",
+                    "short_summary": "Normal service",
+                    "hazard_score": 0.08,
+                    "regime": "healthy",
+                    "action": "monitor",
+                    "active_alert_count": 0,
+                    "median_delay_seconds": 15.0,
+                    "agency_key": "mbta",
+                    "timestamp_ms": 1700000000000,
+                    "advisories": [],
+                },
+            ],
+        }
+
+    def public_status_network(self, *, scope: str = "live", trace_id=None):
+        return {
+            "generated_at": "2024-01-01T00:00:00.000Z",
+            "scope": scope,
+            "severity": "delay",
+            "severity_label": "Delays",
+            "severity_color": "orange",
+            "active_route_count": 2,
+            "incident_count": 2,
+            "critical_incident_count": 0,
+            "disrupted_route_count": 1,
+            "disrupted_routes": [
+                {"entity_id": "route:Red:0", "label": "Red Line", "severity": "delay"}
+            ],
+            "feed_status": {"collection_source": "gtfs_rt"},
+        }
+
+    def public_status_alerts(self, *, scope: str = "live", trace_id=None):
+        return {
+            "generated_at": "2024-01-01T00:00:00.000Z",
+            "scope": scope,
+            "alert_count": 1,
+            "alerts": [
+                {
+                    "alert_id": "inc-001",
+                    "entity_id": "route:Red:0",
+                    "route_label": "Red Line",
+                    "severity": "delay",
+                    "severity_label": "Delays",
+                    "severity_color": "orange",
+                    "headline": "Minor bunching detected on Red Line.",
+                    "recommended_action": "Allow extra travel time.",
+                    "timestamp_ms": 1700000000000,
+                }
+            ],
+        }
+
+    def public_status_scorecard(
+        self, *, scope: str = "live", trace_id=None, limit: int = 720
+    ):
+        return {
+            "generated_at": "2024-01-01T00:00:00.000Z",
+            "scope": scope,
+            "window_snapshots": limit,
+            "corridor_count": 1,
+            "total_incidents": 2,
+            "network": {
+                "on_time_pct": 50.0,
+                "avg_delay_seconds": 165,
+                "unstable_corridor_count": 1,
+            },
+            "corridors": [
+                {
+                    "entity_id": "route:Red:0",
+                    "label": "Red Line",
+                    "on_time_pct": 50.0,
+                    "avg_delay_seconds": 165,
+                    "incident_count": 2,
+                    "snapshot_count": 2,
+                    "healthy_pct": 0.0,
+                    "unstable_pct": 100.0,
+                }
+            ],
+        }
+
 
 def test_transit_api_health_endpoint_serves_json():
     server = start_transit_http_server(_FakeTransitService(), host="127.0.0.1", port=0)
     try:
-        with urlopen(f"http://127.0.0.1:{server.server_port}/api/transit/health?scope=live") as response:
+        with urlopen(
+            f"http://127.0.0.1:{server.server_port}/api/transit/health?scope=live"
+        ) as response:
             payload = json.loads(response.read().decode("utf-8"))
     finally:
         server.shutdown()
@@ -130,7 +262,9 @@ def test_transit_api_health_endpoint_serves_json():
 def test_transit_api_trends_endpoint_serves_json():
     server = start_transit_http_server(_FakeTransitService(), host="127.0.0.1", port=0)
     try:
-        with urlopen(f"http://127.0.0.1:{server.server_port}/api/transit/trends?scope=live") as response:
+        with urlopen(
+            f"http://127.0.0.1:{server.server_port}/api/transit/trends?scope=live"
+        ) as response:
             payload = json.loads(response.read().decode("utf-8"))
     finally:
         server.shutdown()
@@ -161,7 +295,9 @@ def test_transit_api_history_endpoint_requires_entity_id():
     server = start_transit_http_server(_FakeTransitService(), host="127.0.0.1", port=0)
     try:
         try:
-            urlopen(f"http://127.0.0.1:{server.server_port}/api/transit/history?scope=live")
+            urlopen(
+                f"http://127.0.0.1:{server.server_port}/api/transit/history?scope=live"
+            )
         except HTTPError as exc:
             assert exc.code == 400
             payload = json.loads(exc.read().decode("utf-8"))
@@ -177,7 +313,9 @@ def test_transit_api_history_endpoint_requires_entity_id():
 def test_transit_api_map_endpoint_serves_json():
     server = start_transit_http_server(_FakeTransitService(), host="127.0.0.1", port=0)
     try:
-        with urlopen(f"http://127.0.0.1:{server.server_port}/api/transit/map?scope=replay&trace_id=trace-123") as response:
+        with urlopen(
+            f"http://127.0.0.1:{server.server_port}/api/transit/map?scope=replay&trace_id=trace-123"
+        ) as response:
             payload = json.loads(response.read().decode("utf-8"))
     finally:
         server.shutdown()
@@ -192,7 +330,9 @@ def test_transit_api_map_endpoint_serves_json():
 def test_transit_api_scorecard_endpoint_serves_json():
     server = start_transit_http_server(_FakeTransitService(), host="127.0.0.1", port=0)
     try:
-        with urlopen(f"http://127.0.0.1:{server.server_port}/api/transit/scorecard?scope=live&limit=144") as response:
+        with urlopen(
+            f"http://127.0.0.1:{server.server_port}/api/transit/scorecard?scope=live&limit=144"
+        ) as response:
             payload = json.loads(response.read().decode("utf-8"))
     finally:
         server.shutdown()
@@ -202,3 +342,78 @@ def test_transit_api_scorecard_endpoint_serves_json():
     assert payload["window_snapshots"] == 144
     assert payload["network"]["on_time_pct"] == 50.0
     assert payload["corridors"][0]["entity_id"] == "route:Red:0"
+
+
+def test_public_status_routes_endpoint_serves_json():
+    server = start_transit_http_server(_FakeTransitService(), host="127.0.0.1", port=0)
+    try:
+        with urlopen(
+            f"http://127.0.0.1:{server.server_port}/api/status/routes"
+        ) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    finally:
+        server.shutdown()
+        server.server_close()
+
+    assert payload["scope"] == "live"
+    assert payload["route_count"] == 2
+    assert payload["routes"][0]["entity_id"] == "route:Red:0"
+    assert payload["routes"][0]["severity"] == "delay"
+    assert "headline" in payload["routes"][0]
+    assert "advisories" in payload["routes"][0]
+
+
+def test_public_status_network_endpoint_serves_json():
+    server = start_transit_http_server(_FakeTransitService(), host="127.0.0.1", port=0)
+    try:
+        with urlopen(
+            f"http://127.0.0.1:{server.server_port}/api/status/network"
+        ) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    finally:
+        server.shutdown()
+        server.server_close()
+
+    assert payload["scope"] == "live"
+    assert payload["severity"] == "delay"
+    assert payload["severity_label"] == "Delays"
+    assert payload["disrupted_route_count"] == 1
+    assert payload["disrupted_routes"][0]["entity_id"] == "route:Red:0"
+
+
+def test_public_status_alerts_endpoint_serves_json():
+    server = start_transit_http_server(_FakeTransitService(), host="127.0.0.1", port=0)
+    try:
+        with urlopen(
+            f"http://127.0.0.1:{server.server_port}/api/status/alerts"
+        ) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    finally:
+        server.shutdown()
+        server.server_close()
+
+    assert payload["scope"] == "live"
+    assert payload["alert_count"] == 1
+    assert payload["alerts"][0]["alert_id"] == "inc-001"
+    assert payload["alerts"][0]["severity"] == "delay"
+    assert payload["alerts"][0]["route_label"] == "Red Line"
+
+
+def test_public_status_scorecard_endpoint_serves_json():
+    server = start_transit_http_server(_FakeTransitService(), host="127.0.0.1", port=0)
+    try:
+        with urlopen(
+            f"http://127.0.0.1:{server.server_port}/api/status/scorecard?limit=144"
+        ) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    finally:
+        server.shutdown()
+        server.server_close()
+
+    assert payload["scope"] == "live"
+    assert payload["window_snapshots"] == 144
+    assert payload["network"]["on_time_pct"] == 50.0
+    assert payload["corridors"][0]["entity_id"] == "route:Red:0"
+    # Internal vocab (regime/action counts) should not be on the public scorecard
+    assert "top_regime" not in payload["corridors"][0]
+    assert "regime_counts" not in payload["corridors"][0]

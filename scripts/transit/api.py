@@ -24,6 +24,21 @@ from scripts.transit.agencies import (
     default_transit_agency_key,
     get_transit_agency_adapter,
 )
+from scripts.transit.auth import (
+    ROLE_OPERATOR,
+    ROLE_ADMIN,
+    ROLE_VIEWER,
+    check_auth,
+    read_audit_trail,
+    write_audit_event,
+)
+from scripts.transit.severity import (
+    SEVERITY_LABELS,
+    SEVERITY_COLOR,
+    build_route_status,
+    classify_network_severity,
+    severity_rank,
+)
 from scripts.transit.store import TransitStore
 
 logger = logging.getLogger("transit-api")
@@ -46,6 +61,59 @@ class TransitAPIService:
             "system_name": str(latest_health.get("system_name") or self.system_name),
             "ingest_status": ingest_status,
             "status": status,
+        }
+
+    # ---------------------------------------------------------------------------
+    # Incident acknowledgement
+    # ---------------------------------------------------------------------------
+
+    def acknowledge_incident(
+        self,
+        incident_id: str,
+        *,
+        note: str = "",
+        acknowledged_by: str | None = None,
+    ) -> Dict[str, Any]:
+        """Mark an incident as acknowledged.
+
+        Persists an acknowledgement record to Valkey and returns the updated
+        acknowledgement payload.
+        """
+        if not incident_id or not incident_id.strip():
+            return {"error": "missing_incident_id"}
+        incident_id = incident_id.strip()
+        ack_key = f"transit:ack:{incident_id}"
+        existing = self.store.read_json_key(ack_key, default={})
+        if existing:
+            # Already acknowledged — return current state (idempotent)
+            return {"acknowledged": True, "incident_id": incident_id, **existing}
+        ack_payload = {
+            "incident_id": incident_id,
+            "acknowledged_at": isoformat_ms(),
+            "acknowledged_by": str(acknowledged_by or ""),
+            "note": str(note or ""),
+        }
+        self.store.write_status(ack_key, ack_payload)
+        return {"acknowledged": True, **ack_payload}
+
+    def get_acknowledgement(self, incident_id: str) -> Dict[str, Any]:
+        """Return the acknowledgement record for *incident_id*, or empty."""
+        if not incident_id or not incident_id.strip():
+            return {}
+        ack_key = f"transit:ack:{incident_id.strip()}"
+        return self.store.read_json_key(ack_key, default={})
+
+    # ---------------------------------------------------------------------------
+    # Audit trail
+    # ---------------------------------------------------------------------------
+
+    def audit_trail(self, *, limit: int = 100) -> Dict[str, Any]:
+        """Return the most recent audit events."""
+        events = read_audit_trail(self.store.client, limit=max(1, min(limit, 500)))
+        return {
+            "generated_at": isoformat_ms(),
+            "event_count": len(events),
+            "events": events,
         }
 
     def transit_health(
@@ -97,6 +165,228 @@ class TransitAPIService:
     ) -> Dict[str, Any]:
         """Rolling KPI scorecard for the operations dashboard and contract reporting."""
         return self.store.scorecard(scope=scope, trace_id=trace_id, limit=limit)
+
+    def public_status_routes(
+        self, *, scope: str = "live", trace_id: str | None = None
+    ) -> Dict[str, Any]:
+        """Rider-facing route status list.
+
+        Returns one status record per active corridor with a plain-language
+        severity tier, wording, and headline.  Suitable for status pages,
+        digital signage, and third-party app integrations.
+        """
+        entities = self.store.entities(scope=scope, trace_id=trace_id)
+        regimes_payload = self.store.regimes(scope=scope, trace_id=trace_id)
+        incidents_payload = self.store.incidents(scope=scope, trace_id=trace_id)
+
+        regime_by_entity: Dict[str, Any] = {
+            str(r.get("entity_id") or ""): r
+            for r in (regimes_payload.get("regimes") or [])
+            if isinstance(r, dict) and r.get("entity_id")
+        }
+        incidents_by_entity: Dict[str, list] = {}
+        for inc in incidents_payload.get("incidents") or []:
+            if not isinstance(inc, dict):
+                continue
+            eid = str(inc.get("entity_id") or "")
+            incidents_by_entity.setdefault(eid, []).append(inc)
+
+        # Include active + scheduled-later lines in the public status surface
+        all_lines = (entities.get("active_lines") or []) + (
+            entities.get("scheduled_later_lines") or []
+        )
+        # Deduplicate by entity_id (active_lines and lines may overlap)
+        seen: set = set()
+        unique_lines = []
+        for line in all_lines:
+            if not isinstance(line, dict):
+                continue
+            eid = str(line.get("entity_id") or "")
+            if eid and eid not in seen:
+                seen.add(eid)
+                unique_lines.append(line)
+
+        routes = [
+            build_route_status(line, regime_by_entity, incidents_by_entity).to_json()
+            for line in unique_lines
+        ]
+        # Sort: most severe first, then alphabetical by label
+        routes.sort(
+            key=lambda r: (
+                -severity_rank(r.get("severity", "good")),
+                str(r.get("label") or ""),
+            )
+        )
+
+        return {
+            "generated_at": isoformat_ms(),
+            "scope": scope,
+            "route_count": len(routes),
+            "routes": routes,
+        }
+
+    def public_status_network(
+        self, *, scope: str = "live", trace_id: str | None = None
+    ) -> Dict[str, Any]:
+        """Rider-facing network-level status summary.
+
+        A single summary object for the whole network — suitable for a
+        top-of-page banner or push notification about overall service quality.
+        """
+        health = self.store.health(scope=scope, trace_id=trace_id)
+        routes_payload = self.public_status_routes(scope=scope, trace_id=trace_id)
+
+        route_severities = [
+            str(r.get("severity") or "good") for r in routes_payload.get("routes") or []
+        ]
+        network_severity = classify_network_severity(route_severities)
+
+        active_count = int(
+            health.get("active_line_count") or health.get("line_count") or 0
+        )
+        incident_count = int(health.get("incident_count") or 0)
+        critical_count = int(health.get("critical_incidents") or 0)
+
+        disrupted_routes = [
+            {
+                "entity_id": r.get("entity_id"),
+                "label": r.get("label"),
+                "severity": r.get("severity"),
+            }
+            for r in (routes_payload.get("routes") or [])
+            if r.get("severity") in ("delay", "disruption", "severe")
+        ]
+
+        return {
+            "generated_at": isoformat_ms(),
+            "scope": scope,
+            "severity": network_severity,
+            "severity_label": SEVERITY_LABELS.get(network_severity, network_severity),
+            "severity_color": SEVERITY_COLOR.get(network_severity, "gray"),
+            "active_route_count": active_count,
+            "incident_count": incident_count,
+            "critical_incident_count": critical_count,
+            "disrupted_route_count": len(disrupted_routes),
+            "disrupted_routes": disrupted_routes,
+            "feed_status": health.get("feed_status"),
+        }
+
+    def public_status_alerts(
+        self, *, scope: str = "live", trace_id: str | None = None
+    ) -> Dict[str, Any]:
+        """Rider-facing active alerts list.
+
+        Returns only the incidents that have crossed the incident threshold,
+        formatted as plain-language advisory text.  No internal scoring
+        vocabulary is exposed.
+        """
+        incidents_payload = self.store.incidents(scope=scope, trace_id=trace_id)
+        entities_payload = self.store.entities(scope=scope, trace_id=trace_id)
+
+        # Build label index from lines
+        label_by_entity: Dict[str, str] = {}
+        for line in (entities_payload.get("lines") or []) + (
+            entities_payload.get("active_lines") or []
+        ):
+            if isinstance(line, dict) and line.get("entity_id"):
+                label_by_entity[str(line["entity_id"])] = str(
+                    line.get("label") or line.get("route_id") or line["entity_id"]
+                )
+
+        alerts = []
+        for incident in incidents_payload.get("incidents") or []:
+            if not isinstance(incident, dict):
+                continue
+            eid = str(incident.get("entity_id") or "")
+            route_label = label_by_entity.get(eid) or str(incident.get("label") or eid)
+            severity = incident.get("severity") or "minor"
+            # Map internal severity to public tier
+            public_severity = {
+                "critical": "disruption",
+                "major": "disruption",
+                "minor": "delay",
+                "info": "advisory",
+            }.get(str(severity).lower(), "advisory")
+
+            alerts.append(
+                {
+                    "alert_id": incident.get("incident_id"),
+                    "entity_id": eid,
+                    "route_label": route_label,
+                    "severity": public_severity,
+                    "severity_label": SEVERITY_LABELS.get(
+                        public_severity, public_severity
+                    ),
+                    "severity_color": SEVERITY_COLOR.get(public_severity, "gray"),
+                    "headline": str(incident.get("summary") or "Service alert"),
+                    "recommended_action": str(incident.get("recommended_action") or ""),
+                    "timestamp_ms": incident.get("timestamp_ms"),
+                }
+            )
+
+        # Sort: most severe first, most recent first within tier
+        def _sort_key(a: Dict[str, Any]):
+            sev = str(a.get("severity") or "advisory")
+            ranks = {"disruption": 3, "delay": 2, "advisory": 1, "good": 0}
+            ts = int(a.get("timestamp_ms") or 0)
+            return (-ranks.get(sev, 0), -ts)
+
+        alerts.sort(key=_sort_key)
+
+        return {
+            "generated_at": isoformat_ms(),
+            "scope": scope,
+            "alert_count": len(alerts),
+            "alerts": alerts,
+        }
+
+    def public_status_scorecard(
+        self,
+        *,
+        scope: str = "live",
+        trace_id: str | None = None,
+        limit: int = 720,
+    ) -> Dict[str, Any]:
+        """Public reliability scorecard.
+
+        Suitable for agency websites, weekly service reports, and rider apps
+        that want historical reliability data without internal scoring detail.
+        """
+        scorecard = self.store.scorecard(scope=scope, trace_id=trace_id, limit=limit)
+
+        # Strip internal regime/action vocabulary, keep only public-ready fields
+        public_corridors = []
+        for corridor in scorecard.get("corridors") or []:
+            if not isinstance(corridor, dict):
+                continue
+            public_corridors.append(
+                {
+                    "entity_id": corridor.get("entity_id"),
+                    "label": corridor.get("label"),
+                    "route_id": corridor.get("route_id"),
+                    "on_time_pct": corridor.get("on_time_pct"),
+                    "avg_delay_seconds": corridor.get("avg_delay_seconds"),
+                    "incident_count": corridor.get("incident_count"),
+                    "snapshot_count": corridor.get("snapshot_count"),
+                    "healthy_pct": corridor.get("healthy_pct"),
+                    "unstable_pct": corridor.get("unstable_pct"),
+                }
+            )
+
+        net = scorecard.get("network") or {}
+        return {
+            "generated_at": isoformat_ms(),
+            "scope": scope,
+            "window_snapshots": scorecard.get("window_snapshots"),
+            "corridor_count": scorecard.get("corridor_count"),
+            "total_incidents": scorecard.get("total_incidents"),
+            "network": {
+                "on_time_pct": net.get("on_time_pct"),
+                "avg_delay_seconds": net.get("avg_delay_seconds"),
+                "unstable_corridor_count": net.get("unstable_corridor_count"),
+            },
+            "corridors": public_corridors,
+        }
 
     def transit_map(
         self, *, scope: str = "all", trace_id: str | None = None
@@ -228,8 +518,60 @@ class TransitAPIHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
+        self.send_header(
+            "Access-Control-Allow-Origin",
+            os.getenv("TRANSIT_API_ALLOW_ORIGIN", "*"),
+        )
+        self.send_header(
+            "Access-Control-Allow-Headers",
+            os.getenv(
+                "TRANSIT_API_ALLOW_HEADERS",
+                "Authorization, Content-Type",
+            ),
+        )
+        self.send_header(
+            "Access-Control-Allow-Methods",
+            os.getenv("TRANSIT_API_ALLOW_METHODS", "GET, POST, OPTIONS"),
+        )
         self.end_headers()
         self.wfile.write(body)
+
+    def do_OPTIONS(self) -> None:  # pragma: no cover - browser interoperability
+        self.send_response(204)
+        self.send_header(
+            "Access-Control-Allow-Origin",
+            os.getenv("TRANSIT_API_ALLOW_ORIGIN", "*"),
+        )
+        self.send_header(
+            "Access-Control-Allow-Headers",
+            os.getenv(
+                "TRANSIT_API_ALLOW_HEADERS",
+                "Authorization, Content-Type",
+            ),
+        )
+        self.send_header(
+            "Access-Control-Allow-Methods",
+            os.getenv("TRANSIT_API_ALLOW_METHODS", "GET, POST, OPTIONS"),
+        )
+        self.end_headers()
+
+    def _get_bearer_token(self) -> str | None:
+        """Extract the raw Authorization header from the request."""
+        return self.headers.get("Authorization") or self.headers.get("authorization")
+
+    def _require_role(self, required_role: str) -> tuple[bool, str | None, str | None]:
+        """Check auth and send a 401 response if not authorised.
+
+        Returns (authorised, token, role).  Caller must check the bool before
+        continuing; if False, the 401 has already been sent.
+        """
+        auth_header = self._get_bearer_token()
+        ok, token, role = check_auth(auth_header, required_role=required_role)
+        if not ok:
+            self._send_json(
+                {"error": "unauthorized", "required_role": required_role}, status=401
+            )
+        return ok, token, role
 
     def do_GET(self) -> None:  # pragma: no cover - exercised via integration tests
         parsed = urlparse(self.path)
@@ -237,9 +579,53 @@ class TransitAPIHandler(BaseHTTPRequestHandler):
         scope = (params.get("scope") or ["all"])[0]
         trace_id = (params.get("trace_id") or [""])[0] or None
 
+        # Health and public status endpoints are always open (no auth required)
         if parsed.path in {"/health", "/api/health", "/api/status"}:
             self._send_json(self.svc.service_health())
             return
+
+        # Public service-status API — rider-facing, no auth required
+        if parsed.path.startswith("/api/status/"):
+            status_scope = scope if scope not in ("", "all") else "live"
+            if parsed.path == "/api/status/routes":
+                self._send_json(
+                    self.svc.public_status_routes(scope=status_scope, trace_id=trace_id)
+                )
+                return
+            if parsed.path == "/api/status/network":
+                self._send_json(
+                    self.svc.public_status_network(
+                        scope=status_scope, trace_id=trace_id
+                    )
+                )
+                return
+            if parsed.path == "/api/status/alerts":
+                self._send_json(
+                    self.svc.public_status_alerts(scope=status_scope, trace_id=trace_id)
+                )
+                return
+            if parsed.path == "/api/status/scorecard":
+                limit_raw = (params.get("limit") or ["720"])[0]
+                try:
+                    sc_limit = int(limit_raw)
+                except ValueError:
+                    sc_limit = 720
+                self._send_json(
+                    self.svc.public_status_scorecard(
+                        scope=status_scope,
+                        trace_id=trace_id,
+                        limit=max(1, min(sc_limit, 2000)),
+                    )
+                )
+                return
+            self._send_json({"error": "not_found"}, status=404)
+            return
+
+        # Ops endpoints require at least viewer role
+        ok, _token, _role = self._require_role(ROLE_VIEWER)
+        if not ok:
+            return
+
         if parsed.path == "/api/transit/health":
             self._send_json(self.svc.transit_health(scope=scope, trace_id=trace_id))
             return
@@ -294,9 +680,57 @@ class TransitAPIHandler(BaseHTTPRequestHandler):
                 )
             )
             return
+        if parsed.path == "/api/transit/audit":
+            # Audit trail requires admin role
+            ok_admin, _t, _r = self._require_role(ROLE_ADMIN)
+            if not ok_admin:
+                return
+            limit_raw = (params.get("limit") or ["100"])[0]
+            try:
+                a_limit = int(limit_raw)
+            except ValueError:
+                a_limit = 100
+            self._send_json(self.svc.audit_trail(limit=max(1, min(a_limit, 500))))
+            return
+
         self._send_json({"error": "not_found"}, status=404)
 
-    def do_POST(self) -> None:  # pragma: no cover - no mutating endpoints yet
+    def do_POST(self) -> None:  # pragma: no cover - exercised via integration tests
+        parsed = urlparse(self.path)
+
+        # Incident acknowledgement — requires operator role
+        if parsed.path == "/api/transit/incidents/ack":
+            ok, token, role = self._require_role(ROLE_OPERATOR)
+            if not ok:
+                return
+            content_length = int(self.headers.get("Content-Length") or 0)
+            body_raw = self.rfile.read(content_length) if content_length else b"{}"
+            try:
+                body = json.loads(body_raw.decode("utf-8"))
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                self._send_json({"error": "invalid_json"}, status=400)
+                return
+            incident_id = str(body.get("incident_id") or "").strip()
+            if not incident_id:
+                self._send_json({"error": "missing_incident_id"}, status=400)
+                return
+            note = str(body.get("note") or "")
+            result = self.svc.acknowledge_incident(
+                incident_id,
+                note=note,
+                acknowledged_by=str(token or ""),
+            )
+            write_audit_event(
+                self.svc.store.client,
+                action="incident_ack",
+                token=token,
+                role=role,
+                resource=f"incident:{incident_id}",
+                payload={"note": note},
+            )
+            self._send_json(result)
+            return
+
         self._send_json({"error": "not_found"}, status=404)
 
     def log_message(self, format: str, *args: Any) -> None:  # pragma: no cover

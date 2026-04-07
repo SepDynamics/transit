@@ -622,6 +622,56 @@
   line-height: 1.5;
 }
 
+.incident-card--acked {
+  opacity: 0.72;
+  border-color: rgba(73, 198, 176, 0.18);
+}
+
+.incident-card__ack {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.incident-ack-btn {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    color 160ms ease,
+    background 160ms ease;
+}
+
+.incident-ack-btn:hover:not(:disabled) {
+  border-color: rgba(73, 198, 176, 0.3);
+  color: var(--accent-2);
+  background: rgba(73, 198, 176, 0.08);
+}
+
+.incident-ack-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.incident-ack-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: rgba(73, 198, 176, 0.1);
+  color: var(--accent-2);
+  border: 1px solid rgba(73, 198, 176, 0.22);
+}
+
 .badge,
 .chip {
   display: inline-flex;
@@ -792,6 +842,15 @@
     padding: 18px;
   }
 
+  .hero__title {
+    font-size: clamp(1.6rem, 7vw, 2.4rem);
+    max-width: none;
+  }
+
+  .hero__summary {
+    font-size: 0.9rem;
+  }
+
   .toolbar,
   .section__header {
     flex-direction: column;
@@ -811,12 +870,72 @@
   .detail-grid--expanded,
   .vehicle-card__metrics,
   .node-card__stats,
-  .scorecard-card__stats {
-    grid-template-columns: 1fr;
+  .scorecard-card__stats,
+  .trend-card__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .timeline__bars {
-    min-height: 170px;
+    min-height: 160px;
+  }
+
+  /* Ensure tap targets are adequately sized */
+  .toggle-strip__button,
+  .node-card,
+  .vehicle-card,
+  .trend-card,
+  .scorecard-card {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 480px) {
+  .sentinel__shell {
+    gap: 14px;
+  }
+
+  .overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .node-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .vehicle-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-grid,
+  .detail-grid--expanded,
+  .vehicle-card__metrics,
+  .node-card__stats,
+  .scorecard-card__stats,
+  .trend-card__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .map-container {
+    /* Reduce map height on small screens */
+    max-height: 280px;
+    overflow: hidden;
+  }
+
+  .timeline__bars {
+    min-height: 130px;
+  }
+
+  .hero {
+    gap: 16px;
+  }
+
+  .hero__chips {
+    gap: 6px;
+  }
+
+  .chip {
+    font-size: 0.68rem;
+    padding: 4px 8px;
   }
 }
 

@@ -1,0 +1,481 @@
+/* ---------------------------------------------------------------------------
+   Public Service Status Page
+   Rider-facing view: route tiles, network banner, active alerts, scorecard
+   --------------------------------------------------------------------------- */
+
+.status-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 32px 20px 72px;
+}
+
+.status-page__shell {
+  width: min(960px, 100%);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ---------------------------------------------------------------------------
+   Network banner
+   --------------------------------------------------------------------------- */
+
+.network-banner {
+  border-radius: 20px;
+  padding: 24px 28px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  animation: rise-in 520ms ease both;
+  border: 1px solid;
+}
+
+.network-banner--good {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.12), rgba(16, 185, 129, 0.08));
+  border-color: rgba(34, 197, 94, 0.28);
+}
+
+.network-banner--advisory {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.14), rgba(202, 138, 4, 0.08));
+  border-color: rgba(234, 179, 8, 0.35);
+}
+
+.network-banner--delay {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.14), rgba(234, 88, 12, 0.08));
+  border-color: rgba(249, 115, 22, 0.35);
+}
+
+.network-banner--disruption,
+.network-banner--severe {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.14), rgba(220, 38, 38, 0.08));
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.network-banner--unknown {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.network-banner__status {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.network-banner__dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.severity-dot--good { background: #22c55e; box-shadow: 0 0 8px rgba(34, 197, 94, 0.6); }
+.severity-dot--advisory { background: #eab308; box-shadow: 0 0 8px rgba(234, 179, 8, 0.6); }
+.severity-dot--delay { background: #f97316; box-shadow: 0 0 8px rgba(249, 115, 22, 0.6); }
+.severity-dot--disruption { background: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.6); }
+.severity-dot--severe { background: #dc2626; box-shadow: 0 0 10px rgba(220, 38, 38, 0.8); }
+.severity-dot--unknown { background: #6b7280; }
+
+.network-banner__label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.network-banner__title {
+  font-size: 1.25rem;
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+
+.network-banner__subtitle {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.network-banner__stats {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.network-banner__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: right;
+}
+
+.network-banner__stat span {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-subtle);
+}
+
+.network-banner__stat strong {
+  font-size: 1.1rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Section header for status page
+   --------------------------------------------------------------------------- */
+
+.status-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.status-section__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.status-section__title {
+  margin: 0;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-subtle);
+  font-family: var(--font-body);
+  font-weight: 500;
+}
+
+.status-section__count {
+  font-size: 0.82rem;
+  color: var(--text-subtle);
+}
+
+/* ---------------------------------------------------------------------------
+   Route tiles grid
+   --------------------------------------------------------------------------- */
+
+.route-tiles {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.route-tile {
+  border-radius: 18px;
+  padding: 18px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: rise-in 480ms ease both;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.route-tile:hover {
+  border-color: rgba(130, 188, 204, 0.22);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.route-tile--good { border-left: 3px solid #22c55e; }
+.route-tile--advisory { border-left: 3px solid #eab308; }
+.route-tile--delay { border-left: 3px solid #f97316; }
+.route-tile--disruption { border-left: 3px solid #ef4444; }
+.route-tile--severe { border-left: 3px solid #dc2626; }
+.route-tile--unknown { border-left: 3px solid #6b7280; }
+
+.route-tile__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.route-tile__name {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.route-tile__severity-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.severity-badge--good {
+  background: rgba(34, 197, 94, 0.12);
+  color: #4ade80;
+}
+
+.severity-badge--advisory {
+  background: rgba(234, 179, 8, 0.14);
+  color: #fde047;
+}
+
+.severity-badge--delay {
+  background: rgba(249, 115, 22, 0.14);
+  color: #fb923c;
+}
+
+.severity-badge--disruption {
+  background: rgba(239, 68, 68, 0.14);
+  color: #f87171;
+}
+
+.severity-badge--severe {
+  background: rgba(220, 38, 38, 0.18);
+  color: #fca5a5;
+}
+
+.severity-badge--unknown {
+  background: rgba(107, 114, 128, 0.14);
+  color: #9ca3af;
+}
+
+.route-tile__body {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.route-tile__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 0.8rem;
+  color: var(--text-subtle);
+}
+
+.route-tile__advisories {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.route-tile__advisory {
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  line-height: 1.45;
+}
+
+/* ---------------------------------------------------------------------------
+   Alert cards
+   --------------------------------------------------------------------------- */
+
+.alert-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.alert-card {
+  border-radius: 16px;
+  padding: 16px 18px;
+  border: 1px solid;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: rise-in 480ms ease both;
+}
+
+.alert-card--delay {
+  background: rgba(249, 115, 22, 0.06);
+  border-color: rgba(249, 115, 22, 0.2);
+}
+
+.alert-card--disruption,
+.alert-card--severe {
+  background: rgba(239, 68, 68, 0.07);
+  border-color: rgba(239, 68, 68, 0.22);
+}
+
+.alert-card--advisory {
+  background: rgba(234, 179, 8, 0.06);
+  border-color: rgba(234, 179, 8, 0.2);
+}
+
+.alert-card--good,
+.alert-card--unknown {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.alert-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.alert-card__route {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-subtle);
+}
+
+.alert-card__headline {
+  font-size: 0.95rem;
+  color: var(--text-main);
+  line-height: 1.5;
+}
+
+.alert-card__action {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* ---------------------------------------------------------------------------
+   Public scorecard table
+   --------------------------------------------------------------------------- */
+
+.scorecard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.scorecard-table th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-subtle);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.scorecard-table th:not(:first-child),
+.scorecard-table td:not(:first-child) {
+  text-align: right;
+}
+
+.scorecard-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: var(--text-main);
+}
+
+.scorecard-table tr:last-child td {
+  border-bottom: none;
+}
+
+.scorecard-table__label {
+  font-weight: 500;
+}
+
+.on-time-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.on-time-bar__track {
+  width: 72px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.on-time-bar__fill {
+  height: 100%;
+  border-radius: inherit;
+}
+
+.on-time-bar__fill--good { background: #22c55e; }
+.on-time-bar__fill--ok { background: #eab308; }
+.on-time-bar__fill--poor { background: #ef4444; }
+
+/* ---------------------------------------------------------------------------
+   Status page footer
+   --------------------------------------------------------------------------- */
+
+.status-footer {
+  padding: 16px 0;
+  font-size: 0.8rem;
+  color: var(--text-subtle);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ---------------------------------------------------------------------------
+   Responsive
+   --------------------------------------------------------------------------- */
+
+@media (max-width: 720px) {
+  .status-page {
+    padding: 18px 14px 48px;
+  }
+
+  .network-banner {
+    padding: 18px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .network-banner__stats {
+    flex-direction: row;
+    justify-content: flex-start;
+  }
+
+  .network-banner__stat {
+    text-align: left;
+  }
+
+  .route-tiles {
+    grid-template-columns: 1fr;
+  }
+
+  .scorecard-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Ensure tap targets */
+  .route-tile {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 480px) {
+  .status-page {
+    padding: 14px 12px 40px;
+  }
+
+  .network-banner__title {
+    font-size: 1.05rem;
+  }
+
+  .route-tile__name {
+    font-size: 0.95rem;
+  }
+
+  .route-tile__body {
+    font-size: 0.85rem;
+  }
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
