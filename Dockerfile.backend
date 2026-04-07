@@ -26,4 +26,4 @@ RUN mkdir -p logs output
 
 ENV PYTHONUNBUFFERED=1
 
-CMD ["python3", "scripts/cluster/api.py"]
+CMD ["python3", "scripts/transit/api.py"]

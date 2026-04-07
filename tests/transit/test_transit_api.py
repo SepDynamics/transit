@@ -57,6 +57,60 @@ class _FakeTransitService:
     def transit_sources(self):
         return {"scopes": [{"id": "all", "label": "All feeds"}]}
 
+    def transit_map(self, *, scope: str = "all", trace_id=None):
+        return {
+            "type": "FeatureCollection",
+            "scope": scope,
+            "trace_id": trace_id,
+            "vehicle_features": [
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "Point", "coordinates": [-71.06, 42.36]},
+                    "properties": {"entity_id": "vehicle:1811", "regime": "bunching_onset"},
+                }
+            ],
+            "corridor_summaries": [{"entity_id": "route:Red:0", "label": "Red Line"}],
+            "vehicle_count": 1,
+            "corridor_count": 1,
+        }
+
+    def transit_scorecard(self, *, scope: str = "all", trace_id=None, limit: int = 720):
+        return {
+            "scope": scope,
+            "trace_id": trace_id,
+            "window_snapshots": limit,
+            "corridor_count": 1,
+            "total_incidents": 2,
+            "network": {
+                "avg_hazard": 0.61,
+                "avg_delay_seconds": 165,
+                "on_time_pct": 50.0,
+                "unstable_corridor_count": 1,
+                "top_regimes": {"bunching_onset": 1},
+                "top_actions": {"hold": 1},
+            },
+            "corridors": [
+                {
+                    "entity_id": "route:Red:0",
+                    "label": "Red Line",
+                    "avg_hazard": 0.61,
+                    "hazard_p90": 0.81,
+                    "avg_delay_seconds": 165,
+                    "on_time_pct": 50.0,
+                    "incident_count": 2,
+                    "snapshot_count": 2,
+                    "healthy_pct": 0.0,
+                    "unstable_pct": 100.0,
+                    "top_regime": "bunching_onset",
+                    "top_action": "hold",
+                    "max_hazard": 0.81,
+                    "max_delay_seconds": 240,
+                    "regime_counts": {"bunching_onset": 1},
+                    "action_counts": {"hold": 1},
+                }
+            ],
+        }
+
 
 def test_transit_api_health_endpoint_serves_json():
     server = start_transit_http_server(_FakeTransitService(), host="127.0.0.1", port=0)
@@ -118,3 +172,33 @@ def test_transit_api_history_endpoint_requires_entity_id():
         server.server_close()
 
     assert payload == {"error": "missing_entity_id"}
+
+
+def test_transit_api_map_endpoint_serves_json():
+    server = start_transit_http_server(_FakeTransitService(), host="127.0.0.1", port=0)
+    try:
+        with urlopen(f"http://127.0.0.1:{server.server_port}/api/transit/map?scope=replay&trace_id=trace-123") as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    finally:
+        server.shutdown()
+        server.server_close()
+
+    assert payload["scope"] == "replay"
+    assert payload["trace_id"] == "trace-123"
+    assert payload["vehicle_count"] == 1
+    assert payload["vehicle_features"][0]["properties"]["entity_id"] == "vehicle:1811"
+
+
+def test_transit_api_scorecard_endpoint_serves_json():
+    server = start_transit_http_server(_FakeTransitService(), host="127.0.0.1", port=0)
+    try:
+        with urlopen(f"http://127.0.0.1:{server.server_port}/api/transit/scorecard?scope=live&limit=144") as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    finally:
+        server.shutdown()
+        server.server_close()
+
+    assert payload["scope"] == "live"
+    assert payload["window_snapshots"] == 144
+    assert payload["network"]["on_time_pct"] == 50.0
+    assert payload["corridors"][0]["entity_id"] == "route:Red:0"

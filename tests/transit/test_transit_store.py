@@ -62,6 +62,28 @@ def test_transit_store_keeps_live_and_replay_snapshots_side_by_side(valkey_url):
     assert sources["traces"][0]["latest_snapshot_timestamp_ms"] == 1_710_000_200_000
 
 
+def test_transit_store_scorecard_aggregates_network_kpis(valkey_url):
+    store = TransitStore(valkey_url)
+
+    store.write_snapshot(_snapshot(timestamp_ms=1_710_000_100_000, delay_seconds=90, hazard=0.42))
+    store.write_snapshot(_snapshot(timestamp_ms=1_710_000_160_000, delay_seconds=240, hazard=0.81))
+
+    scorecard = store.scorecard(limit=10)
+
+    assert scorecard["window_snapshots"] == 2
+    assert scorecard["corridor_count"] == 1
+    assert scorecard["total_incidents"] == 2
+    assert scorecard["network"]["avg_hazard"] == 0.615
+    assert scorecard["network"]["avg_delay_seconds"] == 165
+    assert scorecard["network"]["on_time_pct"] == 50.0
+    assert scorecard["network"]["unstable_corridor_count"] == 1
+    assert scorecard["corridors"][0]["entity_id"] == "route:Red:0"
+    assert scorecard["corridors"][0]["avg_hazard"] == 0.615
+    assert scorecard["corridors"][0]["hazard_p90"] == 0.81
+    assert scorecard["corridors"][0]["on_time_pct"] == 50.0
+    assert scorecard["corridors"][0]["top_action"] == "hold"
+
+
 def _snapshot(*, timestamp_ms: int, delay_seconds: int, hazard: float, source: str = "live", trace_id: str | None = None):
     regime = {
         "timestamp_ms": timestamp_ms,

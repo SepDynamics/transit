@@ -1,54 +1,60 @@
 # Transit Sentinel Execution Backlog
 
-## P0: Prove Value On Transit Event Corridors
+## Recently Landed
 
-### 1. Build replayable city/event case packs
+- LA Metro rail and bus websocket archive lanes
+- dashboard map view
+- network and corridor scorecard API plus UI
+- webhook, SMTP, and JSONL notification sidecar
+- transit-only repo cleanup and removal of unrelated runtime code
 
-- committed overnight advisory control pack now lives under `data/case-packs/mbta/overnight_advisory_controls`
-- committed daytime Red Line delay spike pack now lives under `data/case-packs/mbta/daytime_red_line_delay_spike`
-- committed LA B Line bunching pack now lives under `data/case-packs/la/daytime_b_line_bunching`
-- committed LA E Line bus bridge control now lives under `data/case-packs/la/e_line_bus_bridge_control`
-- committed LA Intuit Dome venue-access controls now live under `data/case-packs/la/intuit_dome_venue_access_controls`
-- one labeled bunching onset pack
-- one headway collapse pack
-- one terminal congestion pack
-- one healthy control pack
-- each pack should point to archived snapshots and carry an operator-facing note
+## P0: Deepen Real Public Proof
 
-### 2. Tune transit policy against those packs
+### 1. Run Long-Lived Archive Collection
 
-- calibrate `hold` vs `short_turn`
-- calibrate `dispatch_relief` thresholds
-- improve stale-feed and alert-lag handling
-- tighten confidence so corridor incidents are fewer and clearer
+- keep MBTA archiving continuously
+- validate LA Metro websocket collection under live conditions
+- capture enough windows to build more real case packs instead of synthetic examples
 
-### 3. Expand baseline comparison
+### 2. Grow The Case-Pack Corpus
 
-- headway-threshold baseline
-- delay-threshold baseline
-- service-alert-only baseline
-- case-pack batch reports with pass/fail verdicts
+- add more MBTA bunching, collapse, and degradation packs
+- build LA Metro packs from live websocket captures once validated
+- keep a healthy balance of positive incidents and negative controls
 
-## P1: Strengthen The Replay Lane
+### 3. Keep The Public-Demo Lane Tight
 
-### 4. Make replay a first-class workflow
+- keep the cross-city case-pack suite green
+- keep docs aligned with actual runtime behavior
+- avoid reintroducing non-transit or off-scope assets
 
-- standardize case-pack folder conventions
-- keep city/event metadata and event overlays attached to corridor reports
-- preserve feed provenance in manifests
-- support batch grading over a directory of case packs
+## P1: Productize The Current Surface
 
-### 5. Build corridor history summaries
+### 4. Expand Reporting Outputs
 
-- recurring unstable corridor reports
-- incident rate by route and direction
-- top action distribution over replay windows
+- recurring scorecard exports
+- replay-based incident retrospectives
+- simpler proof artifacts for demos and procurement reviews
 
-## P2: Remove Legacy Cluster Weight
+### 5. Decompose The Frontend
 
-### 6. Shrink the compatibility surface
+- split `LiveConsole.tsx` into smaller feature components
+- preserve replay, map, incident, and scorecard behavior while reducing console complexity
 
-- keep cluster checks explicit, not default
-- keep the combined cross-city case-pack suite green before each cluster deletion pass
-- delete legacy cluster modules once no external users remain
-- remove cluster-only datasets and tooling from this repo when transit no longer needs them
+### 6. Harden Operational Delivery
+
+- decide on auth and RBAC requirements before external deployment
+- tighten notification routing and delivery configuration
+- improve mobile and small-screen usability for field users
+
+## P2: Expand Agency Scope Deliberately
+
+### 7. Validate The Next California Target
+
+- choose a concrete public California feed target before building a new adapter
+- do not document a Caltrans lane until the code and feeds are real
+
+### 8. Broaden Event Operations Coverage
+
+- add more venue overlays only where they can be exercised against real public feed behavior
+- strengthen corridor-to-corridor event and disruption scenarios with labeled evidence

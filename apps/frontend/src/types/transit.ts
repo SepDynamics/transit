@@ -337,3 +337,94 @@ export type SourceResponse = TransitSourceResponse;
 export type VehicleHistoryResponse = TransitVehicleHistoryResponse;
 export type CorridorHistoryResponse = TransitCorridorHistoryResponse;
 export type TrendResponse = TransitTrendResponse;
+
+// ---------------------------------------------------------------------------
+// Map endpoint types (/api/transit/map)
+// ---------------------------------------------------------------------------
+
+export interface VehicleMapFeatureProperties {
+  entity_id?: string | null;
+  vehicle_id?: string | null;
+  route_id?: string | null;
+  direction_id?: number | null;
+  delay_seconds?: number | null;
+  current_status?: string | null;
+  occupancy_status?: string | null;
+  bearing?: number | null;
+  hazard_score?: number | null;
+  regime?: string | null;
+  label?: string | null;
+  timestamp_ms?: number | null;
+}
+
+export interface VehicleMapFeature {
+  type: "Feature";
+  geometry: { type: "Point"; coordinates: [number, number] };
+  properties: VehicleMapFeatureProperties;
+}
+
+export interface CorridorMapSummary {
+  entity_id: string;
+  route_id?: string | null;
+  direction_id?: number | null;
+  label?: string | null;
+  regime?: string | null;
+  hazard_score?: number | null;
+  active_vehicles?: number | null;
+  incident_count?: number;
+  top_action?: string | null;
+  timestamp_ms?: number | null;
+}
+
+export interface TransitMapResponse {
+  type: "FeatureCollection";
+  scope?: string;
+  trace_id?: string | null;
+  timestamp?: string;
+  vehicle_features: VehicleMapFeature[];
+  corridor_summaries: CorridorMapSummary[];
+  vehicle_count: number;
+  corridor_count: number;
+}
+
+export interface TransitScorecardNetwork {
+  avg_hazard: number;
+  avg_delay_seconds: number;
+  on_time_pct: number;
+  unstable_corridor_count: number;
+  top_regimes: Record<string, number>;
+  top_actions: Record<string, number>;
+}
+
+export interface TransitScorecardCorridor {
+  entity_id: string;
+  label: string;
+  route_id?: string | null;
+  snapshot_count: number;
+  incident_count: number;
+  avg_hazard: number;
+  max_hazard: number;
+  hazard_p90: number;
+  avg_delay_seconds: number;
+  max_delay_seconds: number;
+  on_time_pct: number;
+  healthy_pct: number;
+  unstable_pct: number;
+  top_regime: string;
+  top_action: string;
+  regime_counts: Record<string, number>;
+  action_counts: Record<string, number>;
+}
+
+export interface TransitScorecardResponse {
+  generated_at?: string;
+  scope?: string;
+  trace_id?: string | null;
+  window_snapshots: number;
+  corridor_count: number;
+  total_incidents: number;
+  network: TransitScorecardNetwork;
+  corridors: TransitScorecardCorridor[];
+}
+
+export type ScorecardResponse = TransitScorecardResponse;

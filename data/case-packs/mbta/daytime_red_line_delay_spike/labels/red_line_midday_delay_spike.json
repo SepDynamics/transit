@@ -11,5 +11,5 @@
       "snapshot_path": "archive/2026/04/03/163405Z"
     }
   ],
-  "use_case": "Detect a real daytime Red Line southbound delay spike from official MBTA trip updates before deleting more legacy cluster code."
+  "use_case": "Detect a real daytime Red Line southbound delay spike from official MBTA trip updates."
 }

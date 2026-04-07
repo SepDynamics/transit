@@ -1,31 +1,23 @@
 # Repo Scope
 
-This repository is the transit adaptation branch of the original stack.
+## What Belongs Here
 
-## Keep
+- public-transit feed archive, ingest, replay, and scoring code
+- transit API and frontend code
+- transit case packs, labels, and proof artifacts
+- event overlays and public-data reporting helpers
+- native or shared runtime code that directly supports the transit product
 
-- the ingest -> score -> policy -> API -> dashboard pattern
-- replay and evaluation tooling
-- reusable structural scoring ideas
-- native/core experimentation that still helps the transit product
+## What Does Not Belong Here
 
-## Remove Over Time
-
-- GPU-specific terminology
-- cluster/node/GPU product language
-- dataset importers that only exist for the source application
-- evaluation fixtures that are not relevant to transit
-
-## Add
-
-- GTFS and GTFS-RT ingestion
-- transit entity models
-- transit incident evaluation fixtures
-- transit-specific frontend views
-- public transit proof bundles
+- unrelated infrastructure monitoring products
+- placeholder docs about work that has not been implemented
+- datasets that are not usable for the current transit product
+- repo narratives centered on stale history rather than current behavior
 
 ## Rule
 
-If a file does not help ingest transit feeds, score service instability, expose
-transit incidents, render the transit dashboard, replay public cases, or support
-evaluation of the transit product, it should not stay in this repo.
+If a file does not help archive transit feeds, score service instability, expose
+transit incidents, render the transit dashboard, replay public cases, or
+support calibration/reporting for the transit product, it should not stay in
+this repository.

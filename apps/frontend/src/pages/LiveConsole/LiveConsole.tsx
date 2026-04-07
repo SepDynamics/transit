@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import type {
   CorridorHistoryResponse,
   EntitiesResponse,
@@ -7,14 +7,18 @@ import type {
   LineCard,
   ProvenancePayload,
   RegimeResponse,
+  ScorecardResponse,
   SourceResponse,
   TransitHealth,
+  TransitMapResponse,
   TransitReplayTrace,
   TrendResponse,
   VehicleCard,
   VehicleHistoryResponse,
 } from "../../types/transit";
 import "./LiveConsole.css";
+
+const TransitMap = lazy(() => import("../../components/TransitMap"));
 
 declare global {
   interface Window {
@@ -180,6 +184,8 @@ export default function LiveConsole() {
     incidents: [],
   });
   const [error, setError] = useState<string | null>(null);
+  const [mapData, setMapData] = useState<TransitMapResponse | null>(null);
+  const [scorecardResponse, setScorecardResponse] = useState<ScorecardResponse | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -241,6 +247,26 @@ export default function LiveConsole() {
     };
     loadDashboard();
     const timer = window.setInterval(loadDashboard, 5000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [scope, selectedTraceId]);
+
+  useEffect(() => {
+    let active = true;
+    const loadScorecard = async () => {
+      const query = buildTransitQuery(scope, selectedTraceId || undefined);
+      try {
+        const payload = await fetchJson<ScorecardResponse>(`/api/transit/scorecard?${query}&limit=720`);
+        if (!active) return;
+        setScorecardResponse(payload);
+      } catch {
+        if (!active) return;
+      }
+    };
+    loadScorecard();
+    const timer = window.setInterval(loadScorecard, 10000);
     return () => {
       active = false;
       window.clearInterval(timer);
@@ -321,6 +347,28 @@ export default function LiveConsole() {
     };
   }, [scope, selectedCorridorId, selectedTraceId]);
 
+  // Map data — polled on the same cadence as the main dashboard
+  useEffect(() => {
+    let active = true;
+    const loadMap = async () => {
+      const query = buildTransitQuery(scope, selectedTraceId || undefined);
+      try {
+        const payload = await fetchJson<TransitMapResponse>(`/api/transit/map?${query}`);
+        if (!active) return;
+        setMapData(payload);
+      } catch {
+        // Map data is best-effort; don't disrupt the main dashboard on failure
+        if (!active) return;
+      }
+    };
+    loadMap();
+    const timer = window.setInterval(loadMap, 5000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [scope, selectedTraceId]);
+
   const activeLines = entities.active_lines ?? entities.lines;
   const scheduledLaterLines = entities.scheduled_later_lines ?? [];
   const selectedVehicle = entities.vehicles.find((vehicle) => vehicle.entity_id === selectedEntityId) || null;
@@ -338,6 +386,7 @@ export default function LiveConsole() {
   const vehiclesOnSelectedCorridor = selectedCorridorId
     ? entities.vehicles.filter((vehicle) => vehicle.corridor_entity_id === selectedCorridorId)
     : [];
+  const scorecardTopCorridors = scorecardResponse?.corridors.slice(0, 4) ?? [];
 
   const selectCorridor = (corridorEntityId: string, preferredVehicleId?: string | null) => {
     if (!corridorEntityId) {
@@ -520,6 +569,150 @@ export default function LiveConsole() {
             <span className="metric-card__label">Worst corridor</span>
             <strong className="metric-card__value">{transitHealth?.worst_corridor?.label ?? "n/a"}</strong>
             <span className="metric-card__meta">{humanizeToken(transitHealth?.worst_corridor?.regime)}</span>
+          </article>
+        </section>
+
+        <section className="section panel">
+          <div className="section__header">
+            <div>
+              <h2 className="section__title">Live map</h2>
+              <p className="section__hint">
+                Vehicle positions colored by corridor regime. Click a vehicle for details.
+              </p>
+            </div>
+          </div>
+          <div className="map-container">
+            <Suspense fallback={<div className="empty-state">Loading map...</div>}>
+              <TransitMap
+                mapData={mapData}
+                defaultCenter={[-71.0589, 42.3601]}
+                defaultZoom={11}
+                style={{ width: "100%", height: "480px", borderRadius: 8, overflow: "hidden" }}
+              />
+            </Suspense>
+          </div>
+        </section>
+
+        <section className="section split-grid">
+          <article className="panel">
+            <div className="section__header">
+              <div>
+                <h2 className="section__title">Network scorecard</h2>
+                <p className="section__hint">
+                  Rolling public-data KPI summary over the persisted scorecard window.
+                </p>
+              </div>
+            </div>
+            <div className="detail-grid detail-grid--expanded">
+              <div className="detail-card">
+                <span>Window snapshots</span>
+                <strong>{scorecardResponse?.window_snapshots ?? 0}</strong>
+              </div>
+              <div className="detail-card">
+                <span>Tracked corridors</span>
+                <strong>{scorecardResponse?.corridor_count ?? 0}</strong>
+              </div>
+              <div className="detail-card">
+                <span>Total incidents</span>
+                <strong>{scorecardResponse?.total_incidents ?? 0}</strong>
+              </div>
+              <div className="detail-card">
+                <span>Average hazard</span>
+                <strong>{formatHazard(scorecardResponse?.network.avg_hazard)}</strong>
+              </div>
+              <div className="detail-card">
+                <span>Average delay</span>
+                <strong>{formatDelay(scorecardResponse?.network.avg_delay_seconds)}</strong>
+              </div>
+              <div className="detail-card">
+                <span>On-time proxy</span>
+                <strong>{formatPercent(scorecardResponse?.network.on_time_pct, 1)}</strong>
+              </div>
+            </div>
+            <div className="signature-list">
+              <article className="signature-card">
+                <div className="signature-card__header">
+                  <strong>Network action mix</strong>
+                  <span>{Object.keys(scorecardResponse?.network.top_actions ?? {}).length} actions</span>
+                </div>
+                <p>
+                  {Object.entries(scorecardResponse?.network.top_actions ?? {})
+                    .map(([action, count]) => `${humanizeToken(action)} ${count}`)
+                    .join(" • ") || "No rolling action history yet."}
+                </p>
+              </article>
+              <article className="signature-card">
+                <div className="signature-card__header">
+                  <strong>Network regime mix</strong>
+                  <span>{scorecardResponse?.network.unstable_corridor_count ?? 0} unstable corridors</span>
+                </div>
+                <p>
+                  {Object.entries(scorecardResponse?.network.top_regimes ?? {})
+                    .map(([regime, count]) => `${humanizeToken(regime)} ${count}`)
+                    .join(" • ") || "No rolling regime history yet."}
+                </p>
+              </article>
+            </div>
+          </article>
+
+          <article className="panel">
+            <div className="section__header">
+              <div>
+                <h2 className="section__title">Corridor scorecard watchlist</h2>
+                <p className="section__hint">
+                  Highest-risk corridors over the rolling scorecard window.
+                </p>
+              </div>
+            </div>
+            <div className="scorecard-list">
+              {scorecardTopCorridors.map((corridor) => (
+                <button
+                  key={corridor.entity_id}
+                  type="button"
+                  className={corridor.entity_id === selectedCorridorId ? "scorecard-card is-active" : "scorecard-card"}
+                  onClick={() => selectCorridor(corridor.entity_id)}
+                >
+                  <div className="scorecard-card__header">
+                    <strong>{corridor.label}</strong>
+                    <span className={`badge badge--${actionTone(corridor.top_action)}`}>{humanizeToken(corridor.top_action)}</span>
+                  </div>
+                  <div className="scorecard-card__stats">
+                    <div>
+                      <span>Avg hazard</span>
+                      <strong>{formatHazard(corridor.avg_hazard)}</strong>
+                    </div>
+                    <div>
+                      <span>P90 hazard</span>
+                      <strong>{formatHazard(corridor.hazard_p90)}</strong>
+                    </div>
+                    <div>
+                      <span>Avg delay</span>
+                      <strong>{formatDelay(corridor.avg_delay_seconds)}</strong>
+                    </div>
+                    <div>
+                      <span>On-time</span>
+                      <strong>{formatPercent(corridor.on_time_pct, 1)}</strong>
+                    </div>
+                    <div>
+                      <span>Incidents</span>
+                      <strong>{corridor.incident_count}</strong>
+                    </div>
+                    <div>
+                      <span>Snapshots</span>
+                      <strong>{corridor.snapshot_count}</strong>
+                    </div>
+                  </div>
+                  <div className="signature-card__meta">
+                    <span>{humanizeToken(corridor.top_regime)}</span>
+                    <span>{formatPercent(corridor.unstable_pct, 1)} unstable</span>
+                    <span>{formatPercent(corridor.healthy_pct, 1)} healthy</span>
+                  </div>
+                </button>
+              ))}
+              {!scorecardTopCorridors.length ? (
+                <div className="empty-state">No scorecard history yet for the selected scope.</div>
+              ) : null}
+            </div>
           </article>
         </section>
 

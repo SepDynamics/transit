@@ -470,6 +470,69 @@
   gap: 12px;
 }
 
+.scorecard-list {
+  display: grid;
+  gap: 14px;
+}
+
+.scorecard-card {
+  appearance: none;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease;
+}
+
+.scorecard-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(73, 198, 176, 0.24);
+  background: rgba(73, 198, 176, 0.06);
+}
+
+.scorecard-card.is-active {
+  border-color: rgba(255, 161, 88, 0.4);
+  background: linear-gradient(160deg, rgba(255, 161, 88, 0.08), rgba(73, 198, 176, 0.08));
+}
+
+.scorecard-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.scorecard-card__header strong {
+  font-size: 1rem;
+}
+
+.scorecard-card__stats {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.scorecard-card__stats span {
+  display: block;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-subtle);
+}
+
+.scorecard-card__stats strong {
+  font-size: 1rem;
+}
+
 .trend-card {
   appearance: none;
   text-align: left;
@@ -747,11 +810,43 @@
   .detail-grid,
   .detail-grid--expanded,
   .vehicle-card__metrics,
-  .node-card__stats {
+  .node-card__stats,
+  .scorecard-card__stats {
     grid-template-columns: 1fr;
   }
 
   .timeline__bars {
     min-height: 170px;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Map section
+   --------------------------------------------------------------------------- */
+
+.map-container {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+}
+
+/* Override maplibre popup to match dark theme */
+.maplibregl-popup-content {
+  background: rgba(15, 23, 42, 0.96) !important;
+  color: #e2e8f0 !important;
+  border: 1px solid rgba(73, 198, 176, 0.25) !important;
+  border-radius: 8px !important;
+  padding: 10px 14px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+}
+
+.maplibregl-popup-close-button {
+  color: #94a3b8 !important;
+  font-size: 16px !important;
+  right: 6px !important;
+  top: 4px !important;
+}
+
+.maplibregl-popup-tip {
+  border-top-color: rgba(73, 198, 176, 0.25) !important;
 }

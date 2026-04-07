@@ -1,3 +1,0 @@
--r requirements.txt
-
-nvidia-ml-py3>=7.352.0

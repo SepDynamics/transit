@@ -2,70 +2,45 @@
 
 ## Goal
 
-Turn the scaffold into a useful public-data transit operations product by
-anchoring on MBTA first, then proving the system adds value beyond raw feeds.
+Use the current repo surface to deepen public-data proof, harden the live lanes,
+and turn the existing console plus calibration stack into a more deployable
+product.
 
-## Days 1-30: Ingest And Archive
+## Days 1-30: Data Lane Hardening
 
-- land an official MBTA archive lane for:
-  - static GTFS
-  - GTFS-RT vehicle positions
-  - GTFS-RT trip updates
-  - GTFS-RT alerts
-- store timestamped snapshots locally and maintain a `current/` working set
-- normalize feeds into transit-native entities:
-  - route
-  - trip
-  - vehicle
-  - stop cluster
-  - terminal
-  - corridor
-- define replay bundle format and import/export helpers
-- add feed health and feed incoherence detection
-- establish labeled MBTA case-pack conventions for replay and grading
+- keep MBTA archiving continuously
+- validate LA Metro websocket archive quality under live load
+- turn new archive windows into labeled case packs
+- keep replay imports and the cross-city case-pack gate green
 
 Exit criteria:
 
-- one command can archive an MBTA snapshot on demand
-- one service can refresh the local working set continuously
-- the API/dashboard can read the archived current feed set
-- one MBTA case pack can be replayed and graded end to end
+- both current agency lanes are producing usable live archives
+- new real-data case packs are landing from current archive output
+- live and replay views remain aligned in the API and dashboard
 
-## Days 31-60: Score Service Instability
+## Days 31-60: Reporting And Proof Surfaces
 
-- implement headway and bunching features
-- add terminal congestion and dwell inflation features
-- group vehicle-level failures into corridor incidents
-- compare heuristic baseline vs Sentinel scoring on historical slices
-- build replayable proof bundles:
-  - bunching case
-  - degraded corridor case
-  - healthy control case
-- tune operator actions against labeled cases rather than generic scaffold rules
+- expand scorecard/report outputs
+- generate replay-based retrospectives
+- package proof artifacts for demos and external reviews
+- refine notification workflows around real incident traffic
 
 Exit criteria:
 
-- route/corridor incidents are visible in the API
-- backtests can compute lead time and alert quality
-- recurring bad corridors can be identified over archived history
-- at least one MBTA bunching-focused case pack shows Sentinel beating a naive baseline
+- scorecards are useful beyond the dashboard
+- replay runs can be turned into shareable summaries quickly
+- notification routing is credible for operational demos
 
-## Days 61-90: Make It Operationally Useful
+## Days 61-90: Product Hardening
 
-- add reliability dashboards over archived history
-- expose rider-information and feed-quality views:
-  - stale predictions
-  - alert lag
-  - ghost vehicles
-  - missing trip updates
-- build case-study summaries and proof pages
-- add second-agency adapter to validate portability:
-  - WMATA preferred
-  - TriMet acceptable
-- start removing cluster-only repo weight that no longer serves the transit product
+- split the frontend into smaller maintainable components
+- improve mobile and small-screen behavior
+- decide on auth/RBAC requirements for any broader deployment
+- choose the next public agency target only if the feed contract is concrete
 
 Exit criteria:
 
-- the product can explain why a corridor is unstable
-- the product can replay and score known service failures
-- the product can benchmark agencies or routes on the same normalized model
+- the console is easier to maintain and demo
+- the repo has a clear path from public proof to production hardening
+- any new agency scope is backed by a real implemented public-data lane

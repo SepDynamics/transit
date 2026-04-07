@@ -1,13 +1,12 @@
 /*
  * BYTE STREAM MANIFOLD ENGINE
  * ===========================
- * This file converts encoded GPU telemetry windows into structural metrics
- * used by the Cluster Sentinel regime scorer.
+ * This file converts encoded telemetry windows into structural metrics used by
+ * the Transit Sentinel regime scorer.
  *
  * Inputs:
  * - A byte stream produced by the Python telemetry encoder. Each byte
- *   represents quantized GPU utilization, memory pressure, thermal pressure,
- *   power pressure, throttle state, and error state.
+ *   represents quantized operational signals chosen by the caller.
  * - ByteStreamConfig, which controls window size, stride, repetition lookback,
  *   bit ordering, and the structural damping options passed to EntropyProcessor.
  *

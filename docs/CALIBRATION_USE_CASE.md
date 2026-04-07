@@ -1,26 +1,19 @@
 # Calibration Use Case
 
-## First Valuable Use Case
+## Core Proof Standard
 
-The first proof-of-value target should be narrow:
+Transit Sentinel should detect corridor instability from public data with fewer
+false positives than naive threshold-only rules, while also recommending a more
+useful operator action.
 
-- detect corridor bunching and headway collapse from official public data
-- do it with fewer false positives than naive alert-or-delay thresholds
-- explain the recommendation in operator language
+## Current Calibration Workflow
 
-This is the right first use case because it is:
-
-- operationally meaningful
-- visible in GTFS + GTFS-RT without requiring internal dispatch systems
-- easier to prove than a full all-incidents network monitor
-
-## Calibration Workflow
-
-1. Archive one or more transit snapshots for the target agency.
-2. Create one or more labels JSON files for bunching, collapse, congestion, or control cases.
-3. Group those files into a case-pack directory with `case_pack.json` when you want a batch proof run by city and event.
-4. Run the calibration report.
-5. Compare Transit Sentinel against the naive baseline.
+1. Archive one or more real transit snapshots.
+2. Create label files for positive incidents and negative controls.
+3. Group related snapshots and labels into a case-pack directory when you want a
+   batch proof run by city, route family, or event.
+4. Run calibration.
+5. Compare Sentinel against the naive baseline.
 
 ## Label Shape
 
@@ -43,7 +36,7 @@ This is the right first use case because it is:
 }
 ```
 
-Negative control labels are also supported:
+Negative controls are supported in the same structure:
 
 ```json
 {
@@ -64,59 +57,33 @@ Negative control labels are also supported:
 
 ## Commands
 
-Build JSON report:
+Grade one archive/label set:
 
 ```bash
-PYTHONPATH=. python3 scripts/transit/grade_calibration.py \
-  --archive-root data/feeds/mbta \
-  --labels path/to/labels.json
+make transit-calibration-report ARGS="--archive-root data/feeds/mbta --labels path/to/labels.json"
 ```
 
-Render markdown summary:
+Render a markdown summary:
 
 ```bash
-PYTHONPATH=. python3 scripts/transit/render_calibration_summary.py \
-  --archive-root data/feeds/mbta \
-  --labels path/to/labels.json
+make transit-calibration-summary ARGS="--archive-root data/feeds/mbta --labels path/to/labels.json"
 ```
 
-Batch-grade a directory of city/event case packs:
+Grade the committed cross-city suite:
 
 ```bash
-PYTHONPATH=. python3 scripts/transit/grade_calibration.py \
-  --archive-root data/case-packs \
-  --labels path/to/case-packs
+make check-transit-case-packs
 ```
 
-Run the committed real-data control suite in this repository:
+Grade a specific committed subtree:
 
 ```bash
-PYTHONPATH=. python3 scripts/transit/grade_calibration.py \
-  --archive-root data/case-packs/mbta/overnight_advisory_controls \
-  --labels data/case-packs/mbta/overnight_advisory_controls/labels
+make transit-calibration-report ARGS="--archive-root data/case-packs/mbta --labels data/case-packs/mbta"
 ```
 
-Run the committed combined MBTA suite in this repository:
+## What Counts As A Real Win
 
-```bash
-PYTHONPATH=. python3 scripts/transit/grade_calibration.py \
-  --archive-root data/case-packs/mbta \
-  --labels data/case-packs/mbta
-```
-
-Run the committed cross-city suite in this repository:
-
-```bash
-PYTHONPATH=. python3 scripts/transit/grade_calibration.py \
-  --archive-root data/case-packs \
-  --labels data/case-packs \
-  --strict
-```
-
-## Proof Standard
-
-For this use case to count as a real proof point:
-
-- Transit Sentinel must match at least as many labeled incidents as the baseline
-- Transit Sentinel must produce no more extra alerts than the baseline
-- Transit Sentinel should recommend a more useful action than `warn riders`
+- Sentinel matches at least as many labeled incidents as the baseline.
+- Sentinel produces no more extra alerts than the baseline.
+- Sentinel recommends a more useful action than generic rider-warning output.
+- Control packs stay quiet.
