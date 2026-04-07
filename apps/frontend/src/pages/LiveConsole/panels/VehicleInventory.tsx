@@ -8,6 +8,8 @@ import {
   formatDelay,
   formatHazard,
   formatPercent,
+  formatActionLabel,
+  formatRegimeLabel,
   humanizeToken,
   topFactorSummary,
 } from "../../../utils/formatters";
@@ -67,7 +69,10 @@ export default function VehicleInventory({
                     <span>{vehicle.route_label ?? "Unknown route"}</span>
                   </div>
                   <span className={`badge badge--${actionTone(vehicle.regime?.action)}`}>
-                    {humanizeToken(vehicle.regime?.action ?? "monitor")}
+                    {formatActionLabel(
+                      vehicle.regime?.action,
+                      vehicle.regime?.action_label,
+                    )}
                   </span>
                 </div>
                 <div className="vehicle-card__metrics">
@@ -84,12 +89,17 @@ export default function VehicleInventory({
                     <strong>{humanizeToken(vehicle.occupancy_status)}</strong>
                   </div>
                   <div>
-                    <span>Hazard</span>
+                    <span>Risk score</span>
                     <strong>{formatHazard(vehicle.regime?.hazard)}</strong>
                   </div>
                 </div>
                 <div className="vehicle-card__footer">
-                  <span>{humanizeToken(vehicle.regime?.regime ?? "healthy")}</span>
+                  <span>
+                    {formatRegimeLabel(
+                      vehicle.regime?.regime ?? "healthy",
+                      vehicle.regime?.regime_label,
+                    )}
+                  </span>
                   <span>{vehicle.collection_source ?? vehicle.source ?? "unknown source"}</span>
                 </div>
               </button>
@@ -159,8 +169,8 @@ export default function VehicleInventory({
                   <span>{signature.entity_count} corridors</span>
                 </div>
                 <p>
-                  {signature.regimes.map(humanizeToken).join(", ")} •{" "}
-                  {signature.actions.map(humanizeToken).join(", ")}
+                  {signature.regimes.map((regime) => formatRegimeLabel(regime)).join(", ")} •{" "}
+                  {signature.actions.map((action) => formatActionLabel(action)).join(", ")}
                 </p>
               </article>
             ))}

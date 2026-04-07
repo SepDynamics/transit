@@ -50,11 +50,34 @@ Import archived snapshots as a replay trace:
 make transit-replay ARGS="--redis redis://localhost:6379/0 --archive-root data/feeds/mbta --trace-id mbta-proof --max-snapshots 20"
 ```
 
+Seed the hosted demo from the most recent archive window:
+
+```bash
+make transit-demo-seed ARGS="--redis redis://localhost:6379/0 --clear-store"
+```
+
+Persist a proof window around a detected incident:
+
+```bash
+make transit-proof-window ARGS="--archive-root data/feeds/mbta --incident-json path/to/incident.json"
+```
+
 Start the API:
 
 ```bash
 make transit-api ARGS="--redis redis://localhost:6379/0"
 ```
+
+Durable host-side live runtime:
+
+```bash
+systemctl --user enable --now transit-sentinel-mbta-live.target
+```
+
+The committed `systemd --user` assets live under
+[`ops/systemd/README.md`](/sep/transit-sentinel/ops/systemd/README.md) and are
+the preferred way to keep the live MBTA backend running across terminal
+disconnects and host restarts.
 
 Generate an archive-based corridor report:
 
@@ -76,3 +99,5 @@ MBTA is the repo's best lane for:
 - generating more labeled case packs
 - testing map and scorecard surfaces against real public data
 - producing repeatable proof artifacts from archived service disruptions
+- capturing alert-proof windows around new Sentinel detections
+- validating the operator-priority incident queue and service-state terminology

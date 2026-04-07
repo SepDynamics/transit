@@ -16,8 +16,9 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import type {
   TransitMapResponse,
   VehicleMapFeature,
-  CorridorMapSummary,
+  CorridorMapFeature,
 } from "../types/transit";
+import { formatRegimeLabel } from "../utils/formatters";
 
 // ---------------------------------------------------------------------------
 // Regime → color mapping (matches the LiveConsole CSS badge colors)
@@ -88,6 +89,56 @@ function buildVehicleGeoJSON(
   };
 }
 
+function buildCorridorGeoJSON(
+  features: CorridorMapFeature[]
+): GeoJSON.FeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: features.map((feature) => ({
+      ...feature,
+      properties: {
+        ...feature.properties,
+        _color:
+          feature.properties._color ?? regimeColor(feature.properties.regime),
+      },
+    })),
+  };
+}
+
+function extendBoundsWithGeometry(
+  bounds: maplibregl.LngLatBounds,
+  geometry: GeoJSON.Geometry | null | undefined
+): boolean {
+  if (!geometry) return false;
+  if (geometry.type === "Point") {
+    const [lng, lat] = geometry.coordinates;
+    bounds.extend([lng, lat]);
+    return true;
+  }
+  if (geometry.type === "LineString") {
+    geometry.coordinates.forEach(([lng, lat]) => bounds.extend([lng, lat]));
+    return geometry.coordinates.length > 0;
+  }
+  return false;
+}
+
+function buildDataBounds(
+  mapData: TransitMapResponse | null
+): maplibregl.LngLatBounds | null {
+  if (!mapData) return null;
+  const bounds = new maplibregl.LngLatBounds();
+  let hasCoordinates = false;
+  (mapData.corridor_features ?? []).forEach((feature) => {
+    hasCoordinates =
+      extendBoundsWithGeometry(bounds, feature.geometry) || hasCoordinates;
+  });
+  (mapData.vehicle_features ?? []).forEach((feature) => {
+    hasCoordinates =
+      extendBoundsWithGeometry(bounds, feature.geometry) || hasCoordinates;
+  });
+  return hasCoordinates ? bounds : null;
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -112,6 +163,7 @@ export default function TransitMap({
   const mapRef = useRef<maplibregl.Map | null>(null);
   const popupRef = useRef<maplibregl.Popup | null>(null);
   const initializedRef = useRef(false);
+  const lastAutoFitKeyRef = useRef<string>("");
 
   // ---------------------------------------------------------------------------
   // Initialise map once
@@ -132,6 +184,68 @@ export default function TransitMap({
     map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: "imperial" as const }), "bottom-left");
 
     map.on("load", () => {
+      map.addSource("corridors", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+
+      map.addLayer({
+        id: "corridors-outline",
+        type: "line",
+        source: "corridors",
+        layout: {
+          "line-cap": "round",
+          "line-join": "round",
+        },
+        paint: {
+          "line-color": "rgba(15,23,42,0.28)",
+          "line-width": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            8,
+            4,
+            12,
+            7,
+            16,
+            11,
+          ],
+          "line-opacity": 0.55,
+        },
+      });
+
+      map.addLayer({
+        id: "corridors-line",
+        type: "line",
+        source: "corridors",
+        layout: {
+          "line-cap": "round",
+          "line-join": "round",
+        },
+        paint: {
+          "line-color": ["get", "_color"],
+          "line-width": [
+            "interpolate",
+            ["linear"],
+            ["coalesce", ["get", "hazard_score"], 0],
+            0,
+            2,
+            0.45,
+            4,
+            0.8,
+            6,
+          ],
+          "line-opacity": [
+            "case",
+            ["==", ["get", "activity_status"], "inactive"],
+            0.22,
+            ["==", ["get", "activity_status"], "scheduled_later"],
+            0.4,
+            0.72,
+          ],
+        },
+      });
+
       // Vehicle positions source
       map.addSource("vehicles", {
         type: "geojson",
@@ -200,6 +314,7 @@ export default function TransitMap({
           ? `+${Math.round(delayS)}s`
           : `${Math.round(delayS)}s`;
       const regime = typeof props.regime === "string" ? props.regime : "unknown";
+      const regimeLabel = formatRegimeLabel(regime);
       const color = regimeColor(regime);
       const hazard =
         typeof props.hazard_score === "number"
@@ -215,12 +330,12 @@ export default function TransitMap({
           <div>Route: <b>${props.route_id ?? "—"}</b></div>
           <div>Delay: <b>${delayStr}</b></div>
           <div>
-            Regime:&nbsp;
+            Service state:&nbsp;
             <span style="background:${color};color:#fff;padding:1px 5px;border-radius:3px;font-size:11px;">
-              ${regime}
+              ${regimeLabel}
             </span>
           </div>
-          <div>Hazard: <b>${hazard}</b></div>
+          <div>Risk score: <b>${hazard}</b></div>
           <div>Status: <b>${props.current_status ?? "—"}</b></div>
         </div>
       `;
@@ -253,12 +368,28 @@ export default function TransitMap({
   const updateData = useCallback(() => {
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded()) return;
-    const source = map.getSource("vehicles") as
+    const vehicleSource = map.getSource("vehicles") as
       | maplibregl.GeoJSONSource
       | undefined;
-    if (!source) return;
-    const features = mapData?.vehicle_features ?? [];
-    source.setData(buildVehicleGeoJSON(features));
+    const corridorSource = map.getSource("corridors") as
+      | maplibregl.GeoJSONSource
+      | undefined;
+    if (!vehicleSource || !corridorSource) return;
+    const vehicleFeatures = mapData?.vehicle_features ?? [];
+    const corridorFeatures = mapData?.corridor_features ?? [];
+    corridorSource.setData(buildCorridorGeoJSON(corridorFeatures));
+    vehicleSource.setData(buildVehicleGeoJSON(vehicleFeatures));
+
+    const viewportKey = `${mapData?.scope ?? "all"}:${mapData?.trace_id ?? "live"}`;
+    const bounds = buildDataBounds(mapData);
+    if (bounds && lastAutoFitKeyRef.current !== viewportKey) {
+      map.fitBounds(bounds, {
+        padding: 56,
+        duration: 900,
+        maxZoom: 13,
+      });
+      lastAutoFitKeyRef.current = viewportKey;
+    }
   }, [mapData]);
 
   useEffect(() => {

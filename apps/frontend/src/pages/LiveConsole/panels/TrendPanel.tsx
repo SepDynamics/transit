@@ -3,7 +3,9 @@ import {
   actionTone,
   formatDelay,
   formatHazard,
-  humanizeToken,
+  formatActionLabel,
+  formatActivityStatusLabel,
+  formatRegimeLabel,
 } from "../../../utils/formatters";
 
 interface TrendPanelProps {
@@ -25,7 +27,7 @@ export default function TrendPanel({
             <h2 className="section__title">Corridor trend watch</h2>
             <p className="section__hint">
               Rolling corridor memory from the persisted transit store, ordered by current
-              instability.
+              service risk.
             </p>
           </div>
         </div>
@@ -44,12 +46,12 @@ export default function TrendPanel({
               <div className="signature-card__header">
                 <strong>{corridor.label}</strong>
                 <span className={`badge badge--${actionTone(corridor.latest_action)}`}>
-                  {humanizeToken(corridor.latest_action)}
+                  {formatActionLabel(corridor.latest_action)}
                 </span>
               </div>
               <div className="trend-card__stats">
                 <div>
-                  <span>Latest hazard</span>
+                  <span>Latest risk</span>
                   <strong>{formatHazard(corridor.latest_hazard)}</strong>
                 </div>
                 <div>
@@ -77,9 +79,12 @@ export default function TrendPanel({
                 ))}
               </div>
               <div className="signature-card__meta">
-                <span>{humanizeToken(corridor.latest_regime)}</span>
-                <span>{corridor.recent_actions.map(humanizeToken).join(" • ") || "steady action mix"}</span>
-                <span>{humanizeToken(corridor.latest_activity_status)}</span>
+                <span>{formatRegimeLabel(corridor.latest_regime)}</span>
+                <span>
+                  {corridor.recent_actions.map((action) => formatActionLabel(action)).join(" • ") ||
+                    "steady action mix"}
+                </span>
+                <span>{formatActivityStatusLabel(corridor.latest_activity_status)}</span>
               </div>
             </button>
           ))}
@@ -104,7 +109,7 @@ export default function TrendPanel({
             <strong>{trendResponse.summary.corridor_count}</strong>
           </div>
           <div className="detail-card">
-            <span>Unstable now</span>
+            <span>At risk now</span>
             <strong>{trendResponse.summary.unstable_corridor_count}</strong>
           </div>
           <div className="detail-card">
@@ -122,7 +127,7 @@ export default function TrendPanel({
             </div>
             <p>
               {Object.entries(trendResponse.summary.recent_action_counts)
-                .map(([action, count]) => `${humanizeToken(action)} ${count}`)
+                .map(([action, count]) => `${formatActionLabel(action)} ${count}`)
                 .join(" • ") || "No recent action memory yet."}
             </p>
           </article>
@@ -130,12 +135,12 @@ export default function TrendPanel({
             <div className="signature-card__header">
               <strong>Recent regime mix</strong>
               <span>
-                {Object.keys(trendResponse.summary.recent_regime_counts).length} regimes
+                {Object.keys(trendResponse.summary.recent_regime_counts).length} states
               </span>
             </div>
             <p>
               {Object.entries(trendResponse.summary.recent_regime_counts)
-                .map(([regime, count]) => `${humanizeToken(regime)} ${count}`)
+                .map(([regime, count]) => `${formatRegimeLabel(regime)} ${count}`)
                 .join(" • ") || "No recent regime memory yet."}
             </p>
           </article>

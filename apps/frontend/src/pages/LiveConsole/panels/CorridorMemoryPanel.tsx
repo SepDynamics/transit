@@ -16,13 +16,25 @@ interface CorridorDisplay {
   median_delay_seconds?: number;
   vehicle_count?: number;
   activity_status?: string;
+  activity_status_label?: string;
+  activity_reason?: string;
+  activity_reason_label?: string;
+  current_regime?: string | null;
+  current_regime_label?: string | null;
+  priority_score?: number;
+  priority_label?: string;
 }
 import {
   actionTone,
+  compareOperationalPriority,
   formatDelay,
   formatHazard,
+  formatActionLabel,
+  formatActivityStatusLabel,
   formatPercent,
-  humanizeToken,
+  formatPriorityLabel,
+  formatRegimeLabel,
+  priorityTone,
   relativeTimeFromMs,
   topFactorSummary,
 } from "../../../utils/formatters";
@@ -68,6 +80,7 @@ export default function CorridorMemoryPanel({
   };
   const corridorTimelinePoints = corridorHistory.regimes.slice(-36);
   const corridorIncidents = corridorHistory.incidents.slice(-3).reverse();
+  const orderedIncidents = [...incidentResponse.incidents].sort(compareOperationalPriority);
   const vehiclesOnSelectedCorridor = selectedCorridorId
     ? entities.vehicles.filter((v) => v.corridor_entity_id === selectedCorridorId)
     : [];
@@ -97,22 +110,26 @@ export default function CorridorMemoryPanel({
                 key={`${point.signature ?? "point"}-${index}`}
                 className={`timeline__bar timeline__bar--${actionTone(point.action)}`}
                 style={{ height: `${12 + Math.max(0, Number(point.hazard ?? 0)) * 88}%` }}
-                title={`${point.regime ?? "unknown"} ${formatHazard(point.hazard)}`}
+                title={`${formatRegimeLabel(point.regime, point.regime_label)} ${formatHazard(
+                  point.hazard,
+                )}`}
               />
             ))}
           </div>
         </div>
         <div className="detail-grid">
           <div className="detail-card">
-            <span>Regime</span>
+            <span>Service state</span>
             <strong>
-              {humanizeToken(
-                selectedCorridorRegime?.regime ?? selectedCorridor?.activity_status,
+              {formatRegimeLabel(
+                selectedCorridorRegime?.regime ?? selectedCorridor?.current_regime,
+                selectedCorridorRegime?.regime_label ??
+                  selectedCorridor?.current_regime_label,
               )}
             </strong>
           </div>
           <div className="detail-card">
-            <span>Hazard</span>
+            <span>Risk score</span>
             <strong>
               {formatHazard(
                 selectedCorridorRegime?.hazard ?? selectedCorridor?.avg_hazard,
@@ -139,8 +156,13 @@ export default function CorridorMemoryPanel({
             </strong>
           </div>
           <div className="detail-card">
-            <span>Activity</span>
-            <strong>{humanizeToken(selectedCorridor?.activity_status)}</strong>
+            <span>Priority</span>
+            <strong>
+              {formatPriorityLabel(
+                selectedCorridorRegime?.priority_score ?? selectedCorridor?.priority_score,
+                selectedCorridorRegime?.priority_label ?? selectedCorridor?.priority_label,
+              )}
+            </strong>
           </div>
         </div>
         <div className="corridor-vehicle-strip">
@@ -176,8 +198,9 @@ export default function CorridorMemoryPanel({
               </div>
               <p>{incident.summary}</p>
               <div className="signature-card__meta">
-                <span>{humanizeToken(incident.regime)}</span>
-                <span>{humanizeToken(incident.action)}</span>
+                <span>{formatRegimeLabel(incident.regime, incident.regime_label)}</span>
+                <span>{formatActionLabel(incident.action, incident.action_label)}</span>
+                <span>{formatPriorityLabel(incident.priority_score, incident.priority_label)}</span>
                 <span>{formatPercent((incident.confidence ?? 0) * 100)} confidence</span>
               </div>
             </article>
@@ -195,29 +218,40 @@ export default function CorridorMemoryPanel({
           <div>
             <h2 className="section__title">Incident feed</h2>
             <p className="section__hint">
-              Current operator actions across the network.
+              Current action queue across the network, ordered by operational priority.
               {selectedCorridor
-                ? ` Selected corridor: ${selectedCorridor.label ?? selectedCorridor.entity_id}.`
+                ? ` Selected corridor: ${selectedCorridor.label ?? selectedCorridor.entity_id} (${formatActivityStatusLabel(
+                    selectedCorridor.activity_status,
+                    selectedCorridor.activity_status_label,
+                  )}).`
                 : ""}
             </p>
           </div>
         </div>
         <div className="incident-feed">
-          {incidentResponse.incidents.map((incident) => {
+          {orderedIncidents.map((incident) => {
             const ack = acks[incident.incident_id];
             const pending = ackPending[incident.incident_id] ?? false;
             return (
               <article key={incident.incident_id} className={`incident-card${ack ? " incident-card--acked" : ""}`}>
                 <div className="incident-card__header">
                   <strong>{incident.label}</strong>
-                  <span className={`badge badge--${actionTone(incident.action)}`}>
-                    {humanizeToken(incident.action)}
+                  <span
+                    className={`badge badge--${priorityTone(
+                      incident.priority_score,
+                      incident.priority_label,
+                    )}`}
+                  >
+                    {`${formatPriorityLabel(incident.priority_score, incident.priority_label)} • ${formatActionLabel(
+                      incident.action,
+                      incident.action_label,
+                    )}`}
                   </span>
                 </div>
                 <p>{incident.summary}</p>
                 <div className="incident-card__footer">{incident.recommended_action}</div>
                 <div className="incident-card__meta">
-                  <span>{humanizeToken(incident.regime)}</span>
+                  <span>{formatRegimeLabel(incident.regime, incident.regime_label)}</span>
                   <span>{formatPercent((incident.confidence ?? 0) * 100)} confidence</span>
                   <span>{topFactorSummary(incident.provenance)}</span>
                 </div>

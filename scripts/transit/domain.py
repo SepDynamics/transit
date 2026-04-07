@@ -41,6 +41,44 @@ TRANSIT_ACTION_PRIORITY = {
     "monitor": 0,
 }
 
+TRANSIT_ACTION_LABELS = {
+    "dispatch_relief": "Dispatch relief",
+    "short_turn": "Short turn",
+    "inspect_terminal": "Inspect terminal",
+    "hold": "Hold to rebalance",
+    "warn_riders": "Publish rider advisory",
+    "mark_feed_degraded": "Mark telemetry degraded",
+    "monitor": "Monitor",
+}
+
+TRANSIT_REGIME_LABELS = {
+    "healthy": "Stable service",
+    "recovering": "Recovering service",
+    "data_sparse": "Limited telemetry",
+    "bunching_onset": "Early bunching",
+    "corridor_unstable": "Service irregularity",
+    "headway_collapse": "Severe bunching / service gap",
+    "service_degraded": "Confirmed disruption",
+    "terminal_congestion": "Terminal congestion",
+    "stop_dwell_instability": "Extended dwell",
+    "terminal_blocked": "Terminal blocked",
+    "feed_incoherent": "Telemetry degraded",
+}
+
+TRANSIT_ACTIVITY_STATUS_LABELS = {
+    "active_now": "Active now",
+    "scheduled_later": "Scheduled later",
+    "inactive": "Inactive",
+}
+
+TRANSIT_ACTIVITY_REASON_LABELS = {
+    "live_telemetry": "Live telemetry present",
+    "scheduled_no_telemetry": "Scheduled with no live telemetry",
+    "service_starts_later": "Service starts later today",
+    "returns_next_service_day": "Returns next service day",
+    "inactive": "Outside the service window",
+}
+
 SERVICE_IMPACT_ALERT_EFFECTS = {"DETOUR", "STOP_MOVED", "REDUCED_SERVICE", "NO_SERVICE", "MODIFIED_SERVICE"}
 HIGH_IMPACT_ALERT_EFFECTS = {"DETOUR", "REDUCED_SERVICE", "NO_SERVICE", "MODIFIED_SERVICE"}
 SERVICE_ALERT_KEYWORDS = (
@@ -78,6 +116,103 @@ FACILITY_ALERT_KEYWORDS = (
     "accessible parking",
     "platform access",
 )
+
+
+def _humanize_transit_token(value: str | None, *, fallback: str = "Unknown") -> str:
+    token = str(value or "").strip()
+    if not token:
+        return fallback
+    return token.replace("_", " ")
+
+
+def transit_action_label(action: str | None) -> str:
+    token = str(action or "").strip()
+    return TRANSIT_ACTION_LABELS.get(token, _humanize_transit_token(token))
+
+
+def transit_regime_label(regime: str | None) -> str:
+    token = str(regime or "").strip()
+    return TRANSIT_REGIME_LABELS.get(token, _humanize_transit_token(token))
+
+
+def transit_activity_status_label(status: str | None) -> str:
+    token = str(status or "").strip()
+    return TRANSIT_ACTIVITY_STATUS_LABELS.get(token, _humanize_transit_token(token))
+
+
+def transit_activity_reason_label(reason: str | None) -> str:
+    token = str(reason or "").strip()
+    return TRANSIT_ACTIVITY_REASON_LABELS.get(token, _humanize_transit_token(token))
+
+
+def _operational_priority_score(
+    *,
+    regime: str,
+    action: str,
+    hazard: float,
+    confidence: float,
+    metrics: Dict[str, Any],
+) -> int:
+    action_base = {
+        "dispatch_relief": 60,
+        "short_turn": 56,
+        "inspect_terminal": 50,
+        "hold": 44,
+        "warn_riders": 34,
+        "mark_feed_degraded": 28,
+        "monitor": 16 if regime != "healthy" else 0,
+    }.get(action, 10)
+    regime_bonus = {
+        "headway_collapse": 24,
+        "terminal_congestion": 20,
+        "stop_dwell_instability": 16,
+        "service_degraded": 14,
+        "corridor_unstable": 12,
+        "bunching_onset": 10,
+        "feed_incoherent": 12,
+        "healthy": 0,
+    }.get(regime, 6 if regime else 0)
+    alert_bonus = min(
+        18,
+        (int(metrics.get("high_impact_alert_count") or 0) * 8)
+        + (int(metrics.get("active_alert_count") or 0) * 4),
+    )
+    delay_bonus = min(
+        12,
+        int(max(0.0, float(metrics.get("median_delay_seconds") or 0.0)) / 90.0),
+    )
+    headway_bonus = 0
+    compressed_headway_share = float(metrics.get("compressed_headway_share") or 0.0)
+    if compressed_headway_share >= 0.75:
+        headway_bonus = 6
+    elif compressed_headway_share >= 0.5:
+        headway_bonus = 3
+    telemetry_bonus = (
+        4
+        if regime == "feed_incoherent" and bool(metrics.get("scheduled_service_active"))
+        else 0
+    )
+    raw = (
+        action_base
+        + regime_bonus
+        + alert_bonus
+        + delay_bonus
+        + headway_bonus
+        + telemetry_bonus
+        + int(round(clamp(hazard) * 18))
+    )
+    confidence_factor = 0.7 + (clamp(confidence) * 0.3)
+    return max(0, min(100, int(round(raw * confidence_factor))))
+
+
+def _priority_label(priority_score: int) -> str:
+    if priority_score >= 85:
+        return "Immediate"
+    if priority_score >= 65:
+        return "High"
+    if priority_score >= 45:
+        return "Watch"
+    return "Monitor"
 
 
 @dataclass
@@ -776,6 +911,14 @@ def _score_routes(
         elif metrics["low_observation"]:
             hazard *= 0.72
         confidence, provenance = _build_provenance(metrics, hazard_components)
+        priority_score = _operational_priority_score(
+            regime=regime,
+            action=action,
+            hazard=hazard,
+            confidence=confidence,
+            metrics=metrics,
+        )
+        priority_label = _priority_label(priority_score)
         matched_event_overlays = summarize_matching_overlays(
             list(event_overlays),
             route_id=route_id,
@@ -837,9 +980,21 @@ def _score_routes(
                 source=record.source,
                 collection_source=record.collection_source,
                 trace_id=record.trace_id,
+                geometry=catalog.route_geometry(route_id, direction_id),
+                current_regime=regime,
+                current_regime_label=transit_regime_label(regime),
+                top_action_label=transit_action_label(action),
+                priority_score=priority_score,
+                priority_label=priority_label,
+                activity_status_label=transit_activity_status_label(activity_status),
+                activity_reason_label=transit_activity_reason_label(activity_reason),
                 event_overlays=matched_event_overlays,
             ).to_json()
         )
+        record.priority_score = priority_score
+        record.priority_label = priority_label
+        record.regime_label = transit_regime_label(regime)
+        record.action_label = transit_action_label(action)
         if regime != "healthy" and (
             action != "monitor"
             or (record.hazard >= 0.62 and record.confidence >= 0.55)
@@ -863,13 +1018,33 @@ def _score_routes(
                     recommended_action=_recommended_text(action),
                     reasons=reasons,
                     provenance=record.provenance,
+                    priority_score=priority_score,
+                    priority_label=priority_label,
+                    regime_label=record.regime_label,
+                    action_label=record.action_label,
                     event_overlays=matched_event_overlays,
                 )
             )
 
-    route_rows.sort(key=lambda item: (-float(item["avg_hazard"]), item["label"]))
-    route_regimes.sort(key=lambda item: (-item.hazard, item.label))
-    incidents.sort(key=lambda item: (-TRANSIT_ACTION_PRIORITY.get(item.action, 0), -item.hazard, item.label))
+    route_rows.sort(
+        key=lambda item: (
+            -int(item.get("priority_score") or 0),
+            -float(item.get("avg_hazard") or 0.0),
+            -int(item.get("active_alert_count") or 0),
+            item["label"],
+        )
+    )
+    route_regimes.sort(
+        key=lambda item: (-int(item.priority_score or 0), -item.hazard, item.label)
+    )
+    incidents.sort(
+        key=lambda item: (
+            -int(item.priority_score or 0),
+            -TRANSIT_ACTION_PRIORITY.get(item.action, 0),
+            -item.hazard,
+            item.label,
+        )
+    )
     return route_rows, route_regimes, incidents
 
 
@@ -1542,21 +1717,43 @@ def _severity_for_action(action: str, hazard: float) -> str:
 
 
 def _incident_summary(record: TransitRegimeRecord, metrics: Dict[str, Any]) -> str:
+    headline = {
+        "bunching_onset": f"{record.label} is showing early bunching.",
+        "corridor_unstable": f"{record.label} is running irregularly.",
+        "headway_collapse": f"{record.label} shows severe bunching with likely service gaps.",
+        "service_degraded": f"{record.label} has corroborated service disruption.",
+        "terminal_congestion": f"{record.label} is queueing at the terminal.",
+        "stop_dwell_instability": f"{record.label} is losing time at stops.",
+        "feed_incoherent": f"{record.label} has degraded telemetry.",
+    }.get(record.regime, f"{record.label} requires operational review.")
+    evidence_parts = [
+        f"median delay {int(metrics['median_delay_seconds'])}s",
+        f"{int(metrics['vehicle_count'])} vehicles",
+    ]
+    if int(metrics.get("trip_update_count") or 0) > 0:
+        evidence_parts.append(
+            f"{int(metrics['trip_update_count'])} trip updates"
+        )
+    if int(metrics.get("high_impact_alert_count") or 0) > 0:
+        evidence_parts.append(
+            f"{int(metrics['high_impact_alert_count'])} high-impact service alerts"
+        )
+    elif int(metrics.get("active_alert_count") or 0) > 0:
+        evidence_parts.append(f"{int(metrics['active_alert_count'])} service alerts")
     return (
-        f"{record.label} is in {record.regime.replace('_', ' ')}. "
-        f"Median delay is {int(metrics['median_delay_seconds'])}s across {metrics['vehicle_count']} vehicles; "
-        f"recommended action: {record.action.replace('_', ' ')}."
+        f"{headline} Evidence: {', '.join(evidence_parts)}. "
+        f"Recommended action: {transit_action_label(record.action)}."
     )
 
 
 def _recommended_text(action: str) -> str:
     mapping = {
         "monitor": "Keep the line under watch and confirm service stabilizes.",
-        "hold": "Hold the trailing vehicle or trip to re-open headways before bunching hardens.",
-        "short_turn": "Short-turn one trip to rebuild spacing on the affected corridor.",
-        "dispatch_relief": "Dispatch relief service or supervisory intervention to restore the corridor.",
+        "hold": "Hold the trailing trip or vehicle to reopen headways before bunching hardens.",
+        "short_turn": "Short-turn one trip to rebuild spacing and close the service gap.",
+        "dispatch_relief": "Dispatch relief service or direct field supervision to restore spacing.",
         "inspect_terminal": "Inspect the terminal or stop cluster for queueing, dispatch, or boarding issues.",
-        "warn_riders": "Warn riders and customer information teams about degraded service.",
+        "warn_riders": "Publish a rider advisory and align customer information with observed service.",
         "mark_feed_degraded": "Mark the feed degraded before operators mistake telemetry gaps for service recovery.",
     }
     return mapping.get(action, "Inspect the affected service.")

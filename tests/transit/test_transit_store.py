@@ -62,6 +62,27 @@ def test_transit_store_keeps_live_and_replay_snapshots_side_by_side(valkey_url):
     assert sources["traces"][0]["latest_snapshot_timestamp_ms"] == 1_710_000_200_000
 
 
+def test_transit_store_clear_runtime_state_removes_live_replay_and_status_keys(valkey_url):
+    store = TransitStore(valkey_url)
+
+    store.write_snapshot(_snapshot(timestamp_ms=1_710_000_100_000, delay_seconds=90, hazard=0.42))
+    store.write_snapshot(
+        _snapshot(timestamp_ms=1_710_000_200_000, delay_seconds=300, hazard=0.88, source="replay", trace_id="case-red"),
+        source="replay",
+        trace_id="case-red",
+    )
+    store.write_status("ops:transit_demo_seed_status", {"status": "ok"})
+
+    deleted = store.clear_runtime_state()
+
+    assert deleted > 0
+    assert store.health()["status"] == "idle"
+    assert store.entities()["vehicles"] == []
+    assert store.sources()["available"] == {"live": False, "replay": False}
+    assert store.sources()["trace_ids"] == []
+    assert store.read_status("ops:transit_demo_seed_status") == {}
+
+
 def test_transit_store_scorecard_aggregates_network_kpis(valkey_url):
     store = TransitStore(valkey_url)
 
@@ -82,6 +103,234 @@ def test_transit_store_scorecard_aggregates_network_kpis(valkey_url):
     assert scorecard["corridors"][0]["hazard_p90"] == 0.81
     assert scorecard["corridors"][0]["on_time_pct"] == 50.0
     assert scorecard["corridors"][0]["top_action"] == "hold"
+
+
+def test_transit_store_sorts_active_lines_and_incidents_by_priority(valkey_url):
+    store = TransitStore(valkey_url)
+
+    store.write_snapshot(
+        {
+            "errors": [],
+            "feed_status": {
+                "feed_label": "MBTA",
+                "updated_at": "2024-03-09T00:00:00+00:00",
+                "vehicle_count": 0,
+                "trip_update_count": 2,
+                "alert_count": 1,
+                "collection_source": "gtfs_rt",
+                "status": "ok",
+            },
+            "health": {
+                "system_name": "MBTA",
+                "generated_at": "2024-03-09T00:00:00+00:00",
+                "status": "warning",
+                "line_count": 2,
+                "active_line_count": 2,
+                "scheduled_later_line_count": 0,
+                "inactive_line_count": 0,
+                "visible_line_count": 2,
+                "vehicle_count": 0,
+                "incident_count": 2,
+                "critical_incidents": 1,
+                "avg_hazard": 0.6,
+                "avg_confidence": 0.8,
+                "max_hazard": 0.88,
+                "action_counts": {"hold": 1, "dispatch_relief": 1},
+                "regime_counts": {"bunching_onset": 1, "headway_collapse": 1},
+                "feed_status": {
+                    "feed_label": "MBTA",
+                    "updated_at": "2024-03-09T00:00:00+00:00",
+                    "vehicle_count": 0,
+                    "trip_update_count": 2,
+                    "alert_count": 1,
+                    "collection_source": "gtfs_rt",
+                    "status": "ok",
+                },
+                "worst_corridor": {
+                    "timestamp_ms": 1_710_000_200_000,
+                    "entity_id": "route:High:0",
+                    "entity_type": "corridor",
+                    "label": "High Priority Line",
+                    "route_id": "High",
+                    "regime": "headway_collapse",
+                    "regime_label": "Severe bunching / service gap",
+                    "hazard": 0.88,
+                    "action": "dispatch_relief",
+                    "action_label": "Dispatch relief",
+                    "priority_score": 92,
+                    "priority_label": "Immediate",
+                    "scoring_backend": "heuristic_v1",
+                    "confidence": 0.84,
+                    "signature": "sig-high",
+                    "reasons": ["headway_collapse"],
+                    "provenance": {},
+                    "metrics": {},
+                },
+            },
+            "entities": {
+                "generated_at": "2024-03-09T00:00:00+00:00",
+                "lines": [
+                    {
+                        "entity_id": "route:Low:0",
+                        "route_id": "Low",
+                        "direction_id": 0,
+                        "label": "Low Priority Line",
+                        "vehicle_count": 0,
+                        "median_delay_seconds": 180,
+                        "avg_delay_seconds": 180.0,
+                        "top_action": "hold",
+                        "top_action_label": "Hold to rebalance",
+                        "avg_hazard": 0.51,
+                        "active_alert_count": 0,
+                        "current_regime": "bunching_onset",
+                        "current_regime_label": "Early bunching",
+                        "priority_score": 61,
+                        "priority_label": "Watch",
+                        "activity_status": "active_now",
+                        "activity_status_label": "Active now",
+                        "activity_reason": "live_telemetry",
+                        "activity_reason_label": "Live telemetry present",
+                    },
+                    {
+                        "entity_id": "route:High:0",
+                        "route_id": "High",
+                        "direction_id": 0,
+                        "label": "High Priority Line",
+                        "vehicle_count": 0,
+                        "median_delay_seconds": 480,
+                        "avg_delay_seconds": 480.0,
+                        "top_action": "dispatch_relief",
+                        "top_action_label": "Dispatch relief",
+                        "avg_hazard": 0.88,
+                        "active_alert_count": 1,
+                        "current_regime": "headway_collapse",
+                        "current_regime_label": "Severe bunching / service gap",
+                        "priority_score": 92,
+                        "priority_label": "Immediate",
+                        "activity_status": "active_now",
+                        "activity_status_label": "Active now",
+                        "activity_reason": "live_telemetry",
+                        "activity_reason_label": "Live telemetry present",
+                    },
+                ],
+                "active_lines": [
+                    {
+                        "entity_id": "route:Low:0",
+                        "route_id": "Low",
+                        "direction_id": 0,
+                        "label": "Low Priority Line",
+                        "vehicle_count": 0,
+                        "median_delay_seconds": 180,
+                        "avg_delay_seconds": 180.0,
+                        "top_action": "hold",
+                        "top_action_label": "Hold to rebalance",
+                        "avg_hazard": 0.51,
+                        "active_alert_count": 0,
+                        "current_regime": "bunching_onset",
+                        "current_regime_label": "Early bunching",
+                        "priority_score": 61,
+                        "priority_label": "Watch",
+                        "activity_status": "active_now",
+                        "activity_status_label": "Active now",
+                        "activity_reason": "live_telemetry",
+                        "activity_reason_label": "Live telemetry present",
+                    },
+                    {
+                        "entity_id": "route:High:0",
+                        "route_id": "High",
+                        "direction_id": 0,
+                        "label": "High Priority Line",
+                        "vehicle_count": 0,
+                        "median_delay_seconds": 480,
+                        "avg_delay_seconds": 480.0,
+                        "top_action": "dispatch_relief",
+                        "top_action_label": "Dispatch relief",
+                        "avg_hazard": 0.88,
+                        "active_alert_count": 1,
+                        "current_regime": "headway_collapse",
+                        "current_regime_label": "Severe bunching / service gap",
+                        "priority_score": 92,
+                        "priority_label": "Immediate",
+                        "activity_status": "active_now",
+                        "activity_status_label": "Active now",
+                        "activity_reason": "live_telemetry",
+                        "activity_reason_label": "Live telemetry present",
+                    },
+                ],
+                "scheduled_later_lines": [],
+                "inactive_lines": [],
+                "vehicles": [],
+            },
+            "regimes": {
+                "generated_at": "2024-03-09T00:00:00+00:00",
+                "regimes": [],
+                "recurring_regimes": [],
+            },
+            "incidents": {
+                "generated_at": "2024-03-09T00:00:00+00:00",
+                "incidents": [
+                    {
+                        "incident_id": "inc-low",
+                        "timestamp_ms": 1_710_000_100_000,
+                        "entity_id": "route:Low:0",
+                        "entity_type": "corridor",
+                        "label": "Low Priority Line",
+                        "route_id": "Low",
+                        "severity": "warning",
+                        "action": "hold",
+                        "action_label": "Hold to rebalance",
+                        "regime": "bunching_onset",
+                        "regime_label": "Early bunching",
+                        "hazard": 0.51,
+                        "confidence": 0.8,
+                        "priority_score": 61,
+                        "priority_label": "Watch",
+                        "summary": "Low priority",
+                        "recommended_action": "Monitor",
+                        "reasons": ["bunching_onset"],
+                        "provenance": {},
+                    },
+                    {
+                        "incident_id": "inc-high",
+                        "timestamp_ms": 1_710_000_200_000,
+                        "entity_id": "route:High:0",
+                        "entity_type": "corridor",
+                        "label": "High Priority Line",
+                        "route_id": "High",
+                        "severity": "critical",
+                        "action": "dispatch_relief",
+                        "action_label": "Dispatch relief",
+                        "regime": "headway_collapse",
+                        "regime_label": "Severe bunching / service gap",
+                        "hazard": 0.88,
+                        "confidence": 0.84,
+                        "priority_score": 92,
+                        "priority_label": "Immediate",
+                        "summary": "High priority",
+                        "recommended_action": "Dispatch relief",
+                        "reasons": ["headway_collapse"],
+                        "provenance": {},
+                    },
+                ],
+            },
+        }
+    )
+
+    entities = store.entities()
+    incidents = store.incidents()
+
+    assert [row["entity_id"] for row in entities["active_lines"]] == [
+        "route:High:0",
+        "route:Low:0",
+    ]
+    assert [row["priority_label"] for row in entities["active_lines"]] == [
+        "Immediate",
+        "Watch",
+    ]
+    assert [row["incident_id"] for row in incidents["incidents"]] == [
+        "inc-high",
+        "inc-low",
+    ]
 
 
 def _snapshot(*, timestamp_ms: int, delay_seconds: int, hazard: float, source: str = "live", trace_id: str | None = None):

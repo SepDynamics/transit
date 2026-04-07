@@ -1,10 +1,13 @@
 import type { LineCard } from "../../../types/transit";
 import {
-  actionTone,
   formatDelay,
   formatHazard,
   formatHeadway,
-  humanizeToken,
+  formatActionLabel,
+  formatActivityReasonLabel,
+  formatPriorityLabel,
+  formatRegimeLabel,
+  priorityTone,
 } from "../../../utils/formatters";
 
 interface CorridorOverviewProps {
@@ -38,8 +41,16 @@ function CorridorCards({
         >
           <div className="node-card__header">
             <strong>{line.label}</strong>
-            <span className={`badge badge--${actionTone(line.top_action)}`}>
-              {humanizeToken(line.top_action)}
+            <span
+              className={`badge badge--${priorityTone(
+                line.priority_score,
+                line.priority_label,
+              )}`}
+            >
+              {`${formatPriorityLabel(line.priority_score, line.priority_label)} • ${formatActionLabel(
+                line.top_action,
+                line.top_action_label,
+              )}`}
             </span>
           </div>
           <div className="node-card__stats">
@@ -56,7 +67,7 @@ function CorridorCards({
               <strong>{formatHeadway(line.scheduled_headway_seconds)}</strong>
             </div>
             <div>
-              <span>Hazard</span>
+              <span>Risk score</span>
               <strong>{formatHazard(line.avg_hazard)}</strong>
             </div>
             <div>
@@ -65,8 +76,13 @@ function CorridorCards({
             </div>
           </div>
           <div className="signature-card__meta">
-            <span>{humanizeToken(line.activity_status)}</span>
-            <span>{humanizeToken(line.activity_reason)}</span>
+            <span>{formatRegimeLabel(line.current_regime, line.current_regime_label)}</span>
+            <span>
+              {formatActivityReasonLabel(
+                line.activity_reason,
+                line.activity_reason_label,
+              )}
+            </span>
           </div>
         </button>
       ))}
@@ -95,7 +111,7 @@ export default function CorridorOverview({
         <div>
           <h3 className="section__title">Active Now</h3>
           <p className="section__hint">
-            Corridors with current vehicle or trip telemetry in the selected scope.
+            Corridors with current vehicle or trip telemetry, ordered by operational priority.
           </p>
         </div>
       </div>
@@ -109,7 +125,7 @@ export default function CorridorOverview({
         <div>
           <h3 className="section__title">Scheduled Later</h3>
           <p className="section__hint">
-            Corridors without live telemetry right now that are expected to return later.
+            Corridors without live telemetry right now that are expected back in service later.
           </p>
         </div>
       </div>

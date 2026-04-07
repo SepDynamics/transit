@@ -11,7 +11,7 @@ import signal
 import sys
 import threading
 import time
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Dict
 from urllib.parse import parse_qs, urlparse
@@ -432,8 +432,34 @@ class TransitAPIService:
                 continue
             vehicle_id = str(obs.get("vehicle_id") or v.get("entity_id") or "")
             route_id = str(obs.get("route_id") or "")
-            corridor_key = f"{route_id}:0" if route_id else ""
-            regime_rec = regime_by_entity.get(corridor_key) or {}
+            direction_id = (
+                obs.get("direction_id")
+                if isinstance(obs, dict)
+                else v.get("direction_id")
+            )
+            corridor_entity_id = str(v.get("corridor_entity_id") or "").strip()
+            fallback_corridor_keys = [
+                corridor_entity_id,
+                (
+                    f"route:{route_id}:{int(direction_id)}"
+                    if route_id and direction_id not in (None, "")
+                    else ""
+                ),
+                f"route:{route_id}:all" if route_id else "",
+            ]
+            regime_rec = {}
+            vehicle_regime = v.get("regime")
+            if isinstance(vehicle_regime, dict):
+                regime_rec = vehicle_regime
+            if not regime_rec:
+                regime_rec = next(
+                    (
+                        regime_by_entity.get(key) or {}
+                        for key in fallback_corridor_keys
+                        if key
+                    ),
+                    {},
+                )
             vehicle_features.append(
                 {
                     "type": "Feature",
@@ -442,9 +468,10 @@ class TransitAPIService:
                         "entity_id": v.get("entity_id"),
                         "vehicle_id": vehicle_id,
                         "route_id": route_id,
-                        "direction_id": obs.get("direction_id")
-                        if isinstance(obs, dict)
-                        else None,
+                        "direction_id": direction_id,
+                        "corridor_entity_id": corridor_entity_id or None,
+                        "corridor_id": v.get("corridor_id"),
+                        "route_label": v.get("route_label"),
                         "delay_seconds": obs.get("delay_seconds")
                         if isinstance(obs, dict)
                         else None,
@@ -457,7 +484,8 @@ class TransitAPIService:
                         "bearing": obs.get("bearing")
                         if isinstance(obs, dict)
                         else None,
-                        "hazard_score": regime_rec.get("hazard_score"),
+                        "hazard_score": regime_rec.get("hazard_score")
+                        or regime_rec.get("hazard"),
                         "regime": regime_rec.get("regime"),
                         "label": v.get("label") or v.get("route_label") or route_id,
                         "timestamp_ms": obs.get("timestamp_ms")
@@ -467,32 +495,50 @@ class TransitAPIService:
                 }
             )
 
-        # Build corridor features (summarised, no geometry — shape data lives in GTFS)
+        # Build corridor features and summaries
+        corridor_map_features = []
         corridor_features = []
-        for line in (entities.get("active_lines") or []) + (
-            entities.get("lines") or []
-        ):
+        for line in _unique_corridor_rows(entities):
             if not isinstance(line, dict):
                 continue
             eid = str(line.get("entity_id") or "")
             regime_rec = regime_by_entity.get(eid) or {}
             active_incidents = incidents_by_entity.get(eid) or []
-            corridor_features.append(
-                {
-                    "entity_id": eid,
-                    "route_id": line.get("route_id"),
-                    "direction_id": line.get("direction_id"),
-                    "label": line.get("label") or line.get("route_id"),
-                    "regime": regime_rec.get("regime") or line.get("regime"),
-                    "hazard_score": regime_rec.get("hazard_score")
-                    or line.get("hazard_score"),
-                    "active_vehicles": line.get("active_vehicle_count"),
-                    "incident_count": len(active_incidents),
-                    "top_action": regime_rec.get("action"),
-                    "timestamp_ms": regime_rec.get("timestamp_ms")
-                    or line.get("timestamp_ms"),
-                }
-            )
+            corridor_summary = {
+                "entity_id": eid,
+                "route_id": line.get("route_id"),
+                "direction_id": line.get("direction_id"),
+                "label": line.get("label") or line.get("route_id"),
+                "regime": regime_rec.get("regime") or line.get("regime"),
+                "hazard_score": regime_rec.get("hazard_score")
+                or line.get("hazard")
+                or line.get("avg_hazard"),
+                "active_vehicles": line.get("active_vehicle_count")
+                or line.get("vehicle_count"),
+                "incident_count": len(active_incidents),
+                "top_action": regime_rec.get("action") or line.get("top_action"),
+                "timestamp_ms": regime_rec.get("timestamp_ms")
+                or line.get("timestamp_ms"),
+                "activity_status": line.get("activity_status"),
+                "corridor_id": line.get("corridor_id"),
+                "route_mode": line.get("route_mode"),
+            }
+            corridor_features.append(corridor_summary)
+            geometry = line.get("geometry")
+            if _is_supported_corridor_geometry(geometry):
+                corridor_map_features.append(
+                    {
+                        "type": "Feature",
+                        "geometry": geometry,
+                        "properties": {
+                            **corridor_summary,
+                            "_color": _regime_color(
+                                corridor_summary.get("regime"),
+                                corridor_summary.get("hazard_score"),
+                            ),
+                        },
+                    }
+                )
 
         return {
             "type": "FeatureCollection",
@@ -500,10 +546,62 @@ class TransitAPIService:
             "trace_id": trace_id,
             "timestamp": isoformat_ms(),
             "vehicle_features": vehicle_features,
+            "corridor_features": corridor_map_features,
             "corridor_summaries": corridor_features,
             "vehicle_count": len(vehicle_features),
             "corridor_count": len(corridor_features),
         }
+
+
+def _unique_corridor_rows(entities: Dict[str, Any]) -> list[Dict[str, Any]]:
+    rows = []
+    seen: set[str] = set()
+    for key in ["active_lines", "scheduled_later_lines", "inactive_lines", "lines"]:
+        for line in entities.get(key) or []:
+            if not isinstance(line, dict):
+                continue
+            entity_id = str(line.get("entity_id") or "").strip()
+            if not entity_id or entity_id in seen:
+                continue
+            seen.add(entity_id)
+            rows.append(line)
+    return rows
+
+
+def _is_supported_corridor_geometry(geometry: Any) -> bool:
+    if not isinstance(geometry, dict):
+        return False
+    if str(geometry.get("type") or "") != "LineString":
+        return False
+    coordinates = geometry.get("coordinates")
+    return isinstance(coordinates, list) and len(coordinates) >= 2
+
+
+def _regime_color(regime: Any, hazard_score: Any) -> str:
+    regime_name = str(regime or "").strip().lower()
+    if regime_name == "healthy":
+        return "#22c55e"
+    if regime_name == "bunching_onset":
+        return "#f59e0b"
+    if regime_name in {"headway_collapse", "service_degraded"}:
+        return "#ef4444"
+    if regime_name == "terminal_congestion":
+        return "#f97316"
+    if regime_name == "stop_dwell_instability":
+        return "#a855f7"
+    if regime_name == "corridor_unstable":
+        return "#ec4899"
+    if regime_name == "feed_incoherent":
+        return "#6b7280"
+    try:
+        hazard = float(hazard_score or 0.0)
+    except (TypeError, ValueError):
+        hazard = 0.0
+    if hazard >= 0.75:
+        return "#ef4444"
+    if hazard >= 0.45:
+        return "#f59e0b"
+    return "#3b82f6"
 
 
 class TransitAPIHandler(BaseHTTPRequestHandler):
@@ -740,7 +838,10 @@ class TransitAPIHandler(BaseHTTPRequestHandler):
 def start_transit_http_server(
     service: TransitAPIService, host: str = "0.0.0.0", port: int = 8000
 ) -> HTTPServer:
-    class _Server(HTTPServer):  # pragma: no cover
+    class _Server(ThreadingHTTPServer):  # pragma: no cover
+        daemon_threads = True
+        allow_reuse_address = True
+
         def __init__(self, address):
             super().__init__(address, TransitAPIHandler)
             self.transit_service = service

@@ -356,6 +356,10 @@ class TransitStore:
                 == resolved_trace_id
             )
         ]
+        lines.sort(key=self._corridor_sort_key)
+        active_lines.sort(key=self._corridor_sort_key)
+        scheduled_later_lines.sort(key=self._corridor_sort_key)
+        inactive_lines.sort(key=self._corridor_sort_key)
         return {
             **payload,
             "scope": scope,
@@ -417,6 +421,7 @@ class TransitStore:
                 or str(row.get("trace_id") or "") == resolved_trace_id
             )
         ]
+        incidents.sort(key=self._incident_sort_key)
         return {
             **payload,
             "scope": scope,
@@ -433,9 +438,16 @@ class TransitStore:
             self.live_payload_key("entities"), default={}
         )
         live_regimes = self.read_json_key(self.live_payload_key("regimes"), default={})
+        live_health = self.read_json_key(self.live_payload_key("health"), default={})
         configured_feeds = self.read_json_key(self.configured_feeds_key(), default={})
+        live_feed_status = live_health.get("feed_status") or {}
         has_live = bool(
-            (live_entities.get("vehicles") or []) or (live_regimes.get("regimes") or [])
+            (live_entities.get("vehicles") or [])
+            or (live_regimes.get("regimes") or [])
+            or (live_entities.get("lines") or [])
+            or (live_entities.get("active_lines") or [])
+            or int(live_feed_status.get("trip_update_count") or 0) > 0
+            or int(live_feed_status.get("alert_count") or 0) > 0
         )
         has_replay = bool(traces)
         return {
@@ -1119,6 +1131,20 @@ class TransitStore:
     def corridor_incident_history_key(entity_id: str) -> str:
         return f"transit:corridor:history:incidents:{entity_id}"
 
+    def clear_runtime_state(self) -> int:
+        keys: set[str] = set()
+        for pattern in ("transit:*", "ops:transit_*"):
+            for key in self.client.scan_iter(match=pattern, count=500):
+                if key:
+                    keys.add(str(key))
+        if not keys:
+            return 0
+        deleted = 0
+        key_list = sorted(keys)
+        for index in range(0, len(key_list), 500):
+            deleted += int(self.client.delete(*key_list[index : index + 500]) or 0)
+        return deleted
+
     def clear_replay_trace(self, trace_id: str) -> None:
         vehicle_ids = sorted(
             str(value)
@@ -1256,12 +1282,32 @@ class TransitStore:
                 for row in (payload.get(key) or [])
                 if isinstance(row, dict)
             ]
+            normalized[key].sort(key=self._corridor_sort_key)
         normalized["vehicles"] = [
             TransitVehicleSnapshot.from_mapping(row).to_json()
             for row in (payload.get("vehicles") or [])
             if isinstance(row, dict)
         ]
         return normalized
+
+    @staticmethod
+    def _corridor_sort_key(row: Dict[str, Any]) -> tuple[int, float, int, int, str]:
+        return (
+            -int(row.get("priority_score") or 0),
+            -float(row.get("avg_hazard") or 0.0),
+            -int(row.get("active_alert_count") or 0),
+            -int(row.get("median_delay_seconds") or 0),
+            str(row.get("label") or row.get("entity_id") or ""),
+        )
+
+    @staticmethod
+    def _incident_sort_key(row: Dict[str, Any]) -> tuple[int, float, int, str]:
+        return (
+            -int(row.get("priority_score") or 0),
+            -float(row.get("hazard") or 0.0),
+            -int(row.get("timestamp_ms") or 0),
+            str(row.get("label") or row.get("entity_id") or ""),
+        )
 
     def _optional_sorted_set_score(self, key: str, member: str) -> int | None:
         raw = self.client.zscore(key, member)

@@ -315,6 +315,7 @@ class _FakeTransitServiceWithAck:
             "type": "FeatureCollection",
             "scope": scope,
             "vehicle_features": [],
+            "corridor_features": [],
             "corridor_summaries": [],
             "vehicle_count": 0,
             "corridor_count": 0,

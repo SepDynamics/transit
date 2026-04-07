@@ -272,6 +272,68 @@ class GTFSStaticCatalog:
             return None
         return trip.trip_headsign
 
+    def route_geometry(
+        self, route_id: str | None, direction_id: Optional[int] = None
+    ) -> Optional[Dict[str, Any]]:
+        coordinates = self.route_shape_coordinates(route_id, direction_id)
+        if len(coordinates) < 2:
+            return None
+        return {
+            "type": "LineString",
+            "coordinates": coordinates,
+        }
+
+    def route_shape_coordinates(
+        self, route_id: str | None, direction_id: Optional[int] = None
+    ) -> List[List[float]]:
+        if not route_id:
+            return []
+        shape_counts: Dict[str, int] = {}
+        for trip in self.trips.values():
+            if trip.route_id != route_id:
+                continue
+            if direction_id is not None and trip.direction_id != direction_id:
+                continue
+            if not trip.shape_id or trip.shape_id not in self.shapes:
+                continue
+            shape_counts[trip.shape_id] = shape_counts.get(trip.shape_id, 0) + 1
+        if shape_counts:
+            shape_id = max(
+                shape_counts,
+                key=lambda value: (shape_counts.get(value, 0), len(self.shapes.get(value, []))),
+            )
+            coordinates = [
+                [float(point.shape_pt_lon), float(point.shape_pt_lat)]
+                for point in self.shapes.get(shape_id, [])
+            ]
+            if len(coordinates) >= 2:
+                return _dedupe_coordinates(coordinates)
+        return self.route_stop_coordinates(route_id, direction_id)
+
+    def route_stop_coordinates(
+        self, route_id: str | None, direction_id: Optional[int] = None
+    ) -> List[List[float]]:
+        if not route_id:
+            return []
+        candidate_trips = [
+            trip
+            for trip in self.trips.values()
+            if trip.route_id == route_id
+            and (direction_id is None or trip.direction_id == direction_id)
+        ]
+        candidate_trips.sort(key=lambda trip: trip.trip_id)
+        for trip in candidate_trips:
+            coordinates: List[List[float]] = []
+            for stop_time in self.stop_times_by_trip.get(trip.trip_id, []):
+                stop = self.stops.get(stop_time.stop_id)
+                if not stop or stop.stop_lat is None or stop.stop_lon is None:
+                    continue
+                coordinates.append([float(stop.stop_lon), float(stop.stop_lat)])
+            deduped = _dedupe_coordinates(coordinates)
+            if len(deduped) >= 2:
+                return deduped
+        return []
+
     def find_stop_time(
         self,
         trip_id: str | None,
@@ -646,6 +708,10 @@ class TransitRegimeRecord:
     source: str = "live"
     collection_source: str = "gtfs_rt"
     trace_id: Optional[str] = None
+    priority_score: int = 0
+    priority_label: str = "Monitor"
+    regime_label: Optional[str] = None
+    action_label: Optional[str] = None
     event_overlays: List[Dict[str, Any]] = field(default_factory=list)
 
     def to_json(self) -> Dict[str, Any]:
@@ -673,6 +739,10 @@ class TransitRegimeRecord:
             source=_string_or_default(payload.get("source"), "live"),
             collection_source=_string_or_default(payload.get("collection_source"), "gtfs_rt"),
             trace_id=_optional_string(payload.get("trace_id")),
+            priority_score=_int_or_default(payload.get("priority_score")),
+            priority_label=_string_or_default(payload.get("priority_label"), "Monitor"),
+            regime_label=_optional_string(payload.get("regime_label")),
+            action_label=_optional_string(payload.get("action_label")),
             event_overlays=_list_of_dicts(payload.get("event_overlays")),
         )
 
@@ -698,6 +768,10 @@ class TransitIncidentRecord:
     corridor_id: Optional[str] = None
     source: str = "live"
     trace_id: Optional[str] = None
+    priority_score: int = 0
+    priority_label: str = "Monitor"
+    regime_label: Optional[str] = None
+    action_label: Optional[str] = None
     event_overlays: List[Dict[str, Any]] = field(default_factory=list)
 
     def to_json(self) -> Dict[str, Any]:
@@ -725,6 +799,10 @@ class TransitIncidentRecord:
             provenance=_dict_or_empty(payload.get("provenance")),
             source=_string_or_default(payload.get("source"), "live"),
             trace_id=_optional_string(payload.get("trace_id")),
+            priority_score=_int_or_default(payload.get("priority_score")),
+            priority_label=_string_or_default(payload.get("priority_label"), "Monitor"),
+            regime_label=_optional_string(payload.get("regime_label")),
+            action_label=_optional_string(payload.get("action_label")),
             event_overlays=_list_of_dicts(payload.get("event_overlays")),
         )
 
@@ -774,11 +852,19 @@ class TransitCorridorSnapshot:
     top_action: str = "monitor"
     avg_hazard: float = 0.0
     active_alert_count: int = 0
+    current_regime: Optional[str] = None
+    current_regime_label: Optional[str] = None
     activity_status: Optional[str] = None
     activity_reason: Optional[str] = None
+    top_action_label: Optional[str] = None
+    priority_score: int = 0
+    priority_label: str = "Monitor"
+    activity_status_label: Optional[str] = None
+    activity_reason_label: Optional[str] = None
     source: str = "live"
     collection_source: str = "gtfs_rt"
     trace_id: Optional[str] = None
+    geometry: Optional[Dict[str, Any]] = None
     event_overlays: List[Dict[str, Any]] = field(default_factory=list)
 
     def to_json(self) -> Dict[str, Any]:
@@ -802,11 +888,19 @@ class TransitCorridorSnapshot:
             top_action=_string_or_default(payload.get("top_action"), "monitor"),
             avg_hazard=round(_float_or_default(payload.get("avg_hazard")), 4),
             active_alert_count=_int_or_default(payload.get("active_alert_count")),
+            current_regime=_optional_string(payload.get("current_regime")),
+            current_regime_label=_optional_string(payload.get("current_regime_label")),
             activity_status=_optional_string(payload.get("activity_status")),
             activity_reason=_optional_string(payload.get("activity_reason")),
+            top_action_label=_optional_string(payload.get("top_action_label")),
+            priority_score=_int_or_default(payload.get("priority_score")),
+            priority_label=_string_or_default(payload.get("priority_label"), "Monitor"),
+            activity_status_label=_optional_string(payload.get("activity_status_label")),
+            activity_reason_label=_optional_string(payload.get("activity_reason_label")),
             source=_string_or_default(payload.get("source"), "live"),
             collection_source=_string_or_default(payload.get("collection_source"), "gtfs_rt"),
             trace_id=_optional_string(payload.get("trace_id")),
+            geometry=_dict_or_empty(payload.get("geometry")) or None,
             event_overlays=_list_of_dicts(payload.get("event_overlays")),
         )
 
@@ -859,6 +953,17 @@ class TransitVehicleSnapshot:
             observation=_dict_or_empty(payload.get("observation")) or None,
             event_overlays=_list_of_dicts(payload.get("event_overlays")),
         )
+
+
+def _dedupe_coordinates(coordinates: List[List[float]]) -> List[List[float]]:
+    deduped: List[List[float]] = []
+    for coordinate in coordinates:
+        if len(coordinate) != 2:
+            continue
+        if deduped and deduped[-1] == coordinate:
+            continue
+        deduped.append([float(coordinate[0]), float(coordinate[1])])
+    return deduped
 
 
 @dataclass

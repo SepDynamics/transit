@@ -2,7 +2,7 @@ import json
 from urllib.error import HTTPError
 from urllib.request import urlopen
 
-from scripts.transit.api import start_transit_http_server
+from scripts.transit.api import TransitAPIService, start_transit_http_server
 
 
 class _FakeTransitService:
@@ -81,6 +81,20 @@ class _FakeTransitService:
                     "geometry": {"type": "Point", "coordinates": [-71.06, 42.36]},
                     "properties": {
                         "entity_id": "vehicle:1811",
+                        "regime": "bunching_onset",
+                    },
+                }
+            ],
+            "corridor_features": [
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "LineString",
+                        "coordinates": [[-71.14, 42.395], [-71.12, 42.396]],
+                    },
+                    "properties": {
+                        "entity_id": "route:Red:0",
+                        "label": "Red Line",
                         "regime": "bunching_onset",
                     },
                 }
@@ -325,6 +339,87 @@ def test_transit_api_map_endpoint_serves_json():
     assert payload["trace_id"] == "trace-123"
     assert payload["vehicle_count"] == 1
     assert payload["vehicle_features"][0]["properties"]["entity_id"] == "vehicle:1811"
+    assert payload["corridor_features"][0]["geometry"]["type"] == "LineString"
+
+
+def test_transit_api_service_map_joins_vehicle_regime_and_corridor_geometry():
+    class _FakeStore:
+        def entities(self, *, scope="all", trace_id=None):
+            return {
+                "scope": scope,
+                "trace_id": trace_id,
+                "vehicles": [
+                    {
+                        "entity_id": "vehicle:1811",
+                        "route_id": "Red",
+                        "corridor_id": "corridor:mbta:Red:0",
+                        "corridor_entity_id": "route:Red:0",
+                        "route_label": "Red Line",
+                        "observation": {
+                            "vehicle_id": "1811",
+                            "route_id": "Red",
+                            "direction_id": 0,
+                            "latitude": 42.396,
+                            "longitude": -71.122,
+                            "delay_seconds": 240,
+                            "current_status": "IN_TRANSIT_TO",
+                        },
+                    }
+                ],
+                "active_lines": [
+                    {
+                        "entity_id": "route:Red:0",
+                        "route_id": "Red",
+                        "direction_id": 0,
+                        "label": "Red Line",
+                        "vehicle_count": 1,
+                        "top_action": "hold",
+                        "avg_hazard": 0.82,
+                        "activity_status": "active_now",
+                        "geometry": {
+                            "type": "LineString",
+                            "coordinates": [[-71.14, 42.395], [-71.12, 42.396]],
+                        },
+                    }
+                ],
+                "scheduled_later_lines": [],
+                "inactive_lines": [],
+                "lines": [],
+            }
+
+        def regimes(self, *, scope="all", trace_id=None):
+            return {
+                "scope": scope,
+                "trace_id": trace_id,
+                "regimes": [
+                    {
+                        "entity_id": "route:Red:0",
+                        "regime": "headway_collapse",
+                        "hazard_score": 0.91,
+                        "action": "dispatch_relief",
+                        "timestamp_ms": 1700000000000,
+                    }
+                ],
+            }
+
+        def incidents(self, *, scope="all", trace_id=None):
+            return {
+                "scope": scope,
+                "trace_id": trace_id,
+                "incidents": [
+                    {"entity_id": "route:Red:0", "incident_id": "inc-1"}
+                ],
+            }
+
+    service = TransitAPIService("redis://unused")
+    service.store = _FakeStore()
+
+    payload = service.transit_map(scope="live")
+
+    assert payload["vehicle_features"][0]["properties"]["regime"] == "headway_collapse"
+    assert payload["vehicle_features"][0]["properties"]["corridor_entity_id"] == "route:Red:0"
+    assert payload["corridor_features"][0]["geometry"]["type"] == "LineString"
+    assert payload["corridor_summaries"][0]["incident_count"] == 1
 
 
 def test_transit_api_scorecard_endpoint_serves_json():

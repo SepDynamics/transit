@@ -4,7 +4,8 @@ import {
   formatDelay,
   formatHazard,
   formatPercent,
-  humanizeToken,
+  formatActionLabel,
+  formatRegimeLabel,
 } from "../../../utils/formatters";
 
 interface ScorecardPanelProps {
@@ -45,7 +46,7 @@ export default function ScorecardPanel({
             <strong>{scorecardResponse?.total_incidents ?? 0}</strong>
           </div>
           <div className="detail-card">
-            <span>Average hazard</span>
+            <span>Average risk</span>
             <strong>{formatHazard(scorecardResponse?.network.avg_hazard)}</strong>
           </div>
           <div className="detail-card">
@@ -65,20 +66,20 @@ export default function ScorecardPanel({
             </div>
             <p>
               {Object.entries(scorecardResponse?.network.top_actions ?? {})
-                .map(([action, count]) => `${humanizeToken(action)} ${count}`)
+                .map(([action, count]) => `${formatActionLabel(action)} ${count}`)
                 .join(" • ") || "No rolling action history yet."}
             </p>
           </article>
           <article className="signature-card">
             <div className="signature-card__header">
-              <strong>Network regime mix</strong>
+              <strong>Network service-state mix</strong>
               <span>
-                {scorecardResponse?.network.unstable_corridor_count ?? 0} unstable corridors
+                {scorecardResponse?.network.unstable_corridor_count ?? 0} at-risk corridors
               </span>
             </div>
             <p>
               {Object.entries(scorecardResponse?.network.top_regimes ?? {})
-                .map(([regime, count]) => `${humanizeToken(regime)} ${count}`)
+                .map(([regime, count]) => `${formatRegimeLabel(regime)} ${count}`)
                 .join(" • ") || "No rolling regime history yet."}
             </p>
           </article>
@@ -109,16 +110,16 @@ export default function ScorecardPanel({
               <div className="scorecard-card__header">
                 <strong>{corridor.label}</strong>
                 <span className={`badge badge--${actionTone(corridor.top_action)}`}>
-                  {humanizeToken(corridor.top_action)}
+                  {formatActionLabel(corridor.top_action)}
                 </span>
               </div>
               <div className="scorecard-card__stats">
                 <div>
-                  <span>Avg hazard</span>
+                  <span>Avg risk</span>
                   <strong>{formatHazard(corridor.avg_hazard)}</strong>
                 </div>
                 <div>
-                  <span>P90 hazard</span>
+                  <span>P90 risk</span>
                   <strong>{formatHazard(corridor.hazard_p90)}</strong>
                 </div>
                 <div>
@@ -139,8 +140,8 @@ export default function ScorecardPanel({
                 </div>
               </div>
               <div className="signature-card__meta">
-                <span>{humanizeToken(corridor.top_regime)}</span>
-                <span>{formatPercent(corridor.unstable_pct, 1)} unstable</span>
+                <span>{formatRegimeLabel(corridor.top_regime)}</span>
+                <span>{formatPercent(corridor.unstable_pct, 1)} at risk</span>
                 <span>{formatPercent(corridor.healthy_pct, 1)} healthy</span>
               </div>
             </button>

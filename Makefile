@@ -1,4 +1,4 @@
-.PHONY: install frontend-install frontend-typecheck frontend-build build-manifold-engine test test-all test-transit check check-all check-transit check-transit-case-packs clean transit-archive transit-mbta-archive transit-lametro-rail-archive transit-lametro-bus-archive transit-ingest transit-replay transit-api transit-history-report transit-calibration-report transit-calibration-summary transit-notify
+.PHONY: install frontend-install frontend-typecheck frontend-build build-manifold-engine test test-all test-transit check check-all check-transit check-transit-case-packs clean transit-archive transit-mbta-archive transit-lametro-rail-archive transit-lametro-bus-archive transit-ingest transit-replay transit-api transit-history-report transit-calibration-report transit-calibration-summary transit-benchmark-artifacts transit-demo-seed transit-notify transit-proof-window
 
 PYTHON ?= python3
 PIP ?= $(PYTHON) -m pip
@@ -72,8 +72,17 @@ transit-calibration-report:
 transit-calibration-summary:
 	@PYTHONPATH=. $(PYTHON) scripts/transit/render_calibration_summary.py $(ARGS)
 
+transit-benchmark-artifacts:
+	@PYTHONPATH=. $(PYTHON) scripts/transit/benchmark_artifacts.py $(ARGS)
+
+transit-demo-seed:
+	@PYTHONPATH=. $(PYTHON) scripts/transit/demo_seed.py $(ARGS)
+
 transit-notify:
 	@PYTHONPATH=. $(PYTHON) scripts/transit/notify.py $(ARGS)
+
+transit-proof-window:
+	@PYTHONPATH=. $(PYTHON) scripts/transit/proof_windows.py $(ARGS)
 
 clean:
 	find . -type d -name '__pycache__' -prune -exec rm -rf {} +

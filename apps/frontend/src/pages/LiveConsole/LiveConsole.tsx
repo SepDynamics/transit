@@ -1,5 +1,6 @@
 import type { LineCard } from "../../types/transit";
 import { useTransitData } from "../../hooks/useTransitData";
+import { compareOperationalPriority } from "../../utils/formatters";
 import CorridorMemoryPanel from "./panels/CorridorMemoryPanel";
 import CorridorOverview from "./panels/CorridorOverview";
 import HeroPanel from "./panels/HeroPanel";
@@ -14,7 +15,19 @@ import "./LiveConsole.css";
 /** Minimal display shape shared between LineCard and HistoryEntity. */
 type CorridorDisplay = Pick<
   LineCard,
-  "entity_id" | "label" | "avg_hazard" | "median_delay_seconds" | "vehicle_count" | "activity_status"
+  | "entity_id"
+  | "label"
+  | "avg_hazard"
+  | "median_delay_seconds"
+  | "vehicle_count"
+  | "activity_status"
+  | "activity_status_label"
+  | "activity_reason"
+  | "activity_reason_label"
+  | "current_regime"
+  | "current_regime_label"
+  | "priority_score"
+  | "priority_label"
 >;
 
 export default function LiveConsole() {
@@ -44,8 +57,12 @@ export default function LiveConsole() {
     replayTraces,
   } = data;
 
-  const activeLines = entities.active_lines ?? entities.lines;
-  const scheduledLaterLines = entities.scheduled_later_lines ?? [];
+  const activeLines = [...(entities.active_lines ?? entities.lines)].sort(
+    compareOperationalPriority,
+  );
+  const scheduledLaterLines = [...(entities.scheduled_later_lines ?? [])].sort(
+    compareOperationalPriority,
+  );
 
   const selectedCorridorFromLine = entities.lines.find(
     (line) => line.entity_id === selectedCorridorId,
@@ -58,6 +75,13 @@ export default function LiveConsole() {
         median_delay_seconds: corridorHistory.entity.median_delay_seconds ?? 0,
         vehicle_count: corridorHistory.entity.vehicle_count ?? 0,
         activity_status: corridorHistory.entity.activity_status,
+        activity_status_label: corridorHistory.entity.activity_status_label,
+        activity_reason: corridorHistory.entity.activity_reason,
+        activity_reason_label: corridorHistory.entity.activity_reason_label,
+        current_regime: corridorHistory.entity.current_regime,
+        current_regime_label: corridorHistory.entity.current_regime_label,
+        priority_score: corridorHistory.entity.priority_score,
+        priority_label: corridorHistory.entity.priority_label,
       }
     : null;
   const selectedCorridor: CorridorDisplay | null =

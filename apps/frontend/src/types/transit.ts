@@ -72,10 +72,14 @@ export interface TransitRegimePayload {
   corridor_id?: string | null;
   route_id?: string | null;
   regime?: string;
+  regime_label?: string;
   hazard?: number;
   action?: string;
+  action_label?: string;
   scoring_backend?: string;
   confidence?: number;
+  priority_score?: number;
+  priority_label?: string;
   signature?: string;
   reasons?: string[];
   provenance?: ProvenancePayload;
@@ -114,15 +118,26 @@ export interface TransitCorridorSnapshot {
   route_id?: string | null;
   direction_id?: number | null;
   label: string;
+  geometry?: {
+    type: "LineString";
+    coordinates: [number, number][];
+  } | null;
   vehicle_count: number;
   median_delay_seconds: number;
   scheduled_headway_seconds?: number | null;
   avg_delay_seconds: number;
   top_action: string;
+  top_action_label?: string;
   avg_hazard: number;
   active_alert_count: number;
+  current_regime?: string | null;
+  current_regime_label?: string | null;
+  priority_score?: number;
+  priority_label?: string;
   activity_status?: string;
+  activity_status_label?: string;
   activity_reason?: string;
+  activity_reason_label?: string;
   route_mode?: string | null;
   source?: string;
   collection_source?: string;
@@ -192,9 +207,13 @@ export interface TransitIncidentRecord {
   route_id?: string | null;
   severity: string;
   action: string;
+  action_label?: string;
   regime: string;
+  regime_label?: string;
   hazard: number;
   confidence?: number;
+  priority_score?: number;
+  priority_label?: string;
   provenance?: ProvenancePayload;
   summary: string;
   recommended_action: string;
@@ -261,10 +280,17 @@ export interface CorridorObservation {
   scheduled_headway_seconds?: number | null;
   avg_delay_seconds?: number;
   top_action?: string;
+  top_action_label?: string;
   avg_hazard?: number;
   active_alert_count?: number;
+  current_regime?: string | null;
+  current_regime_label?: string | null;
+  priority_score?: number;
+  priority_label?: string;
   activity_status?: string;
+  activity_status_label?: string;
   activity_reason?: string;
+  activity_reason_label?: string;
   source?: string;
   collection_source?: string;
   trace_id?: string | null;
@@ -277,7 +303,15 @@ export interface HistoryEntity {
   median_delay_seconds?: number;
   avg_hazard?: number;
   top_action?: string;
+  top_action_label?: string;
+  current_regime?: string | null;
+  current_regime_label?: string | null;
+  priority_score?: number;
+  priority_label?: string;
   activity_status?: string;
+  activity_status_label?: string;
+  activity_reason?: string;
+  activity_reason_label?: string;
 }
 
 export interface TransitVehicleHistoryResponse {
@@ -346,7 +380,10 @@ export interface VehicleMapFeatureProperties {
   entity_id?: string | null;
   vehicle_id?: string | null;
   route_id?: string | null;
+  route_label?: string | null;
   direction_id?: number | null;
+  corridor_entity_id?: string | null;
+  corridor_id?: string | null;
   delay_seconds?: number | null;
   current_status?: string | null;
   occupancy_status?: string | null;
@@ -367,6 +404,9 @@ export interface CorridorMapSummary {
   entity_id: string;
   route_id?: string | null;
   direction_id?: number | null;
+  corridor_id?: string | null;
+  route_mode?: string | null;
+  activity_status?: string | null;
   label?: string | null;
   regime?: string | null;
   hazard_score?: number | null;
@@ -376,13 +416,24 @@ export interface CorridorMapSummary {
   timestamp_ms?: number | null;
 }
 
+export interface CorridorMapFeatureProperties extends CorridorMapSummary {
+  _color?: string;
+}
+
+export interface CorridorMapFeature {
+  type: "Feature";
+  geometry: { type: "LineString"; coordinates: [number, number][] };
+  properties: CorridorMapFeatureProperties;
+}
+
 export interface TransitMapResponse {
   type: "FeatureCollection";
   scope?: string;
   trace_id?: string | null;
   timestamp?: string;
-  vehicle_features: VehicleMapFeature[];
-  corridor_summaries: CorridorMapSummary[];
+  vehicle_features?: VehicleMapFeature[];
+  corridor_features?: CorridorMapFeature[];
+  corridor_summaries?: CorridorMapSummary[];
   vehicle_count: number;
   corridor_count: number;
 }

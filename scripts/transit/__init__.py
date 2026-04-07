@@ -8,7 +8,9 @@ from scripts.transit.archive import (
     TransitAgencyArchiveService,
 )
 from scripts.transit.domain import TransitRuntimeConfig, TransitSnapshotService
+from scripts.transit.demo_seed import TransitDemoSeedConfig, TransitDemoSeedService
 from scripts.transit.ingest import TransitIngestConfig, TransitIngestService
+from scripts.transit.benchmark_artifacts import TransitBenchmarkArtifactConfig, TransitBenchmarkArtifactService
 from scripts.transit.replay import TransitReplayConfig, TransitReplayService
 from scripts.transit.store import TransitStore
 from scripts.transit.types import (
@@ -25,7 +27,11 @@ __all__ = [
     "TransitAPIService",
     "TransitAgencyArchiveConfig",
     "TransitAgencyArchiveService",
+    "TransitBenchmarkArtifactConfig",
+    "TransitBenchmarkArtifactService",
     "TransitCorridorSnapshot",
+    "TransitDemoSeedConfig",
+    "TransitDemoSeedService",
     "TransitFeedStatus",
     "TransitIngestConfig",
     "TransitIngestService",

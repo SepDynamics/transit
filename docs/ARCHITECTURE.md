@@ -35,6 +35,18 @@ Each archive lane maintains:
 Live ingest and replay share the same store shape so the dashboard and API can
 switch between `scope=live`, `scope=replay`, and `scope=all`.
 
+### 2.5. Runtime Supervision
+
+For host-based live MBTA operation, the committed `systemd --user` assets under
+`ops/systemd/user/` supervise:
+
+- archive collection
+- the ingest loop
+- the API
+
+The grouped target `transit-sentinel-mbta-live.target` is the preferred
+non-container runtime path for a durable live backend.
+
 ### 3. Rolling Store
 
 `scripts/transit/store.py` is the repo's operational memory layer. It retains:
@@ -64,7 +76,16 @@ regimes such as:
 - `service_degraded`
 - `feed_incoherent`
 
-Those regimes are translated into operator-facing actions such as:
+Those regimes remain available in the API and store, but the live console maps
+them into operator-facing labels such as:
+
+- `Service irregularity`
+- `Severe bunching / service gap`
+- `Terminal congestion`
+- `Confirmed disruption`
+- `Telemetry degraded`
+
+Actions are surfaced with an explicit operational priority queue:
 
 - `hold`
 - `short_turn`
@@ -74,7 +95,9 @@ Those regimes are translated into operator-facing actions such as:
 - `mark_feed_degraded`
 - `monitor`
 
-Each scored output carries hazard, confidence, provenance, and feature evidence.
+Each scored output carries the raw hazard value, confidence, provenance, and
+feature evidence. The operator UI renders that hazard value as `Risk score` and
+assigns a priority tier of `Immediate`, `High`, `Watch`, or `Monitor`.
 
 ### 5. API Surface
 
@@ -111,10 +134,12 @@ currently includes:
 
 The repo also supports operational sidecars and proof outputs:
 
+- `scripts/transit/demo_seed.py` for deterministic hosted-demo seeding from committed case packs
 - `scripts/transit/notify.py` for webhook, SMTP, and JSONL notifications
 - `scripts/transit/report.py` for archive-based corridor summaries
 - `scripts/transit/grade_calibration.py` and `render_calibration_summary.py`
   for case-pack grading and report generation
+- `scripts/transit/benchmark_artifacts.py` for repeatable artifact bundles under `artifacts/benchmarks/`
 
 ### 8. Case Packs
 

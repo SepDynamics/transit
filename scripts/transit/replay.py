@@ -10,7 +10,7 @@ import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -175,6 +175,60 @@ def discover_snapshot_dirs(archive_root: Path) -> List[Path]:
     )
     snapshot_dirs.sort(key=_snapshot_sort_key)
     return snapshot_dirs
+
+
+def latest_snapshot_dir(archive_root: Path) -> Optional[Path]:
+    snapshot_dirs = discover_snapshot_dirs(archive_root)
+    return snapshot_dirs[-1] if snapshot_dirs else None
+
+
+def select_snapshot_dirs_in_window(
+    archive_root: Path,
+    *,
+    center_timestamp_ms: Optional[int] = None,
+    lookback_ms: int = 0,
+    lookahead_ms: int = 0,
+    max_snapshots: Optional[int] = None,
+) -> List[Path]:
+    snapshot_dirs = discover_snapshot_dirs(archive_root)
+    return filter_snapshot_dirs_in_window(
+        snapshot_dirs,
+        center_timestamp_ms=center_timestamp_ms,
+        lookback_ms=lookback_ms,
+        lookahead_ms=lookahead_ms,
+        max_snapshots=max_snapshots,
+    )
+
+
+def filter_snapshot_dirs_in_window(
+    snapshot_dirs: Sequence[Path],
+    *,
+    center_timestamp_ms: Optional[int] = None,
+    lookback_ms: int = 0,
+    lookahead_ms: int = 0,
+    max_snapshots: Optional[int] = None,
+) -> List[Path]:
+    if not snapshot_dirs:
+        return []
+    normalized_dirs = sorted((Path(path) for path in snapshot_dirs), key=_snapshot_sort_key)
+    if center_timestamp_ms is None:
+        center_timestamp_ms = _snapshot_sort_key(normalized_dirs[-1])[0]
+    start_ms = int(center_timestamp_ms) - max(0, int(lookback_ms))
+    end_ms = int(center_timestamp_ms) + max(0, int(lookahead_ms))
+    selected = [
+        path
+        for path in normalized_dirs
+        if start_ms <= _snapshot_sort_key(path)[0] <= end_ms
+    ]
+    if not selected:
+        nearest = min(
+            normalized_dirs,
+            key=lambda path: abs(_snapshot_sort_key(path)[0] - int(center_timestamp_ms or 0)),
+        )
+        selected = [nearest]
+    if max_snapshots is not None and max_snapshots > 0:
+        selected = selected[-int(max_snapshots) :]
+    return selected
 
 
 def load_snapshot_manifest(snapshot_dir: Path) -> Dict[str, Any]:

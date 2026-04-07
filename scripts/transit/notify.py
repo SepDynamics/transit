@@ -23,6 +23,8 @@ Environment variable equivalents (all optional):
     TRANSIT_NOTIFY_SCOPE        Feed scope to monitor (default: live)
     TRANSIT_NOTIFY_INTERVAL     Poll interval in seconds (default: 10)
     TRANSIT_NOTIFY_MIN_SEVERITY Minimum incident severity to fire (default: warning)
+    TRANSIT_NOTIFY_PROOF_OUTPUT_ROOT  Persist proof windows for new incidents
+    TRANSIT_NOTIFY_PROOF_ARCHIVE_ROOT Override archive root for proof capture
     SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASSWORD
     NOTIFY_EMAIL_FROM / NOTIFY_EMAIL_TO
 """
@@ -49,6 +51,11 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from scripts.shared.runtime import isoformat_ms
+from scripts.transit.agencies import get_transit_agency_adapter
+from scripts.transit.proof_windows import (
+    TransitProofWindowConfig,
+    capture_proof_window,
+)
 
 logger = logging.getLogger("transit-notify")
 
@@ -87,6 +94,10 @@ class NotifyConfig:
     email_to: List[str] = field(default_factory=list)
     log_file: Optional[str] = None
     dedup_window_seconds: float = 300.0  # suppress repeat fires within 5 min
+    proof_archive_root: Optional[str] = None
+    proof_output_root: Optional[str] = None
+    proof_before_minutes: int = 60
+    proof_after_minutes: int = 60
 
 
 # ---------------------------------------------------------------------------
@@ -183,7 +194,13 @@ class NotificationDispatcher:
         if config.log_file:
             self._log_handle = open(config.log_file, "a", encoding="utf-8")  # noqa: SIM115
 
-    def dispatch(self, incident: Dict[str, Any], agency: str = "") -> None:
+    def dispatch(
+        self,
+        incident: Dict[str, Any],
+        *,
+        agency: str = "",
+        agency_key: str = "",
+    ) -> None:
         incident_id = str(
             incident.get("incident_id") or incident.get("entity_id") or "unknown"
         )
@@ -206,6 +223,8 @@ class NotificationDispatcher:
             self._send_email(incident, agency)
         if self._log_handle:
             self._write_log(incident, agency)
+        if self.cfg.proof_output_root:
+            self._capture_proof_window(incident, agency_key=agency_key)
 
     def _send_webhook(self, incident: Dict[str, Any], agency: str) -> None:
         payload = _format_webhook_payload(incident, agency)
@@ -285,6 +304,47 @@ class NotificationDispatcher:
             except Exception:
                 pass
 
+    def _capture_proof_window(self, incident: Dict[str, Any], *, agency_key: str) -> None:
+        resolved_agency_key = (
+            str(agency_key or incident.get("agency_key") or "").strip().lower()
+        )
+        archive_root = str(self.cfg.proof_archive_root or "").strip()
+        if not archive_root and resolved_agency_key:
+            try:
+                archive_root = str(
+                    get_transit_agency_adapter(resolved_agency_key).archive_root_path()
+                )
+            except Exception:
+                archive_root = ""
+        if not archive_root:
+            logger.warning(
+                "proof-window capture skipped for incident %s: no archive root configured",
+                incident.get("incident_id") or incident.get("entity_id"),
+            )
+            return
+        try:
+            manifest = capture_proof_window(
+                TransitProofWindowConfig(
+                    archive_root=Path(archive_root),
+                    output_root=Path(str(self.cfg.proof_output_root)),
+                    incident=incident,
+                    before_minutes=max(1, int(self.cfg.proof_before_minutes)),
+                    after_minutes=max(1, int(self.cfg.proof_after_minutes)),
+                    agency_key=resolved_agency_key or None,
+                )
+            )
+            logger.info(
+                "captured proof window for incident %s at %s",
+                incident.get("incident_id") or incident.get("entity_id"),
+                manifest.get("bundle_root"),
+            )
+        except Exception as exc:
+            logger.warning(
+                "proof-window capture failed for incident %s: %s",
+                incident.get("incident_id") or incident.get("entity_id"),
+                exc,
+            )
+
 
 # ---------------------------------------------------------------------------
 # Polling loop
@@ -346,6 +406,11 @@ class NotifyPollingService:
     def _poll(self) -> None:
         health = _fetch_health(self.cfg.api_url)
         agency = str(health.get("system_name") or "")
+        agency_key = str(
+            (health.get("ingest_status") or {}).get("agency_key")
+            or (health.get("ingest_status") or {}).get("feed_status", {}).get("agency_key")
+            or ""
+        ).strip()
         incidents = _fetch_incidents(self.cfg.api_url, self.cfg.scope)
         new_ids: Set[str] = set()
         for incident in incidents:
@@ -356,7 +421,11 @@ class NotifyPollingService:
                 continue
             new_ids.add(incident_id)
             if incident_id not in self._seen_incident_ids:
-                self.dispatcher.dispatch(incident, agency=agency)
+                self.dispatcher.dispatch(
+                    incident,
+                    agency=agency,
+                    agency_key=agency_key or str(incident.get("agency_key") or ""),
+                )
         # Prune IDs that are no longer active
         self._seen_incident_ids = new_ids
 
@@ -410,6 +479,26 @@ def build_parser() -> argparse.ArgumentParser:
         type=float,
         default=float(os.getenv("TRANSIT_NOTIFY_DEDUP_WINDOW", "300")),
     )
+    p.add_argument(
+        "--proof-output-root",
+        default=os.getenv("TRANSIT_NOTIFY_PROOF_OUTPUT_ROOT", ""),
+        help="Persist archive-backed proof windows for newly detected incidents",
+    )
+    p.add_argument(
+        "--proof-archive-root",
+        default=os.getenv("TRANSIT_NOTIFY_PROOF_ARCHIVE_ROOT", ""),
+        help="Override the archive root used for proof-window capture",
+    )
+    p.add_argument(
+        "--proof-before-minutes",
+        type=int,
+        default=int(os.getenv("TRANSIT_NOTIFY_PROOF_BEFORE_MINUTES", "60")),
+    )
+    p.add_argument(
+        "--proof-after-minutes",
+        type=int,
+        default=int(os.getenv("TRANSIT_NOTIFY_PROOF_AFTER_MINUTES", "60")),
+    )
     return p
 
 
@@ -437,6 +526,10 @@ def main() -> int:
         email_to=email_to,
         log_file=str(args.log_file or "").strip() or None,
         dedup_window_seconds=max(5.0, float(args.dedup_window or 300)),
+        proof_output_root=str(args.proof_output_root or "").strip() or None,
+        proof_archive_root=str(args.proof_archive_root or "").strip() or None,
+        proof_before_minutes=max(1, int(args.proof_before_minutes or 60)),
+        proof_after_minutes=max(1, int(args.proof_after_minutes or 60)),
     )
 
     if not any([cfg.webhook_url, cfg.smtp_host, cfg.log_file]):

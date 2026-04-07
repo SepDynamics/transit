@@ -37,11 +37,22 @@ def test_transit_snapshot_scores_bunching_and_operator_action(tmp_path, monkeypa
     assert entities["lines"][0]["route_id"] == "Red"
     assert entities["active_lines"][0]["activity_status"] == "active_now"
     assert entities["lines"][0]["top_action"] == "hold"
+    assert entities["lines"][0]["top_action_label"] == "Hold to rebalance"
+    assert entities["lines"][0]["current_regime_label"] == "Early bunching"
+    assert entities["lines"][0]["priority_score"] >= 60
+    assert entities["lines"][0]["priority_label"] == "High"
+    assert entities["lines"][0]["geometry"]["type"] == "LineString"
+    assert len(entities["lines"][0]["geometry"]["coordinates"]) >= 2
     assert entities["vehicles"][0]["route_label"] == "Red Red Line"
     assert incidents["incidents"][0]["action"] == "hold"
     assert incidents["incidents"][0]["regime"] == "bunching_onset"
+    assert incidents["incidents"][0]["action_label"] == "Hold to rebalance"
+    assert incidents["incidents"][0]["regime_label"] == "Early bunching"
+    assert incidents["incidents"][0]["priority_label"] == "High"
+    assert "Recommended action: Hold to rebalance." in incidents["incidents"][0]["summary"]
     assert regimes["regimes"][0]["metrics"]["compressed_headway_share"] >= 0.5
     assert regimes["regimes"][0]["metrics"]["median_delay_seconds"] >= 180
+    assert regimes["regimes"][0]["priority_label"] == "High"
 
 
 def test_transit_snapshot_derives_delay_from_scheduled_times(tmp_path, monkeypatch):
@@ -389,10 +400,16 @@ def _build_static_feed() -> bytes:
         )
         archive.writestr(
             "trips.txt",
-            "route_id,service_id,trip_id,trip_headsign,direction_id\n"
-            "Red,WKD,red-1,Alewife,0\n"
-            "Red,WKD,red-2,Alewife,0\n"
-            "Red,WKD,red-3,Alewife,0\n",
+            "route_id,service_id,trip_id,trip_headsign,direction_id,shape_id\n"
+            "Red,WKD,red-1,Alewife,0,red-shape-0\n"
+            "Red,WKD,red-2,Alewife,0,red-shape-0\n"
+            "Red,WKD,red-3,Alewife,0,red-shape-0\n",
+        )
+        archive.writestr(
+            "stops.txt",
+            "stop_id,stop_name,stop_lat,stop_lon\n"
+            "place-alfcl,Alewife,42.395428,-71.142483\n"
+            "place-davis,Davis,42.39674,-71.121815\n",
         )
         archive.writestr(
             "stop_times.txt",
@@ -403,6 +420,12 @@ def _build_static_feed() -> bytes:
             "red-2,08:13:00,08:13:00,place-davis,2\n"
             "red-3,08:16:00,08:16:00,place-alfcl,1\n"
             "red-3,08:21:00,08:21:00,place-davis,2\n",
+        )
+        archive.writestr(
+            "shapes.txt",
+            "shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence\n"
+            "red-shape-0,42.395428,-71.142483,1\n"
+            "red-shape-0,42.396740,-71.121815,2\n",
         )
     return payload.getvalue()
 

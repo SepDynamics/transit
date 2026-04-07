@@ -1,5 +1,10 @@
 import type { TransitHealth } from "../../../types/transit";
-import { formatHazard, formatPercent, humanizeToken } from "../../../utils/formatters";
+import {
+  formatHazard,
+  formatPercent,
+  formatPriorityLabel,
+  formatRegimeLabel,
+} from "../../../utils/formatters";
 
 interface OverviewMetricsProps {
   transitHealth: TransitHealth | null;
@@ -25,7 +30,7 @@ export default function OverviewMetrics({ transitHealth }: OverviewMetricsProps)
         </span>
       </article>
       <article className="metric-card panel">
-        <span className="metric-card__label">Average hazard</span>
+        <span className="metric-card__label">Average risk</span>
         <strong className="metric-card__value">{formatHazard(transitHealth?.avg_hazard)}</strong>
         <span className="metric-card__meta">max {formatHazard(transitHealth?.max_hazard)}</span>
       </article>
@@ -41,17 +46,23 @@ export default function OverviewMetrics({ transitHealth }: OverviewMetricsProps)
         </strong>
         <span className="metric-card__meta">
           {Object.entries(transitHealth?.regime_counts ?? {})
-            .map(([regime, count]) => `${humanizeToken(regime)} ${count}`)
+            .map(([regime, count]) => `${formatRegimeLabel(regime)} ${count}`)
             .join(" • ") || "no corridor mix yet"}
         </span>
       </article>
       <article className="metric-card panel">
-        <span className="metric-card__label">Worst corridor</span>
+        <span className="metric-card__label">Most urgent corridor</span>
         <strong className="metric-card__value">
           {transitHealth?.worst_corridor?.label ?? "n/a"}
         </strong>
         <span className="metric-card__meta">
-          {humanizeToken(transitHealth?.worst_corridor?.regime)}
+          {`${formatPriorityLabel(
+            transitHealth?.worst_corridor?.priority_score,
+            transitHealth?.worst_corridor?.priority_label,
+          )} • ${formatRegimeLabel(
+            transitHealth?.worst_corridor?.regime,
+            transitHealth?.worst_corridor?.regime_label,
+          )}`}
         </span>
       </article>
     </section>
