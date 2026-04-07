@@ -1,0 +1,17 @@
+[Unit]
+Description=Transit Sentinel API
+After=network-online.target transit-sentinel-mbta-ingest.service
+Wants=network-online.target transit-sentinel-mbta-ingest.service
+PartOf=transit-sentinel-mbta-live.target
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/transit-sentinel/transit-sentinel-mbta.env
+ExecStart=/usr/bin/env bash -lc 'cd "$TRANSIT_SENTINEL_HOME" && exec "${PYTHON_BIN:-python3}" scripts/transit/api.py --redis "${VALKEY_URL}" --host "${TRANSIT_API_HOST:-127.0.0.1}" --port "${TRANSIT_API_PORT:-8000}" --system-name "${TRANSIT_SYSTEM_NAME:-MBTA}"'
+Restart=always
+RestartSec=5
+TimeoutStopSec=20
+KillMode=mixed
+
+[Install]
+WantedBy=transit-sentinel-mbta-live.target

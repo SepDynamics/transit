@@ -5,8 +5,8 @@ React and Vite operations console for the Transit Sentinel API.
 ## Current Features
 
 - network overview metrics
-- corridor overview and trend watch
-- incident feed
+- corridor overview and trend watch ordered by operational priority
+- incident feed with operator-facing service-state labels
 - vehicle inventory and drilldown
 - replay scope and trace selection
 - map view backed by `/api/transit/map`
@@ -26,6 +26,10 @@ Production build:
 ```bash
 npm run build
 ```
+
+For a durable hosted frontend, use the existing nginx/container path or another
+static host. `npm run dev` is a development server, not the supervised
+production runtime.
 
 ## Runtime Config
 

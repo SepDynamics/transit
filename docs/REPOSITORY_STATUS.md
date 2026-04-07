@@ -6,7 +6,7 @@ Transit Sentinel is now a transit-only repository with one primary product lane:
 
 - archive public transit feeds
 - ingest them into a rolling store
-- score corridor instability
+- score corridor service state and operator priority
 - expose incidents and evidence through API and frontend surfaces
 - replay archived cases and grade them against labeled expectations
 
@@ -16,6 +16,7 @@ Transit Sentinel is now a transit-only repository with one primary product lane:
 - LA Metro rail and bus archive lanes via websocket realtime collection
 - Valkey-backed live and replay state
 - HTTP API, React console, calibration tools, and notifications
+- `systemd --user` supervision assets for the live MBTA backend
 
 ## Committed Proof Assets
 
@@ -29,6 +30,7 @@ Transit Sentinel is now a transit-only repository with one primary product lane:
 - LA Metro public alert coverage is still weaker than MBTA's
 - there is no Caltrans-specific adapter in the repo
 - auth and RBAC are not yet part of the current product surface
+- the durable host runtime path currently targets the MBTA live lane first
 
 ## Documentation Rule
 

@@ -1,0 +1,17 @@
+[Unit]
+Description=Transit Sentinel MBTA ingest loop
+After=network-online.target transit-sentinel-mbta-archive.service
+Wants=network-online.target transit-sentinel-mbta-archive.service
+PartOf=transit-sentinel-mbta-live.target
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/transit-sentinel/transit-sentinel-mbta.env
+ExecStart=/usr/bin/env bash -lc 'cd "$TRANSIT_SENTINEL_HOME" && exec "${PYTHON_BIN:-python3}" scripts/transit/ingest.py --redis "${VALKEY_URL}" --agency "${TRANSIT_AGENCY:-mbta}" --system-name "${TRANSIT_SYSTEM_NAME:-MBTA}" --static-feed "${MBTA_STATIC_FEED}" --vehicle-positions-feed "${MBTA_VEHICLE_FEED}" --trip-updates-feed "${MBTA_TRIP_FEED}" --alerts-feed "${MBTA_ALERTS_FEED}" --interval "${TRANSIT_INGEST_INTERVAL_SECONDS:-5}" --history-retention "${TRANSIT_HISTORY_RETENTION:-720}" --stale-after-seconds "${TRANSIT_FEED_STALE_AFTER_SECONDS:-90}"'
+Restart=always
+RestartSec=5
+TimeoutStopSec=20
+KillMode=mixed
+
+[Install]
+WantedBy=transit-sentinel-mbta-live.target

@@ -8,7 +8,7 @@ Transit Sentinel should shorten the time from:
 
 to:
 
-`this corridor is unstable, here is why, and here is the best intervention right now`
+`service on this corridor is irregular, here is the evidence, and here is the highest-priority intervention right now`
 
 ## What The Product Does Now
 

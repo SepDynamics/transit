@@ -1,0 +1,7 @@
+[Unit]
+Description=Transit Sentinel MBTA live stack
+Wants=transit-sentinel-mbta-archive.service transit-sentinel-mbta-ingest.service transit-sentinel-api.service
+After=network-online.target
+
+[Install]
+WantedBy=default.target
