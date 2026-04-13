@@ -97,6 +97,90 @@
   color: var(--text-strong);
 }
 
+.value-add {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.6fr);
+  gap: 20px;
+  padding: 22px;
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(73, 198, 176, 0.12), rgba(255, 161, 88, 0.08)),
+    rgba(6, 14, 18, 0.68);
+  border: 1px solid rgba(130, 188, 204, 0.14);
+}
+
+.value-add__intro {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.value-add__eyebrow {
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-2);
+}
+
+.value-add__intro h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.3rem, 2vw, 1.8rem);
+  line-height: 1.1;
+}
+
+.value-add__intro p {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.value-flow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.value-flow__step {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: flex-start;
+  padding-top: 2px;
+}
+
+.value-flow__number {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-strong);
+  background: rgba(73, 198, 176, 0.16);
+  border: 1px solid rgba(73, 198, 176, 0.28);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.value-flow__step strong {
+  display: block;
+  color: var(--text-strong);
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+
+.value-flow__step span:not(.value-flow__number) {
+  display: block;
+  color: var(--text-muted);
+  line-height: 1.45;
+  font-size: 0.88rem;
+}
+
 .toolbar {
   padding: 22px 24px;
   display: flex;
@@ -822,8 +906,13 @@
 
 @media (max-width: 1100px) {
   .hero,
+  .value-add,
   .split-grid {
     grid-template-columns: 1fr;
+  }
+
+  .value-flow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .detail-grid {
@@ -837,6 +926,7 @@
   }
 
   .hero,
+  .value-add,
   .toolbar,
   .section {
     padding: 18px;
@@ -868,6 +958,7 @@
 
   .detail-grid,
   .detail-grid--expanded,
+  .value-flow,
   .vehicle-card__metrics,
   .node-card__stats,
   .scorecard-card__stats,
@@ -927,6 +1018,10 @@
 
   .hero {
     gap: 16px;
+  }
+
+  .value-flow {
+    grid-template-columns: 1fr;
   }
 
   .hero__chips {

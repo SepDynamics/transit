@@ -411,8 +411,7 @@ def test_transit_api_service_map_joins_vehicle_regime_and_corridor_geometry():
                 ],
             }
 
-    service = TransitAPIService("redis://unused")
-    service.store = _FakeStore()
+    service = TransitAPIService("redis://unused", store=_FakeStore())
 
     payload = service.transit_map(scope="live")
 

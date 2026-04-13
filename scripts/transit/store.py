@@ -8,14 +8,19 @@ import os
 import time
 from collections import Counter
 from typing import Any, Dict, List, Optional
+import random
 
 try:
     import redis  # type: ignore
+    from redis.exceptions import ConnectionError, TimeoutError, BusyLoadingError
 except ImportError:  # pragma: no cover
     redis = None
+    ConnectionError = Exception
+    TimeoutError = Exception
+    BusyLoadingError = Exception
 
 from scripts.shared.runtime import isoformat_ms, scope_matches
-from scripts.transit.types import (
+from scripts.transit.transit_types import (
     TransitCorridorSnapshot,
     TransitFeedStatus,
     TransitIncidentRecord,
@@ -40,6 +45,68 @@ class TransitStore:
         if not url:
             raise RuntimeError("VALKEY_URL or REDIS_URL must be configured")
         self.client = redis.from_url(url, decode_responses=True)
+        # Test connection on initialization
+        try:
+            self.client.ping()
+        except (redis.ConnectionError, redis.TimeoutError) as e:
+            raise RuntimeError(f"Failed to connect to Redis: {e}") from e
+
+        # Circuit breaker state
+        self._failure_count = 0
+        self._last_failure_time = None
+        self._circuit_open = False
+        self._failure_threshold = 5
+        self._recovery_timeout = 30  # seconds
+
+    def _should_attempt_reset(self) -> bool:
+        """Check if enough time has passed to attempt reset."""
+        if self._last_failure_time is None:
+            return True
+        return time.time() - self._last_failure_time >= self._recovery_timeout
+
+    def _record_success(self) -> None:
+        """Record a successful operation."""
+        self._failure_count = 0
+        self._circuit_open = False
+
+    def _record_failure(self) -> None:
+        """Record a failed operation and potentially open circuit."""
+        self._failure_count += 1
+        self._last_failure_time = time.time()
+        if self._failure_count >= self._failure_threshold:
+            self._circuit_open = True
+
+    def _execute_with_retry(self, operation, *args, max_retries=3, **kwargs):
+        """Execute a Redis operation with retry logic and circuit breaker."""
+        # Check circuit breaker
+        if self._circuit_open:
+            if not self._should_attempt_reset():
+                raise RuntimeError("Redis circuit breaker is open")
+            # Half-open state: allow one attempt to test if service is back
+
+        last_exception = None
+        for attempt in range(max_retries):
+            try:
+                result = operation(*args, **kwargs)
+                self._record_success()
+                return result
+            except (
+                redis.ConnectionError,
+                redis.TimeoutError,
+                redis.BusyLoadingError,
+            ) as e:
+                last_exception = e
+                if attempt < max_retries - 1:  # Don't sleep on the last attempt
+                    # Exponential backoff with jitter
+                    sleep_time = (2**attempt) + random.uniform(0, 1)
+                    time.sleep(min(sleep_time, 10))  # Cap at 10 seconds
+            except Exception as e:
+                # For non-connection errors, don't retry
+                raise e
+
+        # All retries exhausted
+        self._record_failure()
+        raise last_exception
 
     def write_snapshot(
         self,
@@ -93,101 +160,140 @@ class TransitStore:
             if isinstance(row, dict)
         }
 
-        self.client.set("transit:health:last", self._dumps(health))
-        self.client.set("transit:entities:last", self._dumps(entities))
-        self.client.set("transit:regimes:last", self._dumps(regimes))
-        self.client.set("transit:incidents:last", self._dumps(incidents))
-        self.client.set("transit:feed_status:last", self._dumps(feed_status))
-        self.client.set("transit:errors:last", self._dumps({"errors": errors}))
-        self._write_latest_snapshot_part(
-            "health",
-            health,
-            source=snapshot_source,
-            trace_id=snapshot_trace_id,
-            timestamp_ms=snapshot_timestamp_ms,
-        )
-        self._write_latest_snapshot_part(
-            "entities",
-            entities,
-            source=snapshot_source,
-            trace_id=snapshot_trace_id,
-            timestamp_ms=snapshot_timestamp_ms,
-        )
-        self._write_latest_snapshot_part(
-            "regimes",
-            regimes,
-            source=snapshot_source,
-            trace_id=snapshot_trace_id,
-            timestamp_ms=snapshot_timestamp_ms,
-        )
-        self._write_latest_snapshot_part(
-            "incidents",
-            incidents,
-            source=snapshot_source,
-            trace_id=snapshot_trace_id,
-            timestamp_ms=snapshot_timestamp_ms,
-        )
-        self._write_latest_snapshot_part(
-            "feed_status",
-            feed_status,
-            source=snapshot_source,
-            trace_id=snapshot_trace_id,
-            timestamp_ms=snapshot_timestamp_ms,
-        )
-        self._write_latest_snapshot_part(
-            "errors",
-            {"errors": errors},
-            source=snapshot_source,
-            trace_id=snapshot_trace_id,
-            timestamp_ms=snapshot_timestamp_ms,
-        )
-        if configured_feeds is not None:
-            self.client.set(
-                self.configured_feeds_key(), self._dumps(dict(configured_feeds))
-            )
+        # Use pipeline for batch operations
+        def _execute_pipeline():
+            pipe = self.client.pipeline()
+            pipe.set("transit:health:last", self._dumps(health))
+            pipe.set("transit:entities:last", self._dumps(entities))
+            pipe.set("transit:regimes:last", self._dumps(regimes))
+            pipe.set("transit:incidents:last", self._dumps(incidents))
+            pipe.set("transit:feed_status:last", self._dumps(feed_status))
+            pipe.set("transit:errors:last", self._dumps({"errors": errors}))
 
+            self._write_latest_snapshot_part(
+                pipe,
+                "health",
+                health,
+                source=snapshot_source,
+                trace_id=snapshot_trace_id,
+                timestamp_ms=snapshot_timestamp_ms,
+            )
+            self._write_latest_snapshot_part(
+                pipe,
+                "entities",
+                entities,
+                source=snapshot_source,
+                trace_id=snapshot_trace_id,
+                timestamp_ms=snapshot_timestamp_ms,
+            )
+            self._write_latest_snapshot_part(
+                pipe,
+                "regimes",
+                regimes,
+                source=snapshot_source,
+                trace_id=snapshot_trace_id,
+                timestamp_ms=snapshot_timestamp_ms,
+            )
+            self._write_latest_snapshot_part(
+                pipe,
+                "incidents",
+                incidents,
+                source=snapshot_source,
+                trace_id=snapshot_trace_id,
+                timestamp_ms=snapshot_timestamp_ms,
+            )
+            self._write_latest_snapshot_part(
+                pipe,
+                "feed_status",
+                feed_status,
+                source=snapshot_source,
+                trace_id=snapshot_trace_id,
+                timestamp_ms=snapshot_timestamp_ms,
+            )
+            self._write_latest_snapshot_part(
+                pipe,
+                "errors",
+                {"errors": errors},
+                source=snapshot_source,
+                trace_id=snapshot_trace_id,
+                timestamp_ms=snapshot_timestamp_ms,
+            )
+            if configured_feeds is not None:
+                pipe.set(
+                    self.configured_feeds_key(), self._dumps(dict(configured_feeds))
+                )
+
+            # Execute the pipeline
+            pipe.execute()
+
+        self._execute_with_retry(_execute_pipeline)
+
+        # Process vehicle data separately (still individual operations for now)
         for vehicle in entities.get("vehicles") or []:
             if not isinstance(vehicle, dict):
                 continue
             entity_id = str(vehicle.get("entity_id") or "").strip()
             if not entity_id:
                 continue
-            self.client.set(
-                self.vehicle_meta_key(entity_id, trace_id=snapshot_trace_id),
-                self._dumps(vehicle),
-            )
-            if snapshot_trace_id:
+
+            def _set_vehicle_meta():
+                self.client.set(
+                    self.vehicle_meta_key(entity_id, trace_id=snapshot_trace_id),
+                    self._dumps(vehicle),
+                )
+
+            def _sadd_trace_vehicle():
                 self.client.sadd(
                     self.trace_vehicle_entities_key(snapshot_trace_id), entity_id
                 )
+
+            self._execute_with_retry(_set_vehicle_meta)
+            if snapshot_trace_id:
+                self._execute_with_retry(_sadd_trace_vehicle)
+
             observation = dict(vehicle.get("observation") or {})
             if observation:
-                self.client.zadd(
-                    self.observation_history_key(entity_id),
-                    {
-                        self._dumps(observation): int(
-                            observation.get("timestamp_ms") or 0
-                        )
-                    },
-                )
-                self._trim_sorted_set(
-                    self.observation_history_key(entity_id), retention
-                )
+
+                def _zadd_observation():
+                    self.client.zadd(
+                        self.observation_history_key(entity_id),
+                        {
+                            self._dumps(observation): int(
+                                observation.get("timestamp_ms") or 0
+                            )
+                        },
+                    )
+
+                def _trim_observation():
+                    self._trim_sorted_set(
+                        self.observation_history_key(entity_id), retention
+                    )
+
+                self._execute_with_retry(_zadd_observation)
+                self._execute_with_retry(_trim_observation)
+
             regime = dict(vehicle.get("regime") or {})
             if regime:
-                self.client.zadd(
-                    self.vehicle_regime_history_key(entity_id),
-                    {
-                        self._dumps(regime): int(
-                            regime.get("timestamp_ms")
-                            or observation.get("timestamp_ms")
-                            or 0
-                        )
-                    },
-                )
-                self._trim_sorted_set(
-                    self.vehicle_regime_history_key(entity_id), retention
-                )
+
+                def _zadd_regime():
+                    self.client.zadd(
+                        self.vehicle_regime_history_key(entity_id),
+                        {
+                            self._dumps(regime): int(
+                                regime.get("timestamp_ms")
+                                or observation.get("timestamp_ms")
+                                or 0
+                            )
+                        },
+                    )
+
+                def _trim_regime():
+                    self._trim_sorted_set(
+                        self.vehicle_regime_history_key(entity_id), retention
+                    )
+
+                self._execute_with_retry(_zadd_regime)
+                self._execute_with_retry(_trim_regime)
 
         for regime in regimes.get("regimes") or []:
             if not isinstance(regime, dict):
@@ -264,25 +370,56 @@ class TransitStore:
             )
 
         if snapshot_trace_id:
-            self.client.sadd("transit:trace_ids", snapshot_trace_id)
-            self.client.zadd(
-                "transit:trace_timestamps", {snapshot_trace_id: snapshot_timestamp_ms}
-            )
-        self.client.set("transit:sources:last", self._dumps(self.sources()))
+
+            def _sadd_trace_ids():
+                self.client.sadd("transit:trace_ids", snapshot_trace_id)
+
+            def _zadd_trace_timestamps():
+                self.client.zadd(
+                    "transit:trace_timestamps",
+                    {snapshot_trace_id: snapshot_timestamp_ms},
+                )
+
+            self._execute_with_retry(_sadd_trace_ids)
+            self._execute_with_retry(_zadd_trace_timestamps)
+
+        def _set_sources_last():
+            self.client.set("transit:sources:last", self._dumps(self.sources()))
+
+        self._execute_with_retry(_set_sources_last)
 
     def write_replay_trace(self, trace: TransitReplayTrace) -> None:
         payload = trace.to_json()
-        self.client.set(self.trace_meta_key(trace.trace_id), self._dumps(payload))
-        self.client.sadd("transit:trace_ids", trace.trace_id)
+
+        def _set_trace_meta():
+            self.client.set(self.trace_meta_key(trace.trace_id), self._dumps(payload))
+
+        def _sadd_trace_ids():
+            self.client.sadd("transit:trace_ids", trace.trace_id)
+
+        self._execute_with_retry(_set_trace_meta)
+        self._execute_with_retry(_sadd_trace_ids)
+
         if trace.latest_snapshot_timestamp_ms is not None:
-            self.client.zadd(
-                "transit:trace_timestamps",
-                {trace.trace_id: int(trace.latest_snapshot_timestamp_ms)},
-            )
-        self.client.set("transit:sources:last", self._dumps(self.sources()))
+
+            def _zadd_trace_timestamps():
+                self.client.zadd(
+                    "transit:trace_timestamps",
+                    {trace.trace_id: int(trace.latest_snapshot_timestamp_ms)},
+                )
+
+            self._execute_with_retry(_zadd_trace_timestamps)
+
+        def _set_sources_last():
+            self.client.set("transit:sources:last", self._dumps(self.sources()))
+
+        self._execute_with_retry(_set_sources_last)
 
     def write_status(self, key: str, payload: Dict[str, Any]) -> None:
-        self.client.set(key, self._dumps(payload))
+        def _set_status():
+            self.client.set(key, self._dumps(payload))
+
+        self._execute_with_retry(_set_status)
 
     def read_status(self, key: str) -> Dict[str, Any]:
         return self.read_json_key(key, default={})
@@ -1225,6 +1362,7 @@ class TransitStore:
 
     def _write_latest_snapshot_part(
         self,
+        pipe,
         kind: str,
         payload: Dict[str, Any],
         *,
@@ -1234,14 +1372,12 @@ class TransitStore:
     ) -> None:
         normalized_source = str(source or "live")
         if normalized_source == "replay" and trace_id:
-            self.client.set(
-                self.trace_payload_key(trace_id, kind), self._dumps(payload)
-            )
-            self.client.set(self.replay_payload_key(kind), self._dumps(payload))
-            self.client.sadd("transit:trace_ids", trace_id)
-            self.client.zadd("transit:trace_timestamps", {trace_id: timestamp_ms})
+            pipe.set(self.trace_payload_key(trace_id, kind), self._dumps(payload))
+            pipe.set(self.replay_payload_key(kind), self._dumps(payload))
+            pipe.sadd("transit:trace_ids", trace_id)
+            pipe.zadd("transit:trace_timestamps", {trace_id: timestamp_ms})
             return
-        self.client.set(self.live_payload_key(kind), self._dumps(payload))
+        pipe.set(self.live_payload_key(kind), self._dumps(payload))
 
     def _resolve_trace_id(self, *, scope: str, trace_id: str | None) -> str | None:
         if trace_id not in (None, ""):

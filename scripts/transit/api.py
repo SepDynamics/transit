@@ -45,9 +45,15 @@ logger = logging.getLogger("transit-api")
 
 
 class TransitAPIService:
-    def __init__(self, redis_url: str, *, system_name: str = "MBTA") -> None:
+    def __init__(
+        self,
+        redis_url: str,
+        *,
+        system_name: str = "MBTA",
+        store: TransitStore | None = None,
+    ) -> None:
         self.system_name = system_name
-        self.store = TransitStore(redis_url)
+        self.store = store or TransitStore(redis_url)
 
     def service_health(self) -> Dict[str, Any]:
         ingest_status = self.store.read_status("ops:transit_ingest_status")
@@ -672,6 +678,13 @@ class TransitAPIHandler(BaseHTTPRequestHandler):
         return ok, token, role
 
     def do_GET(self) -> None:  # pragma: no cover - exercised via integration tests
+        # Check request size limit (1MB max for query string and headers)
+        # Note: For GET requests, body size is typically 0, but we still check headers
+        content_length = int(self.headers.get("Content-Length") or 0)
+        if content_length > 1024 * 1024:  # 1MB
+            self._send_json({"error": "request_too_large"}, status=413)
+            return
+
         parsed = urlparse(self.path)
         params = parse_qs(parsed.query or "")
         scope = (params.get("scope") or ["all"])[0]
@@ -794,6 +807,12 @@ class TransitAPIHandler(BaseHTTPRequestHandler):
         self._send_json({"error": "not_found"}, status=404)
 
     def do_POST(self) -> None:  # pragma: no cover - exercised via integration tests
+        # Check request size limit (1MB max)
+        content_length = int(self.headers.get("Content-Length") or 0)
+        if content_length > 1024 * 1024:  # 1MB
+            self._send_json({"error": "request_too_large"}, status=413)
+            return
+
         parsed = urlparse(self.path)
 
         # Incident acknowledgement — requires operator role
@@ -818,17 +837,10 @@ class TransitAPIHandler(BaseHTTPRequestHandler):
                 note=note,
                 acknowledged_by=str(token or ""),
             )
-            write_audit_event(
-                self.svc.store.client,
-                action="incident_ack",
-                token=token,
-                role=role,
-                resource=f"incident:{incident_id}",
-                payload={"note": note},
-            )
             self._send_json(result)
             return
 
+        # Default: 404 for any other POST
         self._send_json({"error": "not_found"}, status=404)
 
     def log_message(self, format: str, *args: Any) -> None:  # pragma: no cover

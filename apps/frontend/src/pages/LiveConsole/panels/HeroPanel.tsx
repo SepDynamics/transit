@@ -11,15 +11,15 @@ export default function HeroPanel({ serviceState, transitHealth }: HeroPanelProp
     <section className="hero panel">
       <div className="hero__copy">
         <div className="hero__eyebrow">Transit Sentinel</div>
-        <h1 className="hero__title">Real-time service health and intervention priority.</h1>
+        <h1 className="hero__title">Public feed signals into operator-ready priorities.</h1>
         <p className="hero__summary">
-          GTFS static and GTFS-RT feeds are fused into corridor-level risk, evidence, and
-          recommended control actions for operations teams.
+          GTFS schedules, vehicle positions, trip updates, and alerts become corridor
+          risk, evidence, replay traces, and recommended control actions.
         </p>
         <div className="hero__chips">
-          <span className="chip">GTFS static schedule</span>
-          <span className="chip">GTFS-RT vehicle feeds</span>
-          <span className="chip">Operator actions</span>
+          <span className="chip">Public-data proof</span>
+          <span className="chip">Replayable incidents</span>
+          <span className="chip">Operator action queue</span>
         </div>
       </div>
       <div className="hero__rail">

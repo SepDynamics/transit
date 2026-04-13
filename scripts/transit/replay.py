@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Import archived transit snapshots into the rolling store as a replay trace."""
+
 from __future__ import annotations
 
 import argparse
@@ -16,12 +17,18 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from scripts.shared.runtime import isoformat_ms
-from scripts.transit.agencies import default_transit_agency_key, get_transit_agency_adapter
-from scripts.transit.case_packs import resolve_case_pack_event_overlay_path, resolve_case_pack_root
+from scripts.transit.agencies import (
+    default_transit_agency_key,
+    get_transit_agency_adapter,
+)
+from scripts.transit.case_packs import (
+    resolve_case_pack_event_overlay_path,
+    resolve_case_pack_root,
+)
 from scripts.transit.domain import TransitRuntimeConfig, TransitSnapshotService
 from scripts.transit.snapshot_paths import resolve_snapshot_feed_paths
 from scripts.transit.store import TransitStore
-from scripts.transit.types import TransitReplayTrace
+from scripts.transit.transit_types import TransitReplayTrace
 
 logger = logging.getLogger("transit-replay")
 
@@ -41,14 +48,20 @@ class TransitReplayConfig:
 
 
 class TransitReplayService:
-    def __init__(self, config: TransitReplayConfig, *, store: Optional[TransitStore] = None) -> None:
+    def __init__(
+        self, config: TransitReplayConfig, *, store: Optional[TransitStore] = None
+    ) -> None:
         self.cfg = config
         self.store = store or TransitStore(config.redis_url)
 
     def run_once(self) -> Dict[str, Any]:
-        snapshot_dirs = self.cfg.snapshot_dirs or discover_snapshot_dirs(self.cfg.archive_root)
+        snapshot_dirs = self.cfg.snapshot_dirs or discover_snapshot_dirs(
+            self.cfg.archive_root
+        )
         if not snapshot_dirs:
-            raise RuntimeError(f"no archived snapshots found under {self.cfg.archive_root}")
+            raise RuntimeError(
+                f"no archived snapshots found under {self.cfg.archive_root}"
+            )
         if self.cfg.clear_trace:
             self.store.clear_replay_trace(self.cfg.trace_id)
 
@@ -56,24 +69,48 @@ class TransitReplayService:
         for snapshot_dir in snapshot_dirs:
             manifest = load_snapshot_manifest(snapshot_dir)
             resolved = resolve_snapshot_feed_paths(snapshot_dir)
-            snapshot_agency_key = str(manifest.get("agency_key") or self.cfg.agency_key).strip() or self.cfg.agency_key
+            snapshot_agency_key = (
+                str(manifest.get("agency_key") or self.cfg.agency_key).strip()
+                or self.cfg.agency_key
+            )
             adapter = get_transit_agency_adapter(snapshot_agency_key)
             case_pack_root = resolve_case_pack_root(snapshot_dir)
-            event_overlay_path = resolve_case_pack_event_overlay_path(case_pack_root) if case_pack_root else None
+            event_overlay_path = (
+                resolve_case_pack_event_overlay_path(case_pack_root)
+                if case_pack_root
+                else None
+            )
             runtime = TransitRuntimeConfig(
-                system_name=str(manifest.get("agency") or self.cfg.system_name or adapter.system_name),
+                system_name=str(
+                    manifest.get("agency")
+                    or self.cfg.system_name
+                    or adapter.system_name
+                ),
                 agency_key=adapter.key,
                 static_feed=_optional_existing_path(resolved.get("static_gtfs")),
-                vehicle_positions_feed=_optional_existing_path(resolved.get("vehicle_positions")),
+                vehicle_positions_feed=_optional_existing_path(
+                    resolved.get("vehicle_positions")
+                ),
                 trip_updates_feed=_optional_existing_path(resolved.get("trip_updates")),
                 alerts_feed=_optional_existing_path(resolved.get("alerts")),
-                event_overlays_feed=str(event_overlay_path) if event_overlay_path else None,
+                event_overlays_feed=str(event_overlay_path)
+                if event_overlay_path
+                else None,
                 stale_after_seconds=self.cfg.stale_after_seconds,
-                feed_timezone=str(manifest.get("feed_timezone") or self.cfg.feed_timezone or adapter.timezone_name),
+                feed_timezone=str(
+                    manifest.get("feed_timezone")
+                    or self.cfg.feed_timezone
+                    or adapter.timezone_name
+                ),
             )
-            snapshot_time_ms = int(manifest.get("timestamp_ms") or _snapshot_timestamp_from_path(snapshot_dir))
+            snapshot_time_ms = int(
+                manifest.get("timestamp_ms")
+                or _snapshot_timestamp_from_path(snapshot_dir)
+            )
             payload = TransitSnapshotService(runtime).snapshot(now_ms=snapshot_time_ms)
-            replay_payload = apply_replay_context(payload, trace_id=self.cfg.trace_id, snapshot_time_ms=snapshot_time_ms)
+            replay_payload = apply_replay_context(
+                payload, trace_id=self.cfg.trace_id, snapshot_time_ms=snapshot_time_ms
+            )
             self.store.write_snapshot(
                 replay_payload,
                 configured_feeds={
@@ -88,11 +125,18 @@ class TransitReplayService:
             )
             imported.append(
                 {
-                    "snapshot_path": str(manifest.get("snapshot_path") or snapshot_dir.relative_to(self.cfg.archive_root)),
+                    "snapshot_path": str(
+                        manifest.get("snapshot_path")
+                        or snapshot_dir.relative_to(self.cfg.archive_root)
+                    ),
                     "timestamp_ms": snapshot_time_ms,
                     "agency_key": adapter.key,
-                    "vehicle_count": len((replay_payload.get("entities") or {}).get("vehicles") or []),
-                    "incident_count": len((replay_payload.get("incidents") or {}).get("incidents") or []),
+                    "vehicle_count": len(
+                        (replay_payload.get("entities") or {}).get("vehicles") or []
+                    ),
+                    "incident_count": len(
+                        (replay_payload.get("incidents") or {}).get("incidents") or []
+                    ),
                 }
             )
 
@@ -118,33 +162,73 @@ class TransitReplayService:
             )
         )
         self.store.write_status("ops:transit_replay_status", status)
-        logger.info("imported %d archived snapshots into transit trace=%s", len(imported), self.cfg.trace_id)
+        logger.info(
+            "imported %d archived snapshots into transit trace=%s",
+            len(imported),
+            self.cfg.trace_id,
+        )
         return status
 
 
 def build_parser() -> argparse.ArgumentParser:
-    adapter = get_transit_agency_adapter(os.getenv("TRANSIT_AGENCY", default_transit_agency_key()))
-    parser = argparse.ArgumentParser(description="Import archived transit snapshots into Valkey as a replay trace")
-    parser.add_argument("--redis", default=os.getenv("VALKEY_URL", "redis://localhost:6379/0"))
+    adapter = get_transit_agency_adapter(
+        os.getenv("TRANSIT_AGENCY", default_transit_agency_key())
+    )
+    parser = argparse.ArgumentParser(
+        description="Import archived transit snapshots into Valkey as a replay trace"
+    )
+    parser.add_argument(
+        "--redis", default=os.getenv("VALKEY_URL", "redis://localhost:6379/0")
+    )
     parser.add_argument("--agency", default=os.getenv("TRANSIT_AGENCY", adapter.key))
-    parser.add_argument("--archive-root", default=os.getenv("TRANSIT_ARCHIVE_ROOT", adapter.archive_root))
+    parser.add_argument(
+        "--archive-root",
+        default=os.getenv("TRANSIT_ARCHIVE_ROOT", adapter.archive_root),
+    )
     parser.add_argument("--trace-id", required=True)
     parser.add_argument("--snapshot-dir", action="append", default=[])
-    parser.add_argument("--max-snapshots", type=int, default=0, help="Import only the most recent N snapshots when snapshot dirs are auto-discovered")
-    parser.add_argument("--history-retention", type=int, default=int(os.getenv("TRANSIT_HISTORY_RETENTION", "720")))
-    parser.add_argument("--system-name", default=os.getenv("TRANSIT_SYSTEM_NAME", adapter.system_name))
-    parser.add_argument("--stale-after-seconds", type=int, default=int(os.getenv("TRANSIT_FEED_STALE_AFTER_SECONDS", "90")))
-    parser.add_argument("--feed-timezone", default=os.getenv("TRANSIT_FEED_TIMEZONE", adapter.timezone_name))
-    parser.add_argument("--clear-trace", action="store_true", help="Remove any existing replay data for this trace before importing")
+    parser.add_argument(
+        "--max-snapshots",
+        type=int,
+        default=0,
+        help="Import only the most recent N snapshots when snapshot dirs are auto-discovered",
+    )
+    parser.add_argument(
+        "--history-retention",
+        type=int,
+        default=int(os.getenv("TRANSIT_HISTORY_RETENTION", "720")),
+    )
+    parser.add_argument(
+        "--system-name", default=os.getenv("TRANSIT_SYSTEM_NAME", adapter.system_name)
+    )
+    parser.add_argument(
+        "--stale-after-seconds",
+        type=int,
+        default=int(os.getenv("TRANSIT_FEED_STALE_AFTER_SECONDS", "90")),
+    )
+    parser.add_argument(
+        "--feed-timezone",
+        default=os.getenv("TRANSIT_FEED_TIMEZONE", adapter.timezone_name),
+    )
+    parser.add_argument(
+        "--clear-trace",
+        action="store_true",
+        help="Remove any existing replay data for this trace before importing",
+    )
     return parser
 
 
 def main() -> int:
-    logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper(), format="%(asctime)s %(levelname)s %(name)s :: %(message)s")
+    logging.basicConfig(
+        level=os.getenv("LOG_LEVEL", "INFO").upper(),
+        format="%(asctime)s %(levelname)s %(name)s :: %(message)s",
+    )
     args = build_parser().parse_args()
     adapter = get_transit_agency_adapter(str(args.agency))
     archive_root = Path(args.archive_root).expanduser().resolve()
-    snapshot_dirs = [Path(value).expanduser().resolve() for value in (args.snapshot_dir or [])]
+    snapshot_dirs = [
+        Path(value).expanduser().resolve() for value in (args.snapshot_dir or [])
+    ]
     if not snapshot_dirs:
         discovered = discover_snapshot_dirs(archive_root)
         if int(args.max_snapshots or 0) > 0:
@@ -169,9 +253,7 @@ def main() -> int:
 def discover_snapshot_dirs(archive_root: Path) -> List[Path]:
     archive_root = Path(archive_root)
     snapshot_dirs = sorted(
-        path
-        for path in archive_root.glob("archive/*/*/*/*")
-        if path.is_dir()
+        path for path in archive_root.glob("archive/*/*/*/*") if path.is_dir()
     )
     snapshot_dirs.sort(key=_snapshot_sort_key)
     return snapshot_dirs
@@ -210,7 +292,9 @@ def filter_snapshot_dirs_in_window(
 ) -> List[Path]:
     if not snapshot_dirs:
         return []
-    normalized_dirs = sorted((Path(path) for path in snapshot_dirs), key=_snapshot_sort_key)
+    normalized_dirs = sorted(
+        (Path(path) for path in snapshot_dirs), key=_snapshot_sort_key
+    )
     if center_timestamp_ms is None:
         center_timestamp_ms = _snapshot_sort_key(normalized_dirs[-1])[0]
     start_ms = int(center_timestamp_ms) - max(0, int(lookback_ms))
@@ -223,7 +307,9 @@ def filter_snapshot_dirs_in_window(
     if not selected:
         nearest = min(
             normalized_dirs,
-            key=lambda path: abs(_snapshot_sort_key(path)[0] - int(center_timestamp_ms or 0)),
+            key=lambda path: abs(
+                _snapshot_sort_key(path)[0] - int(center_timestamp_ms or 0)
+            ),
         )
         selected = [nearest]
     if max_snapshots is not None and max_snapshots > 0:
@@ -242,7 +328,9 @@ def load_snapshot_manifest(snapshot_dir: Path) -> Dict[str, Any]:
     return payload if isinstance(payload, dict) else {}
 
 
-def apply_replay_context(payload: Dict[str, Any], *, trace_id: str, snapshot_time_ms: int) -> Dict[str, Any]:
+def apply_replay_context(
+    payload: Dict[str, Any], *, trace_id: str, snapshot_time_ms: int
+) -> Dict[str, Any]:
     replay_payload = copy.deepcopy(payload)
     generated_at = isoformat_ms(snapshot_time_ms)
 
@@ -299,7 +387,9 @@ def _optional_existing_path(value: Optional[str]) -> Optional[str]:
 
 def _snapshot_sort_key(snapshot_dir: Path) -> tuple[int, str]:
     manifest = load_snapshot_manifest(snapshot_dir)
-    timestamp_ms = int(manifest.get("timestamp_ms") or _snapshot_timestamp_from_path(snapshot_dir))
+    timestamp_ms = int(
+        manifest.get("timestamp_ms") or _snapshot_timestamp_from_path(snapshot_dir)
+    )
     return timestamp_ms, str(snapshot_dir)
 
 
@@ -314,7 +404,12 @@ def _snapshot_timestamp_from_path(snapshot_dir: Path) -> int:
         second = int(stamp[4:6])
         from datetime import datetime, timezone
 
-        return int(datetime(year, month, day, hour, minute, second, tzinfo=timezone.utc).timestamp() * 1000)
+        return int(
+            datetime(
+                year, month, day, hour, minute, second, tzinfo=timezone.utc
+            ).timestamp()
+            * 1000
+        )
     except (IndexError, ValueError):
         return int(os.path.getmtime(snapshot_dir) * 1000)
 

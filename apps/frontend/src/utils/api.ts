@@ -68,5 +68,8 @@ export async function postJson<T>(path: string, body: unknown): Promise<T> {
     headers,
     body: JSON.stringify(body),
   });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
   return (await response.json()) as T;
 }

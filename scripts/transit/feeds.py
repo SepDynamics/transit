@@ -1,4 +1,5 @@
 """Load and normalize GTFS and GTFS-RT feeds for Transit Sentinel."""
+
 from __future__ import annotations
 
 import csv
@@ -10,7 +11,7 @@ from zipfile import ZipFile
 
 import requests
 
-from scripts.transit.types import (
+from scripts.transit.transit_types import (
     GTFSCalendarService,
     GTFSRoute,
     GTFSShapePoint,
@@ -26,7 +27,9 @@ from scripts.transit.types import (
 )
 
 
-def load_gtfs_catalog(source: str | Path | bytes, *, feed_label: Optional[str] = None) -> GTFSStaticCatalog:
+def load_gtfs_catalog(
+    source: str | Path | bytes, *, feed_label: Optional[str] = None
+) -> GTFSStaticCatalog:
     data = _read_resource(source)
     rows_by_file: Dict[str, List[Dict[str, str]]] = {}
     if _looks_like_zip_bytes(data):
@@ -35,16 +38,31 @@ def load_gtfs_catalog(source: str | Path | bytes, *, feed_label: Optional[str] =
                 if not name.endswith(".txt"):
                     continue
                 with archive.open(name, "r") as handle:
-                    rows_by_file[Path(name).name] = list(csv.DictReader(io.TextIOWrapper(handle, encoding="utf-8-sig")))
+                    rows_by_file[Path(name).name] = list(
+                        csv.DictReader(io.TextIOWrapper(handle, encoding="utf-8-sig"))
+                    )
     else:
         path = _coerce_path(source)
         if path and path.is_dir():
-            for name in ("routes.txt", "trips.txt", "stops.txt", "stop_times.txt", "calendar.txt", "shapes.txt"):
+            for name in (
+                "routes.txt",
+                "trips.txt",
+                "stops.txt",
+                "stop_times.txt",
+                "calendar.txt",
+                "shapes.txt",
+            ):
                 file_path = path / name
                 if file_path.exists():
-                    rows_by_file[name] = list(csv.DictReader(file_path.read_text(encoding="utf-8-sig").splitlines()))
+                    rows_by_file[name] = list(
+                        csv.DictReader(
+                            file_path.read_text(encoding="utf-8-sig").splitlines()
+                        )
+                    )
         else:
-            raise ValueError("GTFS static feed must be a zip archive, directory, or bytes payload")
+            raise ValueError(
+                "GTFS static feed must be a zip archive, directory, or bytes payload"
+            )
 
     catalog = GTFSStaticCatalog(feed_label=feed_label or _default_feed_label(source))
     for row in rows_by_file.get("routes.txt", []):
@@ -229,12 +247,20 @@ def normalize_gtfs_realtime_payload(
     )
 
 
-def merge_realtime_bundles(feed_label: str, *bundles: TransitRealtimeBundle) -> TransitRealtimeBundle:
+def merge_realtime_bundles(
+    feed_label: str, *bundles: TransitRealtimeBundle
+) -> TransitRealtimeBundle:
     vehicles: List[TransitVehicleObservation] = []
     trip_updates: List[TransitTripUpdateObservation] = []
     alerts: List[TransitAlertObservation] = []
-    timestamps = [bundle.feed_timestamp_ms for bundle in bundles if bundle.feed_timestamp_ms is not None]
-    sources = [bundle.collection_source for bundle in bundles if bundle.collection_source]
+    timestamps = [
+        bundle.feed_timestamp_ms
+        for bundle in bundles
+        if bundle.feed_timestamp_ms is not None
+    ]
+    sources = [
+        bundle.collection_source for bundle in bundles if bundle.collection_source
+    ]
     trace_id = next((bundle.trace_id for bundle in bundles if bundle.trace_id), None)
     for bundle in bundles:
         vehicles.extend(bundle.vehicles)
@@ -276,15 +302,25 @@ def _normalize_vehicle_entity(
         service_date=_string_or_none(_field(trip, "start_date", "startDate")),
         start_time=_string_or_none(_field(trip, "start_time", "startTime")),
         stop_id=_string_or_none(_field(payload, "stop_id", "stopId")),
-        current_status=_string_or_none(_field(payload, "current_status", "currentStatus")),
-        current_stop_sequence=_optional_int(_field(payload, "current_stop_sequence", "currentStopSequence")),
-        occupancy_status=_string_or_none(_field(payload, "occupancy_status", "occupancyStatus")),
+        current_status=_string_or_none(
+            _field(payload, "current_status", "currentStatus")
+        ),
+        current_stop_sequence=_optional_int(
+            _field(payload, "current_stop_sequence", "currentStopSequence")
+        ),
+        occupancy_status=_string_or_none(
+            _field(payload, "occupancy_status", "occupancyStatus")
+        ),
         latitude=_optional_float(_field(position, "latitude", "lat")),
         longitude=_optional_float(_field(position, "longitude", "lon")),
         bearing=_optional_float(_field(position, "bearing")),
         speed_mps=_optional_float(_field(position, "speed")),
-        delay_seconds=_optional_int(_field(payload, "delay", "current_delay", "currentDelay")),
-        congestion_level=_string_or_none(_field(position, "congestion_level", "congestionLevel")),
+        delay_seconds=_optional_int(
+            _field(payload, "delay", "current_delay", "currentDelay")
+        ),
+        congestion_level=_string_or_none(
+            _field(position, "congestion_level", "congestionLevel")
+        ),
         source="live",
         collection_source=collection_source,
         trace_id=trace_id,
@@ -318,12 +354,16 @@ def _normalize_trip_update_entity(
         stop_time_updates.append(
             TransitStopTimeUpdate(
                 stop_id=_string_or_none(_field(update, "stop_id", "stopId")),
-                stop_sequence=_optional_int(_field(update, "stop_sequence", "stopSequence")),
+                stop_sequence=_optional_int(
+                    _field(update, "stop_sequence", "stopSequence")
+                ),
                 arrival_time_unix=_optional_int(_field(arrival, "time")),
                 departure_time_unix=_optional_int(_field(departure, "time")),
                 arrival_delay_seconds=arrival_delay,
                 departure_delay_seconds=departure_delay,
-                schedule_relationship=_string_or_none(_field(update, "schedule_relationship", "scheduleRelationship")),
+                schedule_relationship=_string_or_none(
+                    _field(update, "schedule_relationship", "scheduleRelationship")
+                ),
             )
         )
     return TransitTripUpdateObservation(
@@ -349,17 +389,40 @@ def _normalize_alert_entity(
     collection_source: str,
     trace_id: Optional[str],
 ) -> TransitAlertObservation:
-    informed_entities = [_mapping(row) for row in _field(payload, "informed_entity", "informedEntity") or []]
-    route_ids = sorted({str(_field(row, "route_id", "routeId")) for row in informed_entities if _field(row, "route_id", "routeId")})
-    stop_ids = sorted({str(_field(row, "stop_id", "stopId")) for row in informed_entities if _field(row, "stop_id", "stopId")})
-    trip_ids = sorted({str(_field(row, "trip_id", "tripId")) for row in informed_entities if _field(row, "trip_id", "tripId")})
+    informed_entities = [
+        _mapping(row)
+        for row in _field(payload, "informed_entity", "informedEntity") or []
+    ]
+    route_ids = sorted(
+        {
+            str(_field(row, "route_id", "routeId"))
+            for row in informed_entities
+            if _field(row, "route_id", "routeId")
+        }
+    )
+    stop_ids = sorted(
+        {
+            str(_field(row, "stop_id", "stopId"))
+            for row in informed_entities
+            if _field(row, "stop_id", "stopId")
+        }
+    )
+    trip_ids = sorted(
+        {
+            str(_field(row, "trip_id", "tripId"))
+            for row in informed_entities
+            if _field(row, "trip_id", "tripId")
+        }
+    )
     return TransitAlertObservation(
         alert_id=entity_id,
         timestamp_ms=feed_timestamp_ms or 0,
         effect=_string_or_none(_field(payload, "effect")),
         cause=_string_or_none(_field(payload, "cause")),
         header_text=_translation_text(_field(payload, "header_text", "headerText")),
-        description_text=_translation_text(_field(payload, "description_text", "descriptionText")),
+        description_text=_translation_text(
+            _field(payload, "description_text", "descriptionText")
+        ),
         route_ids=route_ids,
         stop_ids=stop_ids,
         trip_ids=trip_ids,
@@ -399,8 +462,12 @@ def _parse_realtime_payload(raw: bytes) -> Mapping[str, Any]:
         try:
             from google.protobuf.json_format import MessageToDict  # type: ignore
             from google.transit import gtfs_realtime_pb2  # type: ignore
-        except ImportError as exc:  # pragma: no cover - exercised when bindings are unavailable
-            raise ValueError("GTFS-RT protobuf parsing requires google.transit.gtfs_realtime_pb2 or JSON input") from exc
+        except (
+            ImportError
+        ) as exc:  # pragma: no cover - exercised when bindings are unavailable
+            raise ValueError(
+                "GTFS-RT protobuf parsing requires google.transit.gtfs_realtime_pb2 or JSON input"
+            ) from exc
 
         message = gtfs_realtime_pb2.FeedMessage()
         message.ParseFromString(raw)

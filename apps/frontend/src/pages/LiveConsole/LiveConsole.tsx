@@ -9,6 +9,7 @@ import OverviewMetrics from "./panels/OverviewMetrics";
 import ScorecardPanel from "./panels/ScorecardPanel";
 import ToolbarPanel from "./panels/ToolbarPanel";
 import TrendPanel from "./panels/TrendPanel";
+import ValueAddPanel from "./panels/ValueAddPanel";
 import VehicleInventory from "./panels/VehicleInventory";
 import "./LiveConsole.css";
 
@@ -91,6 +92,12 @@ export default function LiveConsole() {
     <main className="sentinel">
       <div className="sentinel__shell">
         <HeroPanel serviceState={serviceState} transitHealth={transitHealth} />
+
+        <ValueAddPanel
+          transitHealth={transitHealth}
+          sourceResponse={sourceResponse}
+          scorecardResponse={scorecardResponse}
+        />
 
         <ToolbarPanel
           sourceResponse={sourceResponse}

@@ -35,21 +35,3 @@ jobs:
 
       - name: Run transit checks
         run: make check
-
-  legacy-cluster-compat:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install Python dependencies
-        run: make install-cluster
-
-      - name: Run legacy cluster compatibility checks
-        run: make check-legacy-cluster

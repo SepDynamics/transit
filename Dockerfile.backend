@@ -1,4 +1,5 @@
-FROM python:3.12-slim
+# Builder stage
+FROM python:3.12-slim as builder
 
 WORKDIR /app
 
@@ -22,7 +23,30 @@ COPY scripts/ ./scripts/
 COPY src/ ./src/
 RUN sh /app/scripts/build_manifold_engine.sh
 
-RUN mkdir -p logs output
+# Production stage
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Create non-root user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        libtbb12 \
+    || apt-get install -y --no-install-recommends ca-certificates libtbb2; \
+    update-ca-certificates; \
+    rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /app /app
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+
+RUN mkdir -p logs output && \
+    chown -R appuser:appuser /app
+
+USER appuser
 
 ENV PYTHONUNBUFFERED=1
 

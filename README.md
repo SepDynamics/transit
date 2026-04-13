@@ -28,6 +28,7 @@ plus websocket realtime collection for vehicle positions and trip updates.
 
 - [`docs/ARCHITECTURE.md`](/sep/transit-sentinel/docs/ARCHITECTURE.md)
 - [`docs/REPOSITORY_STATUS.md`](/sep/transit-sentinel/docs/REPOSITORY_STATUS.md)
+- [`docs/FRONTEND_VALUE_ADD_PLAN.md`](/sep/transit-sentinel/docs/FRONTEND_VALUE_ADD_PLAN.md)
 - [`docs/REPO_SCOPE.md`](/sep/transit-sentinel/docs/REPO_SCOPE.md)
 - [`docs/PUBLIC_DATA_OUTLINE.md`](/sep/transit-sentinel/docs/PUBLIC_DATA_OUTLINE.md)
 - [`docs/MBTA_DATA_LANE.md`](/sep/transit-sentinel/docs/MBTA_DATA_LANE.md)

@@ -2,54 +2,333 @@ openapi: 3.0.3
 info:
   title: Transit Sentinel API
   version: 1.0.0
+  description: >
+    HTTP API for Transit Sentinel live, replay, public status, incident, map,
+    and scorecard surfaces. Authentication is optional by default; when
+    TRANSIT_API_REQUIRE_AUTH=1 is set, ops endpoints require bearer tokens.
 servers:
   - url: http://localhost:8000
+tags:
+  - name: Health
+  - name: Public status
+  - name: Operations
+  - name: Audit
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    Scope:
+      name: scope
+      in: query
+      schema:
+        type: string
+        enum: [all, live, replay]
+        default: all
+      description: Feed view to read from. Public status endpoints default to live.
+    TraceId:
+      name: trace_id
+      in: query
+      schema:
+        type: string
+      description: Replay trace identifier. Required only when selecting a specific trace.
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+      description: Result limit. Scorecard endpoints clamp to 2000; audit clamps to 500.
+    EntityId:
+      name: entity_id
+      in: query
+      required: true
+      schema:
+        type: string
+      description: Corridor or vehicle entity id for history lookup.
+  schemas:
+    JsonObject:
+      type: object
+      additionalProperties: true
 paths:
   /health:
     get:
+      tags: [Health]
       summary: Service health
       responses:
-        '200':
-          description: Health payload
+        "200":
+          description: API and ingest health payload.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JsonObject"
+  /api/health:
+    get:
+      tags: [Health]
+      summary: Service health alias
+      responses:
+        "200":
+          description: API and ingest health payload.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JsonObject"
+  /api/status:
+    get:
+      tags: [Health]
+      summary: Service health alias
+      responses:
+        "200":
+          description: API and ingest health payload.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JsonObject"
+  /api/status/network:
+    get:
+      tags: [Public status]
+      summary: Rider-facing network status
+      parameters:
+        - $ref: "#/components/parameters/Scope"
+        - $ref: "#/components/parameters/TraceId"
+      responses:
+        "200":
+          description: Network severity, route counts, feed status, and disrupted routes.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JsonObject"
+  /api/status/routes:
+    get:
+      tags: [Public status]
+      summary: Rider-facing route status list
+      parameters:
+        - $ref: "#/components/parameters/Scope"
+        - $ref: "#/components/parameters/TraceId"
+      responses:
+        "200":
+          description: Plain-language status rows for active and scheduled-later corridors.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JsonObject"
+  /api/status/alerts:
+    get:
+      tags: [Public status]
+      summary: Rider-facing active alerts
+      parameters:
+        - $ref: "#/components/parameters/Scope"
+        - $ref: "#/components/parameters/TraceId"
+      responses:
+        "200":
+          description: Active public advisories derived from Sentinel incident state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JsonObject"
+  /api/status/scorecard:
+    get:
+      tags: [Public status]
+      summary: Rider-facing reliability scorecard
+      parameters:
+        - $ref: "#/components/parameters/Scope"
+        - $ref: "#/components/parameters/TraceId"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Network and corridor reliability scorecard for the status page.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JsonObject"
   /api/transit/health:
     get:
+      tags: [Operations]
       summary: Transit system health
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Scope"
+        - $ref: "#/components/parameters/TraceId"
       responses:
-        '200':
-          description: Transit health payload
+        "200":
+          description: Transit health, feed status, incidents, and action counts.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JsonObject"
   /api/transit/entities:
     get:
-      summary: Transit entities and live vehicle inventory
+      tags: [Operations]
+      summary: Transit entities and vehicle inventory
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Scope"
+        - $ref: "#/components/parameters/TraceId"
       responses:
-        '200':
-          description: Transit entity payload
+        "200":
+          description: Corridor, route, vehicle, and line inventory for the selected scope.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JsonObject"
   /api/transit/regimes:
     get:
-      summary: Current transit regimes
+      tags: [Operations]
+      summary: Current service regimes
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Scope"
+        - $ref: "#/components/parameters/TraceId"
       responses:
-        '200':
-          description: Transit regime payload
+        "200":
+          description: Corridor and vehicle service-state classifications.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JsonObject"
   /api/transit/incidents:
     get:
-      summary: Current transit incidents
+      tags: [Operations]
+      summary: Current incidents and recommended actions
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Scope"
+        - $ref: "#/components/parameters/TraceId"
       responses:
-        '200':
-          description: Transit incident payload
+        "200":
+          description: Priority-ranked incidents with evidence and action recommendations.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JsonObject"
   /api/transit/trends:
     get:
-      summary: Rolling corridor trends from the persisted transit store
+      tags: [Operations]
+      summary: Rolling corridor trend memory
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Scope"
+        - $ref: "#/components/parameters/TraceId"
       responses:
-        '200':
-          description: Transit trend payload
+        "200":
+          description: Corridor trends, risk series, action mix, and regime mix.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JsonObject"
   /api/transit/history:
     get:
+      tags: [Operations]
       summary: Corridor or vehicle history
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/EntityId"
+        - $ref: "#/components/parameters/Scope"
+        - $ref: "#/components/parameters/TraceId"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200':
-          description: Transit history payload
+        "200":
+          description: Rolling history for the requested corridor or vehicle.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JsonObject"
+        "400":
+          description: Missing entity id.
   /api/transit/sources:
     get:
-      summary: Available transit feed sources
+      tags: [Operations]
+      summary: Available feed scopes and replay traces
+      security:
+        - bearerAuth: []
       responses:
-        '200':
-          description: Transit source payload
+        "200":
+          description: Scope availability, configured feeds, and replay trace inventory.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JsonObject"
+  /api/transit/map:
+    get:
+      tags: [Operations]
+      summary: Map features for corridors and vehicles
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Scope"
+        - $ref: "#/components/parameters/TraceId"
+      responses:
+        "200":
+          description: GeoJSON-like corridor and vehicle features for the dashboard map.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JsonObject"
+  /api/transit/scorecard:
+    get:
+      tags: [Operations]
+      summary: Network and corridor scorecard
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Scope"
+        - $ref: "#/components/parameters/TraceId"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Rolling KPI scorecard for the selected scope.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JsonObject"
+  /api/transit/audit:
+    get:
+      tags: [Audit]
+      summary: Audit trail
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Recent audit events. Requires admin role when auth is enabled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JsonObject"
+  /api/transit/incidents/ack:
+    post:
+      tags: [Operations]
+      summary: Acknowledge an incident
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [incident_id]
+              properties:
+                incident_id:
+                  type: string
+                note:
+                  type: string
+      responses:
+        "200":
+          description: Incident acknowledgement payload. Requires operator role when auth is enabled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JsonObject"
+        "400":
+          description: Missing incident id or invalid JSON.
+        "401":
+          description: Missing or insufficient role when auth is enabled.
