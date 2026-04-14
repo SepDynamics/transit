@@ -6,7 +6,7 @@ type View = "ops" | "status";
 
 function getViewFromHash(): View {
   const hash = typeof window !== "undefined" ? window.location.hash : "";
-  return hash === "#status" ? "status" : "ops";
+  return hash.startsWith("#status") ? "status" : "ops";
 }
 
 export default function App() {

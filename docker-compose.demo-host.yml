@@ -1,0 +1,14 @@
+# Host deployment override for seeded demos behind a reverse proxy.
+# Keep app and Valkey ports bound to loopback; expose only the proxy on 80/443.
+services:
+  valkey:
+    ports: !override
+      - "127.0.0.1:6379:6379"
+
+  api-demo:
+    ports: !override
+      - "127.0.0.1:8000:8000"
+
+  frontend-demo:
+    ports: !override
+      - "127.0.0.1:8080:80"

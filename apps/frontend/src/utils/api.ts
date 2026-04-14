@@ -46,12 +46,15 @@ export const buildTransitQuery = (
   return params.toString();
 };
 
-export async function fetchJson<T>(path: string): Promise<T> {
+export async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers();
+  if (init?.headers) {
+    new Headers(init.headers).forEach((value, key) => headers.set(key, value));
+  }
   if (API_BEARER_TOKEN) {
     headers.set("Authorization", `Bearer ${API_BEARER_TOKEN}`);
   }
-  const response = await fetch(buildApiUrl(path), { headers });
+  const response = await fetch(buildApiUrl(path), { ...init, headers });
   if (!response.ok) {
     throw new Error(path.replace(/^\//, ""));
   }

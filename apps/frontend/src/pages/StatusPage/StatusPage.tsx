@@ -10,7 +10,7 @@
  * Consumes /api/status/* endpoints only.
  * No internal scoring vocabulary is surfaced to the user.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type {
   PublicStatusAlertsResponse,
   PublicStatusNetworkResponse,
@@ -22,51 +22,134 @@ import { fetchJson } from "../../utils/api";
 import { formatDelay, formatPercent, relativeTime, relativeTimeFromMs } from "../../utils/formatters";
 import "./StatusPage.css";
 
+const SEVERITY_ORDER = ["severe", "disruption", "delay", "advisory", "good", "unknown"] as const;
+type SeverityFilter = "all" | RouteStatus["severity"];
+
+type StatusDataState = {
+  network: PublicStatusNetworkResponse | null;
+  routes: PublicStatusRoutesResponse | null;
+  alerts: PublicStatusAlertsResponse | null;
+  scorecard: PublicStatusScorecardResponse | null;
+};
+
+type RouteGroup = {
+  label: string;
+  routes: RouteStatus[];
+};
+
+const slugify = (value: string): string =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+const routeKey = (route: RouteStatus): string => route.entity_id || route.route_id || route.label;
+
+const routeHref = (route: RouteStatus): string => `#status/route/${encodeURIComponent(routeKey(route))}`;
+
+const routeMatchesHash = (route: RouteStatus, hashId: string | null): boolean => {
+  if (!hashId) return false;
+  return [route.entity_id, route.route_id, slugify(route.label)]
+    .filter(Boolean)
+    .some((value) => String(value) === hashId || slugify(String(value)) === hashId);
+};
+
+const getSelectedRouteId = (): string | null => {
+  if (typeof window === "undefined") return null;
+  const match = window.location.hash.match(/^#status\/route\/(.+)$/);
+  return match ? decodeURIComponent(match[1]) : null;
+};
+
+const inferRouteGroup = (route: RouteStatus): string => {
+  const token = `${route.route_id ?? ""} ${route.label ?? ""}`.toLowerCase();
+  if (/\b(commuter rail|cr-|fairmount|framingham|worcester|lowell|fitchburg)\b/.test(token)) return "Commuter Rail";
+  if (/\b(ferry|boat)\b/.test(token)) return "Ferry";
+  if (/\b(red|orange|blue|green|mattapan|line)\b/.test(token)) return "Rapid Transit";
+  if (/^\s*\d/.test(route.route_id ?? route.label)) return "Bus";
+  return route.agency_key ? route.agency_key.toUpperCase() : "Other Routes";
+};
+
+const groupRoutes = (routes: RouteStatus[]): RouteGroup[] => {
+  const groups = new Map<string, RouteStatus[]>();
+  routes.forEach((route) => {
+    const label = inferRouteGroup(route);
+    groups.set(label, [...(groups.get(label) ?? []), route]);
+  });
+  return [...groups.entries()].map(([label, groupedRoutes]) => ({ label, routes: groupedRoutes }));
+};
+
 // ---------------------------------------------------------------------------
 // Polling hook
 // ---------------------------------------------------------------------------
 
 function useStatusData() {
-  const [network, setNetwork] = useState<PublicStatusNetworkResponse | null>(null);
-  const [routes, setRoutes] = useState<PublicStatusRoutesResponse | null>(null);
-  const [alerts, setAlerts] = useState<PublicStatusAlertsResponse | null>(null);
-  const [scorecard, setScorecard] = useState<PublicStatusScorecardResponse | null>(null);
+  const [data, setData] = useState<StatusDataState>({
+    network: null,
+    routes: null,
+    alerts: null,
+    scorecard: null,
+  });
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
+    let timer: number | undefined;
+    let controller: AbortController | null = null;
+
+    const schedule = (delayMs: number) => {
+      timer = window.setTimeout(load, delayMs);
+    };
+
     const load = async () => {
+      if (document.visibilityState === "hidden") {
+        schedule(15_000);
+        return;
+      }
+      controller?.abort();
+      controller = new AbortController();
+      setRefreshing(true);
       try {
         const [networkPayload, routesPayload, alertsPayload, scorecardPayload] =
           await Promise.all([
-            fetchJson<PublicStatusNetworkResponse>("/api/status/network"),
-            fetchJson<PublicStatusRoutesResponse>("/api/status/routes"),
-            fetchJson<PublicStatusAlertsResponse>("/api/status/alerts"),
-            fetchJson<PublicStatusScorecardResponse>("/api/status/scorecard?limit=288"),
+            fetchJson<PublicStatusNetworkResponse>("/api/status/network", { signal: controller.signal }),
+            fetchJson<PublicStatusRoutesResponse>("/api/status/routes", { signal: controller.signal }),
+            fetchJson<PublicStatusAlertsResponse>("/api/status/alerts", { signal: controller.signal }),
+            fetchJson<PublicStatusScorecardResponse>("/api/status/scorecard?limit=288", { signal: controller.signal }),
           ]);
         if (!active) return;
-        setNetwork(networkPayload);
-        setRoutes(routesPayload);
-        setAlerts(alertsPayload);
-        setScorecard(scorecardPayload);
+        setData({
+          network: networkPayload,
+          routes: routesPayload,
+          alerts: alertsPayload,
+          scorecard: scorecardPayload,
+        });
+        setLastUpdatedAt(networkPayload.generated_at ?? routesPayload.generated_at ?? new Date().toISOString());
         setLoading(false);
+        setRefreshing(false);
         setError(null);
+        schedule(15_000);
       } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
         if (!active) return;
         setError(err instanceof Error ? err.message : "status unavailable");
         setLoading(false);
+        setRefreshing(false);
+        schedule(30_000);
       }
     };
     load();
-    const timer = window.setInterval(load, 15_000);
     return () => {
       active = false;
-      window.clearInterval(timer);
+      controller?.abort();
+      if (timer !== undefined) window.clearTimeout(timer);
     };
   }, []);
 
-  return { network, routes, alerts, scorecard, loading, error };
+  return { ...data, loading, refreshing, error, lastUpdatedAt };
 }
 
 // ---------------------------------------------------------------------------
@@ -110,10 +193,13 @@ function NetworkBanner({ network }: { network: PublicStatusNetworkResponse }) {
 // Route tile
 // ---------------------------------------------------------------------------
 
-function RouteTile({ route }: { route: RouteStatus }) {
+function RouteTile({ route, selected }: { route: RouteStatus; selected?: boolean }) {
   const sev = route.severity || "unknown";
   return (
-    <div className={`route-tile route-tile--${sev}`}>
+    <a
+      className={`route-tile route-tile--${sev}${selected ? " route-tile--selected" : ""}`}
+      href={routeHref(route)}
+    >
       <div className="route-tile__header">
         <div className="route-tile__name">{route.label}</div>
         <span className={`route-tile__severity-badge severity-badge--${sev}`}>
@@ -141,6 +227,40 @@ function RouteTile({ route }: { route: RouteStatus }) {
           <span>Updated {relativeTimeFromMs(route.timestamp_ms)}</span>
         )}
       </div>
+    </a>
+  );
+}
+
+function RouteDrilldown({ route }: { route: RouteStatus }) {
+  const sev = route.severity || "unknown";
+  return (
+    <div className={`route-detail route-detail--${sev}`}>
+      <div>
+        <div className="route-detail__eyebrow">Selected route</div>
+        <h3 className="route-detail__title">{route.label}</h3>
+      </div>
+      <div className="route-detail__grid">
+        <div>
+          <span>Route</span>
+          <strong>{route.route_id ?? "n/a"}</strong>
+        </div>
+        <div>
+          <span>Status</span>
+          <strong>{route.severity_label}</strong>
+        </div>
+        <div>
+          <span>Alerts</span>
+          <strong>{route.active_alert_count}</strong>
+        </div>
+        <div>
+          <span>Delay</span>
+          <strong>{formatDelay(route.median_delay_seconds)}</strong>
+        </div>
+      </div>
+      <p>{route.body || route.headline}</p>
+      <a className="route-detail__clear" href="#status">
+        Clear selection
+      </a>
     </div>
   );
 }
@@ -170,12 +290,45 @@ function OnTimeBar({ pct }: { pct?: number | null }) {
 // ---------------------------------------------------------------------------
 
 export default function StatusPage() {
-  const { network, routes, alerts, scorecard, loading, error } = useStatusData();
+  const { network, routes, alerts, scorecard, loading, refreshing, error, lastUpdatedAt } = useStatusData();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
+  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(getSelectedRouteId);
 
   const routeList = routes?.routes ?? [];
   const alertList = alerts?.alerts ?? [];
   const corridorList = scorecard?.corridors ?? [];
-  const now = network?.generated_at ?? routes?.generated_at;
+  const now = lastUpdatedAt ?? network?.generated_at ?? routes?.generated_at;
+
+  useEffect(() => {
+    const handler = () => setSelectedRouteId(getSelectedRouteId());
+    window.addEventListener("hashchange", handler);
+    return () => window.removeEventListener("hashchange", handler);
+  }, []);
+
+  const selectedRoute = useMemo(
+    () => routeList.find((route) => routeMatchesHash(route, selectedRouteId)) ?? null,
+    [routeList, selectedRouteId],
+  );
+
+  const filteredRoutes = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    return routeList.filter((route) => {
+      const severityMatch = severityFilter === "all" || route.severity === severityFilter;
+      if (!severityMatch) return false;
+      if (!query) return true;
+      return [route.label, route.route_id, route.headline, route.short_summary, route.agency_key]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query));
+    });
+  }, [routeList, searchTerm, severityFilter]);
+
+  const routeGroups = useMemo(() => groupRoutes(filteredRoutes), [filteredRoutes]);
+  const severityCounts = useMemo(() => {
+    const counts = new Map<SeverityFilter, number>([["all", routeList.length]]);
+    routeList.forEach((route) => counts.set(route.severity, (counts.get(route.severity) ?? 0) + 1));
+    return counts;
+  }, [routeList]);
 
   return (
     <main className="status-page">
@@ -213,13 +366,62 @@ export default function StatusPage() {
           <div className="status-section">
             <div className="status-section__header">
               <h2 className="status-section__title">Route status</h2>
-              <span className="status-section__count">{routeList.length} routes</span>
+              <span className="status-section__count">
+                {filteredRoutes.length} of {routeList.length} routes
+              </span>
             </div>
-            <div className="route-tiles">
-              {routeList.map((route) => (
-                <RouteTile key={route.entity_id} route={route} />
-              ))}
+            <div className="status-controls">
+              <label className="status-search">
+                <span>Find a route</span>
+                <input
+                  type="search"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Red, Green-B, 15"
+                />
+              </label>
+              <div className="severity-filters" aria-label="Severity filters">
+                {(["all", ...SEVERITY_ORDER] as SeverityFilter[]).map((severity) => (
+                  <button
+                    key={severity}
+                    className={
+                      severityFilter === severity
+                        ? "severity-filter severity-filter--active"
+                        : "severity-filter"
+                    }
+                    type="button"
+                    onClick={() => setSeverityFilter(severity)}
+                  >
+                    {severity === "all" ? "All" : severity.replace(/^\w/, (letter) => letter.toUpperCase())}
+                    <span>{severityCounts.get(severity) ?? 0}</span>
+                  </button>
+                ))}
+              </div>
             </div>
+            {selectedRoute && <RouteDrilldown route={selectedRoute} />}
+            {routeGroups.length > 0 ? (
+              <div className="route-groups">
+                {routeGroups.map((group) => (
+                  <section className="route-group" key={group.label}>
+                    <div className="route-group__header">
+                      <h3>{group.label}</h3>
+                      <span>{group.routes.length} routes</span>
+                    </div>
+                    <div className="route-tiles">
+                      {group.routes.map((route) => (
+                        <RouteTile
+                          key={route.entity_id}
+                          route={route}
+                          selected={selectedRoute ? routeMatchesHash(route, routeKey(selectedRoute)) : false}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            ) : (
+              <div className="status-empty">No routes match the current filters.</div>
+            )}
           </div>
         )}
 
@@ -302,7 +504,7 @@ export default function StatusPage() {
         {/* Footer */}
         <div className="status-footer">
           <span>Transit Sentinel — Public Service Status</span>
-          {now && <span>Updated {relativeTime(now)}</span>}
+          {now && <span>{refreshing ? "Refreshing" : "Updated"} {relativeTime(now)}</span>}
         </div>
       </div>
     </main>
