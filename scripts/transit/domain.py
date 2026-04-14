@@ -568,11 +568,14 @@ class TransitSnapshotService:
 
     def _load_catalog(self, source: str) -> GTFSStaticCatalog:
         mtime_ns = _local_mtime_ns(source)
-        cache_key = f"{source}:{mtime_ns}"
+        load_options = _gtfs_load_options()
+        cache_key = f"{source}:{mtime_ns}:{json.dumps(load_options, sort_keys=True)}"
         if self._catalog_cache.get("key") == cache_key:
             return self._catalog_cache["catalog"]
         catalog = load_gtfs_catalog(
-            source, feed_label=Path(source).stem or "transit-feed"
+            source,
+            feed_label=Path(source).stem or "transit-feed",
+            **load_options,
         )
         self._catalog_cache = {"key": cache_key, "catalog": catalog}
         return catalog
@@ -2201,6 +2204,27 @@ def _default_current_feed(env_name: str, default_path: Path) -> Optional[str]:
     if explicit:
         return explicit
     return str(default_path) if default_path.exists() else None
+
+
+def _gtfs_load_options() -> Dict[str, bool]:
+    lightweight = _env_flag("TRANSIT_GTFS_LIGHTWEIGHT", default=False)
+    return {
+        "include_stops": _env_flag("TRANSIT_GTFS_LOAD_STOPS", default=not lightweight),
+        "include_stop_times": _env_flag(
+            "TRANSIT_GTFS_LOAD_STOP_TIMES", default=not lightweight
+        ),
+        "include_calendar": _env_flag(
+            "TRANSIT_GTFS_LOAD_CALENDAR", default=not lightweight
+        ),
+        "include_shapes": _env_flag("TRANSIT_GTFS_LOAD_SHAPES", default=not lightweight),
+    }
+
+
+def _env_flag(name: str, *, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None or str(raw).strip() == "":
+        return default
+    return str(raw).strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _local_mtime_ns(source: str) -> Optional[int]:

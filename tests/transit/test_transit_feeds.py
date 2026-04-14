@@ -43,6 +43,57 @@ def test_load_gtfs_catalog_builds_route_and_schedule_indexes():
     assert [row.stop_id for row in catalog.route_stop_times("Red", 0)[:2]] == ["place-alfcl", "place-davis"]
 
 
+def test_load_gtfs_catalog_can_skip_heavy_static_indexes():
+    payload = BytesIO()
+    with ZipFile(payload, "w") as archive:
+        archive.writestr(
+            "routes.txt",
+            "route_id,route_short_name,route_long_name,route_type\n"
+            "Red,Red,Red Line,1\n",
+        )
+        archive.writestr(
+            "trips.txt",
+            "route_id,service_id,trip_id,trip_headsign,direction_id,shape_id\n"
+            "Red,WKD,red-1,Alewife,0,red-shape\n",
+        )
+        archive.writestr(
+            "stops.txt",
+            "stop_id,stop_name,stop_lat,stop_lon\n"
+            "place-alfcl,Alewife,42.395,-71.142\n",
+        )
+        archive.writestr(
+            "stop_times.txt",
+            "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n"
+            "red-1,08:00:00,08:00:00,place-alfcl,1\n",
+        )
+        archive.writestr(
+            "calendar.txt",
+            "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\n"
+            "WKD,1,1,1,1,1,0,0,20240101,20250101\n",
+        )
+        archive.writestr(
+            "shapes.txt",
+            "shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence\n"
+            "red-shape,42.395,-71.142,1\n",
+        )
+
+    catalog = load_gtfs_catalog(
+        payload.getvalue(),
+        feed_label="mbta",
+        include_stops=False,
+        include_stop_times=False,
+        include_calendar=False,
+        include_shapes=False,
+    )
+
+    assert catalog.route_label("Red") == "Red Red Line"
+    assert catalog.trip_route_id("red-1") == "Red"
+    assert catalog.stops == {}
+    assert catalog.stop_times_by_trip == {}
+    assert catalog.calendar == {}
+    assert catalog.shapes == {}
+
+
 def test_normalize_gtfs_rt_payloads_extracts_vehicles_trip_updates_and_alerts():
     vehicle_bundle = normalize_gtfs_realtime_payload(
         {

@@ -28,30 +28,39 @@ from scripts.transit.transit_types import (
 
 
 def load_gtfs_catalog(
-    source: str | Path | bytes, *, feed_label: Optional[str] = None
+    source: str | Path | bytes,
+    *,
+    feed_label: Optional[str] = None,
+    include_stops: bool = True,
+    include_stop_times: bool = True,
+    include_calendar: bool = True,
+    include_shapes: bool = True,
 ) -> GTFSStaticCatalog:
     data = _read_resource(source)
     rows_by_file: Dict[str, List[Dict[str, str]]] = {}
+    wanted_files = {"routes.txt", "trips.txt"}
+    if include_stops:
+        wanted_files.add("stops.txt")
+    if include_stop_times:
+        wanted_files.add("stop_times.txt")
+    if include_calendar:
+        wanted_files.add("calendar.txt")
+    if include_shapes:
+        wanted_files.add("shapes.txt")
     if _looks_like_zip_bytes(data):
         with ZipFile(io.BytesIO(data)) as archive:
             for name in archive.namelist():
-                if not name.endswith(".txt"):
+                basename = Path(name).name
+                if basename not in wanted_files:
                     continue
                 with archive.open(name, "r") as handle:
-                    rows_by_file[Path(name).name] = list(
+                    rows_by_file[basename] = list(
                         csv.DictReader(io.TextIOWrapper(handle, encoding="utf-8-sig"))
                     )
     else:
         path = _coerce_path(source)
         if path and path.is_dir():
-            for name in (
-                "routes.txt",
-                "trips.txt",
-                "stops.txt",
-                "stop_times.txt",
-                "calendar.txt",
-                "shapes.txt",
-            ):
+            for name in wanted_files:
                 file_path = path / name
                 if file_path.exists():
                     rows_by_file[name] = list(
