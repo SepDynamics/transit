@@ -848,6 +848,7 @@ class TransitCorridorSnapshot:
     vehicle_count: int = 0
     median_delay_seconds: int = 0
     scheduled_headway_seconds: Optional[int] = None
+    compressed_headway_share: float = 0.0
     avg_delay_seconds: float = 0.0
     top_action: str = "monitor"
     avg_hazard: float = 0.0
@@ -884,6 +885,7 @@ class TransitCorridorSnapshot:
             vehicle_count=_int_or_default(payload.get("vehicle_count")),
             median_delay_seconds=_int_or_default(payload.get("median_delay_seconds")),
             scheduled_headway_seconds=_optional_int(payload.get("scheduled_headway_seconds")),
+            compressed_headway_share=round(_float_or_default(payload.get("compressed_headway_share")), 4),
             avg_delay_seconds=round(_float_or_default(payload.get("avg_delay_seconds")), 2),
             top_action=_string_or_default(payload.get("top_action"), "monitor"),
             avg_hazard=round(_float_or_default(payload.get("avg_hazard")), 4),

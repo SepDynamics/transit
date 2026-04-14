@@ -27,8 +27,8 @@ operator-facing priorities, evidence, and replay assets.
   - public-data proof
   - replayable incidents
   - operator action queue
-- Expanded the bundled OpenAPI endpoint index so the API surface behind the
-  frontend is easier to inspect.
+- Expanded the bundled OpenAPI contract with typed response schemas for the
+  core frontend-consumed API surfaces.
 - Updated repository status and audit notes so docs match the current code
   state and current product boundaries.
 
@@ -116,7 +116,7 @@ of only showing a trace id.
 
 ## Backend Or Data Work Needed
 
-- Typed OpenAPI response schemas for all frontend-consumed payloads.
+- Keep typed OpenAPI response schemas aligned with frontend-consumed payloads.
 - A compact incident evidence endpoint if existing incident payloads become too
   heavy for the drawer.
 - Baseline comparison metrics surfaced through the API, not only through

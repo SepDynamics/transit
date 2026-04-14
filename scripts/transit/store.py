@@ -595,40 +595,62 @@ class TransitStore:
         regime_totals: Counter[str] = Counter()
         action_totals: Counter[str] = Counter()
 
+        corridor_lines: List[tuple[str, Dict[str, Any]]] = []
         for line in entities.get("lines") or []:
             if not isinstance(line, dict):
                 continue
             entity_id = str(line.get("entity_id") or "").strip()
             if not entity_id:
                 continue
+            corridor_lines.append((entity_id, line))
 
-            summaries = [
-                row
-                for row in self.get_recent_corridor_summaries(entity_id, limit=limit)
-                if scope_matches(row, scope)
-                and (
+        raw_histories: List[Any] = []
+        if corridor_lines:
+            pipe = self.client.pipeline()
+            for entity_id, _line in corridor_lines:
+                pipe.zrange(self.corridor_summary_history_key(entity_id), -limit, -1)
+                pipe.zrange(self.corridor_regime_history_key(entity_id), -limit, -1)
+                pipe.zrange(self.corridor_incident_history_key(entity_id), -limit, -1)
+            raw_histories = pipe.execute()
+
+        for index, (entity_id, line) in enumerate(corridor_lines):
+            history_offset = index * 3
+            summary_rows = raw_histories[history_offset] if raw_histories else []
+            regime_rows = raw_histories[history_offset + 1] if raw_histories else []
+            incident_rows = raw_histories[history_offset + 2] if raw_histories else []
+
+            summaries: List[Dict[str, Any]] = []
+            for payload in (self._loads(row) for row in summary_rows):
+                if not payload:
+                    continue
+                row = TransitCorridorSnapshot.from_mapping(payload).to_json()
+                if scope_matches(row, scope) and (
                     resolved_trace_id in (None, "")
                     or str(row.get("trace_id") or "") == resolved_trace_id
-                )
-            ]
-            regimes = [
-                row
-                for row in self.get_recent_corridor_regimes(entity_id, limit=limit)
-                if scope_matches(row, scope)
-                and (
+                ):
+                    summaries.append(row)
+
+            regimes: List[Dict[str, Any]] = []
+            for payload in (self._loads(row) for row in regime_rows):
+                if not payload:
+                    continue
+                row = TransitRegimeRecord.from_mapping(payload).to_json()
+                if scope_matches(row, scope) and (
                     resolved_trace_id in (None, "")
                     or str(row.get("trace_id") or "") == resolved_trace_id
-                )
-            ]
-            incidents = [
-                row
-                for row in self.get_recent_corridor_incidents(entity_id, limit=limit)
-                if scope_matches(row, scope)
-                and (
+                ):
+                    regimes.append(row)
+
+            incidents: List[Dict[str, Any]] = []
+            for payload in (self._loads(row) for row in incident_rows):
+                if not payload:
+                    continue
+                row = TransitIncidentRecord.from_mapping(payload).to_json()
+                if scope_matches(row, scope) and (
                     resolved_trace_id in (None, "")
                     or str(row.get("trace_id") or "") == resolved_trace_id
-                )
-            ]
+                ):
+                    incidents.append(row)
 
             if not summaries and not regimes:
                 continue
@@ -777,6 +799,30 @@ class TransitStore:
             if network_delay_samples
             else 100.0
         )
+        net_regime_count = sum(regime_totals.values())
+        net_healthy_pct = (
+            round(100.0 * regime_totals.get("healthy", 0) / net_regime_count, 1)
+            if net_regime_count
+            else 100.0
+        )
+        net_unstable_pct = (
+            round(
+                100.0
+                * sum(
+                    regime_totals.get(r, 0)
+                    for r in (
+                        "corridor_unstable",
+                        "headway_collapse",
+                        "bunching_onset",
+                        "service_degraded",
+                    )
+                )
+                / net_regime_count,
+                1,
+            )
+            if net_regime_count
+            else 0.0
+        )
         corridor_count = len(corridor_scorecards)
         unstable_corridor_count = sum(
             1
@@ -795,6 +841,8 @@ class TransitStore:
                 "avg_hazard": net_avg_hazard,
                 "avg_delay_seconds": net_avg_delay,
                 "on_time_pct": net_on_time,
+                "healthy_pct": net_healthy_pct,
+                "unstable_pct": net_unstable_pct,
                 "unstable_corridor_count": unstable_corridor_count,
                 "top_regimes": dict(regime_totals.most_common(6)),
                 "top_actions": dict(action_totals.most_common(6)),

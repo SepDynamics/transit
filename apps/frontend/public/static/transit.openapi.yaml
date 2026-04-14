@@ -51,6 +51,1281 @@ components:
     JsonObject:
       type: object
       additionalProperties: true
+    HealthResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        status:
+          type: string
+        generated_at:
+          type: string
+          format: date-time
+        redis:
+          type: string
+        ingest:
+          type: string
+    FeedStatus:
+      type: object
+      additionalProperties: true
+      properties:
+        feed_label:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+        agency_key:
+          type: string
+          nullable: true
+        vehicle_count:
+          type: integer
+        trip_update_count:
+          type: integer
+        alert_count:
+          type: integer
+        collection_source:
+          type: string
+        status:
+          type: string
+    EventOverlay:
+      type: object
+      additionalProperties: true
+      required: [overlay_id]
+      properties:
+        overlay_id:
+          type: string
+        label:
+          type: string
+        event_key:
+          type: string
+          nullable: true
+        event_name:
+          type: string
+          nullable: true
+        city_key:
+          type: string
+          nullable: true
+        category:
+          type: string
+          nullable: true
+        agency_keys:
+          type: array
+          items:
+            type: string
+        route_ids:
+          type: array
+          items:
+            type: string
+        corridor_ids:
+          type: array
+          items:
+            type: string
+        starts_at:
+          type: string
+          format: date-time
+          nullable: true
+        ends_at:
+          type: string
+          format: date-time
+          nullable: true
+        note:
+          type: string
+          nullable: true
+        source:
+          type: string
+          nullable: true
+    ProvenanceFactor:
+      type: object
+      additionalProperties: true
+      required: [factor]
+      properties:
+        factor:
+          type: string
+        label:
+          type: string
+        score:
+          type: number
+        weight:
+          type: number
+        weighted_score:
+          type: number
+    ProvenancePayload:
+      type: object
+      additionalProperties: true
+      properties:
+        feature_coverage:
+          type: number
+        signal_agreement:
+          type: number
+        feed_freshness:
+          type: number
+        metrics:
+          type: object
+          additionalProperties:
+            type: number
+        hazard_components:
+          type: object
+          additionalProperties:
+            type: number
+        top_factors:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProvenanceFactor"
+    TransitRegimeMetrics:
+      type: object
+      additionalProperties: true
+      properties:
+        vehicle_count:
+          type: integer
+        trip_update_count:
+          type: integer
+        active_alert_count:
+          type: integer
+        avg_delay_seconds:
+          type: number
+        median_delay_seconds:
+          type: number
+        p90_delay_seconds:
+          type: number
+        delay_spread_seconds:
+          type: number
+        scheduled_headway_seconds:
+          type: number
+          nullable: true
+        compressed_headway_share:
+          type: number
+        terminal_backlog_count:
+          type: integer
+        dwell_overrun_share:
+          type: number
+        position_coverage:
+          type: number
+        trip_update_coverage:
+          type: number
+        feed_age_seconds:
+          type: number
+    TransitRegimePayload:
+      type: object
+      additionalProperties: true
+      required: [entity_id]
+      properties:
+        timestamp_ms:
+          type: integer
+          format: int64
+        entity_id:
+          type: string
+        entity_type:
+          type: string
+        label:
+          type: string
+        agency_key:
+          type: string
+          nullable: true
+        corridor_id:
+          type: string
+          nullable: true
+        route_id:
+          type: string
+          nullable: true
+        regime:
+          type: string
+        regime_label:
+          type: string
+        hazard:
+          type: number
+        action:
+          type: string
+        action_label:
+          type: string
+        scoring_backend:
+          type: string
+        confidence:
+          type: number
+        priority_score:
+          type: number
+        priority_label:
+          type: string
+        signature:
+          type: string
+        reasons:
+          type: array
+          items:
+            type: string
+        provenance:
+          $ref: "#/components/schemas/ProvenancePayload"
+        metrics:
+          $ref: "#/components/schemas/TransitRegimeMetrics"
+        source:
+          type: string
+        collection_source:
+          type: string
+        trace_id:
+          type: string
+          nullable: true
+        event_overlays:
+          type: array
+          items:
+            $ref: "#/components/schemas/EventOverlay"
+    TransitHealthResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        system_name:
+          type: string
+        generated_at:
+          type: string
+          format: date-time
+        status:
+          type: string
+        scope:
+          type: string
+        trace_id:
+          type: string
+          nullable: true
+        line_count:
+          type: integer
+        active_line_count:
+          type: integer
+        scheduled_later_line_count:
+          type: integer
+        inactive_line_count:
+          type: integer
+        visible_line_count:
+          type: integer
+        vehicle_count:
+          type: integer
+        incident_count:
+          type: integer
+        critical_incidents:
+          type: integer
+        avg_hazard:
+          type: number
+        avg_confidence:
+          type: number
+        max_hazard:
+          type: number
+        action_counts:
+          type: object
+          additionalProperties:
+            type: integer
+        regime_counts:
+          type: object
+          additionalProperties:
+            type: integer
+        feed_status:
+          $ref: "#/components/schemas/FeedStatus"
+        worst_corridor:
+          allOf:
+            - $ref: "#/components/schemas/TransitRegimePayload"
+          nullable: true
+    LineStringGeometry:
+      type: object
+      required: [type, coordinates]
+      properties:
+        type:
+          type: string
+          enum: [LineString]
+        coordinates:
+          type: array
+          items:
+            type: array
+            minItems: 2
+            maxItems: 2
+            items:
+              type: number
+    PointGeometry:
+      type: object
+      required: [type, coordinates]
+      properties:
+        type:
+          type: string
+          enum: [Point]
+        coordinates:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            type: number
+    TransitCorridorSnapshot:
+      type: object
+      additionalProperties: true
+      required: [entity_id, label, vehicle_count, median_delay_seconds, avg_delay_seconds, top_action, avg_hazard, active_alert_count]
+      properties:
+        entity_id:
+          type: string
+        agency_key:
+          type: string
+          nullable: true
+        corridor_id:
+          type: string
+          nullable: true
+        route_id:
+          type: string
+          nullable: true
+        direction_id:
+          type: integer
+          nullable: true
+        label:
+          type: string
+        geometry:
+          allOf:
+            - $ref: "#/components/schemas/LineStringGeometry"
+          nullable: true
+        vehicle_count:
+          type: integer
+        median_delay_seconds:
+          type: number
+        scheduled_headway_seconds:
+          type: number
+          nullable: true
+        compressed_headway_share:
+          type: number
+        avg_delay_seconds:
+          type: number
+        top_action:
+          type: string
+        top_action_label:
+          type: string
+        avg_hazard:
+          type: number
+        active_alert_count:
+          type: integer
+        current_regime:
+          type: string
+          nullable: true
+        current_regime_label:
+          type: string
+          nullable: true
+        priority_score:
+          type: number
+        priority_label:
+          type: string
+        activity_status:
+          type: string
+        activity_status_label:
+          type: string
+        activity_reason:
+          type: string
+        activity_reason_label:
+          type: string
+        route_mode:
+          type: string
+          nullable: true
+        source:
+          type: string
+        collection_source:
+          type: string
+        trace_id:
+          type: string
+          nullable: true
+        timestamp_ms:
+          type: integer
+          format: int64
+        event_overlays:
+          type: array
+          items:
+            $ref: "#/components/schemas/EventOverlay"
+    ObservationPayload:
+      type: object
+      additionalProperties: true
+      properties:
+        timestamp_ms:
+          type: integer
+          format: int64
+        route_id:
+          type: string
+          nullable: true
+        trip_id:
+          type: string
+          nullable: true
+        vehicle_id:
+          type: string
+        vehicle_label:
+          type: string
+          nullable: true
+        stop_id:
+          type: string
+          nullable: true
+        current_status:
+          type: string
+          nullable: true
+        occupancy_status:
+          type: string
+          nullable: true
+        latitude:
+          type: number
+          nullable: true
+        longitude:
+          type: number
+          nullable: true
+        delay_seconds:
+          type: number
+          nullable: true
+        source:
+          type: string
+        collection_source:
+          type: string
+        trace_id:
+          type: string
+          nullable: true
+    TransitVehicleSnapshot:
+      type: object
+      additionalProperties: true
+      required: [entity_id, label, vehicle_id]
+      properties:
+        entity_id:
+          type: string
+        label:
+          type: string
+        vehicle_id:
+          type: string
+        corridor_entity_id:
+          type: string
+          nullable: true
+        agency_key:
+          type: string
+          nullable: true
+        corridor_id:
+          type: string
+          nullable: true
+        route_id:
+          type: string
+          nullable: true
+        route_label:
+          type: string
+        trip_id:
+          type: string
+          nullable: true
+        direction_id:
+          type: integer
+          nullable: true
+        stop_id:
+          type: string
+          nullable: true
+        status:
+          type: string
+          nullable: true
+        delay_seconds:
+          type: number
+          nullable: true
+        occupancy_status:
+          type: string
+          nullable: true
+        source:
+          type: string
+        collection_source:
+          type: string
+        regime:
+          allOf:
+            - $ref: "#/components/schemas/TransitRegimePayload"
+          nullable: true
+        observation:
+          allOf:
+            - $ref: "#/components/schemas/ObservationPayload"
+          nullable: true
+        event_overlays:
+          type: array
+          items:
+            $ref: "#/components/schemas/EventOverlay"
+    TransitEntitiesResponse:
+      type: object
+      additionalProperties: true
+      required: [lines, vehicles]
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+        agency_key:
+          type: string
+          nullable: true
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransitCorridorSnapshot"
+        active_lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransitCorridorSnapshot"
+        scheduled_later_lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransitCorridorSnapshot"
+        inactive_lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransitCorridorSnapshot"
+        vehicles:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransitVehicleSnapshot"
+        event_overlays:
+          type: array
+          items:
+            $ref: "#/components/schemas/EventOverlay"
+    TransitIncidentRecord:
+      type: object
+      additionalProperties: true
+      required: [incident_id, entity_id, label, severity, action, regime, hazard, summary, recommended_action]
+      properties:
+        incident_id:
+          type: string
+        timestamp_ms:
+          type: integer
+          format: int64
+        entity_id:
+          type: string
+        entity_type:
+          type: string
+        label:
+          type: string
+        agency_key:
+          type: string
+          nullable: true
+        corridor_id:
+          type: string
+          nullable: true
+        route_id:
+          type: string
+          nullable: true
+        severity:
+          type: string
+        action:
+          type: string
+        action_label:
+          type: string
+        regime:
+          type: string
+        regime_label:
+          type: string
+        hazard:
+          type: number
+        confidence:
+          type: number
+        priority_score:
+          type: number
+        priority_label:
+          type: string
+        provenance:
+          $ref: "#/components/schemas/ProvenancePayload"
+        summary:
+          type: string
+        recommended_action:
+          type: string
+        reasons:
+          type: array
+          items:
+            type: string
+        source:
+          type: string
+        trace_id:
+          type: string
+          nullable: true
+        event_overlays:
+          type: array
+          items:
+            $ref: "#/components/schemas/EventOverlay"
+    TransitIncidentResponse:
+      type: object
+      additionalProperties: true
+      required: [incidents]
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+        scope:
+          type: string
+        trace_id:
+          type: string
+          nullable: true
+        incidents:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransitIncidentRecord"
+    SignaturePayload:
+      type: object
+      additionalProperties: true
+      required: [signature, entity_count, hazard_max, regimes, actions]
+      properties:
+        signature:
+          type: string
+        entity_count:
+          type: integer
+        hazard_max:
+          type: number
+        regimes:
+          type: array
+          items:
+            type: string
+        actions:
+          type: array
+          items:
+            type: string
+    TransitRegimeResponse:
+      type: object
+      additionalProperties: true
+      required: [regimes, recurring_regimes]
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+        scope:
+          type: string
+        trace_id:
+          type: string
+          nullable: true
+        regimes:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransitRegimePayload"
+        recurring_regimes:
+          type: array
+          items:
+            $ref: "#/components/schemas/SignaturePayload"
+    TransitReplayTrace:
+      type: object
+      additionalProperties: true
+      required: [trace_id]
+      properties:
+        trace_id:
+          type: string
+        snapshot_count:
+          type: integer
+        first_snapshot_path:
+          type: string
+          nullable: true
+        latest_snapshot_path:
+          type: string
+          nullable: true
+        latest_snapshot_timestamp_ms:
+          type: integer
+          format: int64
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+        system_name:
+          type: string
+          nullable: true
+    SourceOption:
+      type: object
+      required: [id, label]
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+    TransitSourceResponse:
+      type: object
+      additionalProperties: true
+      required: [scopes]
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+        scopes:
+          type: array
+          items:
+            $ref: "#/components/schemas/SourceOption"
+        agency_key:
+          type: string
+          nullable: true
+        available:
+          type: object
+          properties:
+            live:
+              type: boolean
+            replay:
+              type: boolean
+        configured_feeds:
+          type: object
+          additionalProperties:
+            type: boolean
+        traces:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransitReplayTrace"
+        trace_ids:
+          type: array
+          items:
+            type: string
+    TransitTrendSummary:
+      type: object
+      additionalProperties: true
+      required: [corridor_count, unstable_corridor_count, recent_incident_count, recent_action_counts, recent_regime_counts]
+      properties:
+        corridor_count:
+          type: integer
+        unstable_corridor_count:
+          type: integer
+        recent_incident_count:
+          type: integer
+        recent_action_counts:
+          type: object
+          additionalProperties:
+            type: integer
+        recent_regime_counts:
+          type: object
+          additionalProperties:
+            type: integer
+    CorridorTrend:
+      type: object
+      additionalProperties: true
+      required: [entity_id, label, snapshot_count, incident_count, avg_hazard, max_hazard, latest_hazard, latest_action, latest_regime, hazard_series, delay_series, recent_actions]
+      properties:
+        entity_id:
+          type: string
+        label:
+          type: string
+        route_id:
+          type: string
+          nullable: true
+        snapshot_count:
+          type: integer
+        incident_count:
+          type: integer
+        avg_hazard:
+          type: number
+        max_hazard:
+          type: number
+        latest_hazard:
+          type: number
+        latest_action:
+          type: string
+        latest_regime:
+          type: string
+        latest_delay_seconds:
+          type: number
+          nullable: true
+        latest_activity_status:
+          type: string
+        hazard_series:
+          type: array
+          items:
+            type: number
+        delay_series:
+          type: array
+          items:
+            type: number
+        recent_actions:
+          type: array
+          items:
+            type: string
+    TransitTrendResponse:
+      type: object
+      additionalProperties: true
+      required: [summary, corridors]
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+        summary:
+          $ref: "#/components/schemas/TransitTrendSummary"
+        corridors:
+          type: array
+          items:
+            $ref: "#/components/schemas/CorridorTrend"
+    HistoryEntity:
+      type: object
+      additionalProperties: true
+      required: [entity_id]
+      properties:
+        entity_id:
+          type: string
+        label:
+          type: string
+        vehicle_count:
+          type: integer
+        median_delay_seconds:
+          type: number
+        avg_hazard:
+          type: number
+        top_action:
+          type: string
+        top_action_label:
+          type: string
+        current_regime:
+          type: string
+          nullable: true
+        current_regime_label:
+          type: string
+          nullable: true
+        priority_score:
+          type: number
+        priority_label:
+          type: string
+        activity_status:
+          type: string
+        activity_status_label:
+          type: string
+        activity_reason:
+          type: string
+        activity_reason_label:
+          type: string
+    CorridorObservation:
+      type: object
+      additionalProperties: true
+      required: [entity_id]
+      properties:
+        timestamp_ms:
+          type: integer
+          format: int64
+        entity_id:
+          type: string
+        route_id:
+          type: string
+          nullable: true
+        direction_id:
+          type: integer
+          nullable: true
+        label:
+          type: string
+        vehicle_count:
+          type: integer
+        median_delay_seconds:
+          type: number
+        scheduled_headway_seconds:
+          type: number
+          nullable: true
+        avg_delay_seconds:
+          type: number
+        top_action:
+          type: string
+        top_action_label:
+          type: string
+        avg_hazard:
+          type: number
+        active_alert_count:
+          type: integer
+        current_regime:
+          type: string
+          nullable: true
+        current_regime_label:
+          type: string
+          nullable: true
+        priority_score:
+          type: number
+        priority_label:
+          type: string
+        activity_status:
+          type: string
+        activity_status_label:
+          type: string
+        activity_reason:
+          type: string
+        activity_reason_label:
+          type: string
+        source:
+          type: string
+        collection_source:
+          type: string
+        trace_id:
+          type: string
+          nullable: true
+    TransitHistoryResponse:
+      type: object
+      additionalProperties: true
+      required: [observations, regimes, incidents]
+      properties:
+        entity:
+          allOf:
+            - $ref: "#/components/schemas/HistoryEntity"
+          nullable: true
+        observations:
+          type: array
+          items:
+            oneOf:
+              - $ref: "#/components/schemas/ObservationPayload"
+              - $ref: "#/components/schemas/CorridorObservation"
+        regimes:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransitRegimePayload"
+        incidents:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransitIncidentRecord"
+    VehicleMapFeature:
+      type: object
+      additionalProperties: false
+      required: [type, geometry, properties]
+      properties:
+        type:
+          type: string
+          enum: [Feature]
+        geometry:
+          $ref: "#/components/schemas/PointGeometry"
+        properties:
+          type: object
+          additionalProperties: true
+    CorridorMapFeature:
+      type: object
+      additionalProperties: false
+      required: [type, geometry, properties]
+      properties:
+        type:
+          type: string
+          enum: [Feature]
+        geometry:
+          $ref: "#/components/schemas/LineStringGeometry"
+        properties:
+          type: object
+          additionalProperties: true
+    TransitMapResponse:
+      type: object
+      additionalProperties: true
+      required: [type, vehicle_count, corridor_count]
+      properties:
+        type:
+          type: string
+          enum: [FeatureCollection]
+        scope:
+          type: string
+        trace_id:
+          type: string
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+        vehicle_features:
+          type: array
+          items:
+            $ref: "#/components/schemas/VehicleMapFeature"
+        corridor_features:
+          type: array
+          items:
+            $ref: "#/components/schemas/CorridorMapFeature"
+        corridor_summaries:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        vehicle_count:
+          type: integer
+        corridor_count:
+          type: integer
+    TransitScorecardNetwork:
+      type: object
+      additionalProperties: true
+      required: [avg_hazard, avg_delay_seconds, on_time_pct, unstable_corridor_count, top_regimes, top_actions]
+      properties:
+        avg_hazard:
+          type: number
+        avg_delay_seconds:
+          type: number
+        on_time_pct:
+          type: number
+        healthy_pct:
+          type: number
+        unstable_pct:
+          type: number
+        unstable_corridor_count:
+          type: integer
+        top_regimes:
+          type: object
+          additionalProperties:
+            type: integer
+        top_actions:
+          type: object
+          additionalProperties:
+            type: integer
+    TransitScorecardCorridor:
+      type: object
+      additionalProperties: true
+      required: [entity_id, label, snapshot_count, incident_count, avg_hazard, max_hazard, hazard_p90, avg_delay_seconds, max_delay_seconds, on_time_pct, healthy_pct, unstable_pct, top_regime, top_action, regime_counts, action_counts]
+      properties:
+        entity_id:
+          type: string
+        label:
+          type: string
+        route_id:
+          type: string
+          nullable: true
+        snapshot_count:
+          type: integer
+        incident_count:
+          type: integer
+        avg_hazard:
+          type: number
+        max_hazard:
+          type: number
+        hazard_p90:
+          type: number
+        avg_delay_seconds:
+          type: number
+        max_delay_seconds:
+          type: number
+        on_time_pct:
+          type: number
+        healthy_pct:
+          type: number
+        unstable_pct:
+          type: number
+        top_regime:
+          type: string
+        top_action:
+          type: string
+        regime_counts:
+          type: object
+          additionalProperties:
+            type: integer
+        action_counts:
+          type: object
+          additionalProperties:
+            type: integer
+    TransitScorecardResponse:
+      type: object
+      additionalProperties: true
+      required: [window_snapshots, corridor_count, total_incidents, network, corridors]
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+        scope:
+          type: string
+        trace_id:
+          type: string
+          nullable: true
+        window_snapshots:
+          type: integer
+        corridor_count:
+          type: integer
+        total_incidents:
+          type: integer
+        network:
+          $ref: "#/components/schemas/TransitScorecardNetwork"
+        corridors:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransitScorecardCorridor"
+    RouteStatus:
+      type: object
+      additionalProperties: true
+      required: [entity_id, label, severity, severity_label, severity_color, headline, body, short_summary, active_alert_count, advisories]
+      properties:
+        entity_id:
+          type: string
+        route_id:
+          type: string
+          nullable: true
+        direction_id:
+          type: integer
+          nullable: true
+        label:
+          type: string
+        severity:
+          type: string
+          enum: [good, advisory, delay, disruption, severe, unknown]
+        severity_label:
+          type: string
+        severity_color:
+          type: string
+        headline:
+          type: string
+        body:
+          type: string
+        short_summary:
+          type: string
+        hazard_score:
+          type: number
+          nullable: true
+        regime:
+          type: string
+          nullable: true
+        action:
+          type: string
+          nullable: true
+        active_alert_count:
+          type: integer
+        median_delay_seconds:
+          type: number
+          nullable: true
+        agency_key:
+          type: string
+          nullable: true
+        timestamp_ms:
+          type: integer
+          format: int64
+          nullable: true
+        advisories:
+          type: array
+          items:
+            type: string
+    PublicStatusRoutesResponse:
+      type: object
+      additionalProperties: true
+      required: [route_count, routes]
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+        scope:
+          type: string
+        route_count:
+          type: integer
+        routes:
+          type: array
+          items:
+            $ref: "#/components/schemas/RouteStatus"
+    DisruptedRoute:
+      type: object
+      additionalProperties: true
+      properties:
+        entity_id:
+          type: string
+        label:
+          type: string
+        severity:
+          type: string
+    PublicStatusNetworkResponse:
+      type: object
+      additionalProperties: true
+      required: [severity, severity_label, severity_color, active_route_count, incident_count, critical_incident_count, disrupted_route_count, disrupted_routes]
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+        scope:
+          type: string
+        severity:
+          type: string
+        severity_label:
+          type: string
+        severity_color:
+          type: string
+        active_route_count:
+          type: integer
+        incident_count:
+          type: integer
+        critical_incident_count:
+          type: integer
+        disrupted_route_count:
+          type: integer
+        disrupted_routes:
+          type: array
+          items:
+            $ref: "#/components/schemas/DisruptedRoute"
+        feed_status:
+          $ref: "#/components/schemas/FeedStatus"
+    PublicStatusAlert:
+      type: object
+      additionalProperties: true
+      required: [severity, severity_label, severity_color, headline]
+      properties:
+        alert_id:
+          type: string
+          nullable: true
+        entity_id:
+          type: string
+        route_label:
+          type: string
+        severity:
+          type: string
+        severity_label:
+          type: string
+        severity_color:
+          type: string
+        headline:
+          type: string
+        recommended_action:
+          type: string
+        timestamp_ms:
+          type: integer
+          format: int64
+          nullable: true
+    PublicStatusAlertsResponse:
+      type: object
+      additionalProperties: true
+      required: [alert_count, alerts]
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+        scope:
+          type: string
+        alert_count:
+          type: integer
+        alerts:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicStatusAlert"
+    PublicScorecardNetwork:
+      type: object
+      additionalProperties: true
+      properties:
+        on_time_pct:
+          type: number
+        healthy_pct:
+          type: number
+        unstable_pct:
+          type: number
+        avg_delay_seconds:
+          type: number
+        unstable_corridor_count:
+          type: integer
+    PublicScorecardCorridor:
+      type: object
+      additionalProperties: true
+      properties:
+        entity_id:
+          type: string
+        label:
+          type: string
+        route_id:
+          type: string
+          nullable: true
+        on_time_pct:
+          type: number
+        avg_delay_seconds:
+          type: number
+        incident_count:
+          type: integer
+        snapshot_count:
+          type: integer
+        healthy_pct:
+          type: number
+        unstable_pct:
+          type: number
+    PublicStatusScorecardResponse:
+      type: object
+      additionalProperties: true
+      required: [network, corridors]
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+        scope:
+          type: string
+        window_snapshots:
+          type: integer
+        corridor_count:
+          type: integer
+        total_incidents:
+          type: integer
+        network:
+          $ref: "#/components/schemas/PublicScorecardNetwork"
+        corridors:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicScorecardCorridor"
+    IncidentAckPayload:
+      type: object
+      additionalProperties: true
+      required: [acknowledged, incident_id]
+      properties:
+        acknowledged:
+          type: boolean
+        incident_id:
+          type: string
+        acknowledged_at:
+          type: string
+          format: date-time
+        acknowledged_by:
+          type: string
+        note:
+          type: string
+        error:
+          type: string
 paths:
   /health:
     get:
@@ -62,7 +1337,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/JsonObject"
+                $ref: "#/components/schemas/HealthResponse"
   /api/health:
     get:
       tags: [Health]
@@ -73,7 +1348,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/JsonObject"
+                $ref: "#/components/schemas/HealthResponse"
   /api/status:
     get:
       tags: [Health]
@@ -84,7 +1359,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/JsonObject"
+                $ref: "#/components/schemas/HealthResponse"
   /api/status/network:
     get:
       tags: [Public status]
@@ -98,7 +1373,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/JsonObject"
+                $ref: "#/components/schemas/PublicStatusNetworkResponse"
   /api/status/routes:
     get:
       tags: [Public status]
@@ -112,7 +1387,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/JsonObject"
+                $ref: "#/components/schemas/PublicStatusRoutesResponse"
   /api/status/alerts:
     get:
       tags: [Public status]
@@ -126,7 +1401,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/JsonObject"
+                $ref: "#/components/schemas/PublicStatusAlertsResponse"
   /api/status/scorecard:
     get:
       tags: [Public status]
@@ -141,7 +1416,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/JsonObject"
+                $ref: "#/components/schemas/PublicStatusScorecardResponse"
   /api/transit/health:
     get:
       tags: [Operations]
@@ -157,7 +1432,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/JsonObject"
+                $ref: "#/components/schemas/TransitHealthResponse"
   /api/transit/entities:
     get:
       tags: [Operations]
@@ -173,7 +1448,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/JsonObject"
+                $ref: "#/components/schemas/TransitEntitiesResponse"
   /api/transit/regimes:
     get:
       tags: [Operations]
@@ -189,7 +1464,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/JsonObject"
+                $ref: "#/components/schemas/TransitRegimeResponse"
   /api/transit/incidents:
     get:
       tags: [Operations]
@@ -205,7 +1480,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/JsonObject"
+                $ref: "#/components/schemas/TransitIncidentResponse"
   /api/transit/trends:
     get:
       tags: [Operations]
@@ -221,7 +1496,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/JsonObject"
+                $ref: "#/components/schemas/TransitTrendResponse"
   /api/transit/history:
     get:
       tags: [Operations]
@@ -239,7 +1514,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/JsonObject"
+                $ref: "#/components/schemas/TransitHistoryResponse"
         "400":
           description: Missing entity id.
   /api/transit/sources:
@@ -254,7 +1529,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/JsonObject"
+                $ref: "#/components/schemas/TransitSourceResponse"
   /api/transit/map:
     get:
       tags: [Operations]
@@ -270,7 +1545,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/JsonObject"
+                $ref: "#/components/schemas/TransitMapResponse"
   /api/transit/scorecard:
     get:
       tags: [Operations]
@@ -287,7 +1562,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/JsonObject"
+                $ref: "#/components/schemas/TransitScorecardResponse"
   /api/transit/audit:
     get:
       tags: [Audit]
@@ -327,7 +1602,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/JsonObject"
+                $ref: "#/components/schemas/IncidentAckPayload"
         "400":
           description: Missing incident id or invalid JSON.
         "401":

@@ -47,7 +47,7 @@ assignments.
 - Los Angeles case packs
 - public-data event overlays
 - naive-baseline calibration path
-- bundled OpenAPI endpoint index at
+- bundled OpenAPI contract with typed core response schemas at
   `apps/frontend/public/static/transit.openapi.yaml`
 
 ## Current Known Boundaries
@@ -58,7 +58,9 @@ assignments.
   `TRANSIT_API_REQUIRE_AUTH=1` and configure bearer tokens before exposing ops
   endpoints outside a trusted environment.
 - The durable host runtime path targets the MBTA live lane first.
-- The OpenAPI file is an endpoint index, not a fully schematized contract yet.
+- The OpenAPI file now includes typed schemas for the core frontend-consumed
+  public status and operations responses; audit and extension fields remain
+  intentionally flexible.
 - Frontend polling still uses multiple interval-driven requests instead of a
   push channel or consolidated dashboard payload.
 - Large archive replay imports can be slow because history writes still fan out
@@ -66,7 +68,7 @@ assignments.
 
 ## Highest-Value Streamlining
 
-- Add typed response schemas to the OpenAPI contract.
+- Keep the OpenAPI schemas aligned as endpoint payloads evolve.
 - Consolidate the frontend polling path or add server push for high-frequency
   live updates.
 - Batch more Valkey history writes and scorecard/trend reads.
@@ -74,8 +76,8 @@ assignments.
   keys.
 - Expand LA Metro websocket tests and keep case packs balanced between positive
   incidents and quiet controls.
-- Keep the hosted demo lane seeded and small by default, then layer live
-  archive freshness on only after the seeded API/frontend path is healthy.
+- Keep the hosted public lane live-first, with seeded demo mode reserved as a
+  deterministic fallback and proof workflow.
 
 ## Documentation Rule
 

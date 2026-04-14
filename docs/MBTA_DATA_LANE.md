@@ -50,7 +50,7 @@ Import archived snapshots as a replay trace:
 make transit-replay ARGS="--redis redis://localhost:6379/0 --archive-root data/feeds/mbta --trace-id mbta-proof --max-snapshots 20"
 ```
 
-Seed the hosted demo from the most recent archive window:
+Seed a deterministic fallback state from the most recent archive window:
 
 ```bash
 make transit-demo-seed ARGS="--redis redis://localhost:6379/0 --clear-store"

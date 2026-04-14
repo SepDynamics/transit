@@ -125,6 +125,7 @@ export interface TransitCorridorSnapshot {
   vehicle_count: number;
   median_delay_seconds: number;
   scheduled_headway_seconds?: number | null;
+  compressed_headway_share?: number;
   avg_delay_seconds: number;
   top_action: string;
   top_action_label?: string;
@@ -442,6 +443,8 @@ export interface TransitScorecardNetwork {
   avg_hazard: number;
   avg_delay_seconds: number;
   on_time_pct: number;
+  healthy_pct?: number;
+  unstable_pct?: number;
   unstable_corridor_count: number;
   top_regimes: Record<string, number>;
   top_actions: Record<string, number>;
@@ -565,6 +568,8 @@ export interface PublicScorecardCorridor {
 
 export interface PublicScorecardNetwork {
   on_time_pct?: number;
+  healthy_pct?: number;
+  unstable_pct?: number;
   avg_delay_seconds?: number;
   unstable_corridor_count?: number;
 }

@@ -1114,6 +1114,7 @@ def _score_routes(
                     if metrics["scheduled_headway_seconds"] not in (None, "")
                     else None
                 ),
+                compressed_headway_share=float(metrics["compressed_headway_share"]),
                 avg_delay_seconds=float(metrics["avg_delay_seconds"]),
                 top_action=action,
                 avg_hazard=record.hazard,

@@ -2,7 +2,7 @@ import type { LineCard } from "../../../types/transit";
 import {
   formatDelay,
   formatHazard,
-  formatHeadway,
+  formatSignalPercent,
   formatActionLabel,
   formatActivityReasonLabel,
   formatPriorityLabel,
@@ -63,8 +63,8 @@ function CorridorCards({
               <strong>{formatDelay(line.median_delay_seconds)}</strong>
             </div>
             <div>
-              <span>Sched headway</span>
-              <strong>{formatHeadway(line.scheduled_headway_seconds)}</strong>
+              <span>Headway compression</span>
+              <strong>{formatSignalPercent(line.compressed_headway_share)}</strong>
             </div>
             <div>
               <span>Risk score</span>

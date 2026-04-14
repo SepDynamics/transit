@@ -33,7 +33,7 @@ plus websocket realtime collection for vehicle positions and trip updates.
 - [`docs/PUBLIC_DATA_OUTLINE.md`](/sep/transit-sentinel/docs/PUBLIC_DATA_OUTLINE.md)
 - [`docs/MBTA_DATA_LANE.md`](/sep/transit-sentinel/docs/MBTA_DATA_LANE.md)
 - [`docs/CALIBRATION_USE_CASE.md`](/sep/transit-sentinel/docs/CALIBRATION_USE_CASE.md)
-- [`docs/HOSTED_DEMO_RUNBOOK.md`](/sep/transit-sentinel/docs/HOSTED_DEMO_RUNBOOK.md)
+- [`docs/HOSTED_LIVE_RUNBOOK.md`](/sep/transit-sentinel/docs/HOSTED_LIVE_RUNBOOK.md)
 - [`docs/LIVE_OPERATIONS_RUNBOOK.md`](/sep/transit-sentinel/docs/LIVE_OPERATIONS_RUNBOOK.md)
 - [`docs/PROJECT_OUTLINE.md`](/sep/transit-sentinel/docs/PROJECT_OUTLINE.md)
 - [`docs/EXECUTION_BACKLOG.md`](/sep/transit-sentinel/docs/EXECUTION_BACKLOG.md)

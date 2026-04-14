@@ -27,6 +27,11 @@ export const formatHeadway = (value?: number | null): string => {
   return `${minutes.toFixed(minutes >= 10 ? 0 : 1)} min`;
 };
 
+export const formatSignalPercent = (value?: number | null, digits = 0): string => {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "n/a";
+  return formatPercent(Math.max(0, Math.min(1, value)) * 100, digits);
+};
+
 export const relativeTime = (timestamp?: string | null): string => {
   if (!timestamp) return "n/a";
   const value = Date.parse(timestamp);

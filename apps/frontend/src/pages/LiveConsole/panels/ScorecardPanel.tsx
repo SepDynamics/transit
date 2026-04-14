@@ -54,8 +54,8 @@ export default function ScorecardPanel({
             <strong>{formatDelay(scorecardResponse?.network.avg_delay_seconds)}</strong>
           </div>
           <div className="detail-card">
-            <span>On-time proxy</span>
-            <strong>{formatPercent(scorecardResponse?.network.on_time_pct, 1)}</strong>
+            <span>At-risk snapshots</span>
+            <strong>{formatPercent(scorecardResponse?.network.unstable_pct, 1)}</strong>
           </div>
         </div>
         <div className="signature-list">
@@ -127,8 +127,8 @@ export default function ScorecardPanel({
                   <strong>{formatDelay(corridor.avg_delay_seconds)}</strong>
                 </div>
                 <div>
-                  <span>On-time</span>
-                  <strong>{formatPercent(corridor.on_time_pct, 1)}</strong>
+                  <span>At risk</span>
+                  <strong>{formatPercent(corridor.unstable_pct, 1)}</strong>
                 </div>
                 <div>
                   <span>Incidents</span>
@@ -141,8 +141,8 @@ export default function ScorecardPanel({
               </div>
               <div className="signature-card__meta">
                 <span>{formatRegimeLabel(corridor.top_regime)}</span>
-                <span>{formatPercent(corridor.unstable_pct, 1)} at risk</span>
-                <span>{formatPercent(corridor.healthy_pct, 1)} healthy</span>
+                <span>{formatPercent(corridor.healthy_pct, 1)} stable snapshots</span>
+                <span>{formatPercent(corridor.on_time_pct, 1)} delay under 2m</span>
               </div>
             </button>
           ))}

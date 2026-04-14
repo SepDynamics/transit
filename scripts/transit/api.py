@@ -388,6 +388,8 @@ class TransitAPIService:
             "total_incidents": scorecard.get("total_incidents"),
             "network": {
                 "on_time_pct": net.get("on_time_pct"),
+                "healthy_pct": net.get("healthy_pct"),
+                "unstable_pct": net.get("unstable_pct"),
                 "avg_delay_seconds": net.get("avg_delay_seconds"),
                 "unstable_corridor_count": net.get("unstable_corridor_count"),
             },

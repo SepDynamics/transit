@@ -266,11 +266,12 @@ function RouteDrilldown({ route }: { route: RouteStatus }) {
 }
 
 // ---------------------------------------------------------------------------
-// On-time bar helper
+// Percent bar helper
 // ---------------------------------------------------------------------------
 
-function OnTimeBar({ pct }: { pct?: number | null }) {
-  const value = typeof pct === "number" && Number.isFinite(pct) ? pct : 0;
+function PercentBar({ pct }: { pct?: number | null }) {
+  const hasValue = typeof pct === "number" && Number.isFinite(pct);
+  const value = hasValue ? pct : 0;
   const tier = value >= 80 ? "good" : value >= 60 ? "ok" : "poor";
   return (
     <span className="on-time-bar">
@@ -280,7 +281,7 @@ function OnTimeBar({ pct }: { pct?: number | null }) {
           style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
         />
       </span>
-      <span>{formatPercent(value, 0)}</span>
+      <span>{hasValue ? formatPercent(value, 0) : "n/a"}</span>
     </span>
   );
 }
@@ -474,7 +475,7 @@ export default function StatusPage() {
               <thead>
                 <tr>
                   <th>Route</th>
-                  <th>On-time</th>
+                  <th>Stable</th>
                   <th>Avg delay</th>
                   <th>Incidents</th>
                 </tr>
@@ -484,7 +485,7 @@ export default function StatusPage() {
                   <tr key={corridor.entity_id}>
                     <td className="scorecard-table__label">{corridor.label}</td>
                     <td>
-                      <OnTimeBar pct={corridor.on_time_pct} />
+                      <PercentBar pct={corridor.healthy_pct} />
                     </td>
                     <td>{formatDelay(corridor.avg_delay_seconds)}</td>
                     <td>{corridor.incident_count ?? 0}</td>
@@ -494,7 +495,8 @@ export default function StatusPage() {
             </table>
             {scorecard?.network && (
               <div style={{ marginTop: 10, fontSize: "0.82rem", color: "var(--text-subtle)", textAlign: "right" }}>
-                Network: {formatPercent(scorecard.network.on_time_pct, 1)} on-time •{" "}
+                Network: {formatPercent(scorecard.network.healthy_pct, 1)} stable •{" "}
+                {formatPercent(scorecard.network.unstable_pct, 1)} at risk •{" "}
                 avg delay {formatDelay(scorecard.network.avg_delay_seconds)}
               </div>
             )}
