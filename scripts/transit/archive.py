@@ -54,6 +54,7 @@ class TransitAgencyArchiveConfig:
     vehicle_positions_url: Optional[str] = None
     trip_updates_url: Optional[str] = None
     alerts_url: Optional[str] = None
+    write_history: bool = True
 
 
 class TransitAgencyArchiveService:
@@ -84,9 +85,12 @@ class TransitAgencyArchiveService:
 
     def run_once(self) -> Dict[str, Any]:
         timestamp_ms = int(time.time() * 1000)
-        snapshot_dir = self._snapshot_dir(timestamp_ms)
+        snapshot_dir = (
+            self._snapshot_dir(timestamp_ms) if self.cfg.write_history else None
+        )
         current_dir = self.cfg.root_dir / "current"
-        snapshot_dir.mkdir(parents=True, exist_ok=True)
+        if snapshot_dir is not None:
+            snapshot_dir.mkdir(parents=True, exist_ok=True)
         current_dir.mkdir(parents=True, exist_ok=True)
 
         feeds = [
@@ -117,17 +121,32 @@ class TransitAgencyArchiveService:
             if feed.static and not self._should_refresh_static(
                 current_dir / feed.filename, timestamp_ms
             ):
-                manifest_feeds.append(
-                    self._reuse_static_feed(
-                        feed, current_dir / feed.filename, snapshot_dir, timestamp_ms
+                if snapshot_dir is not None:
+                    manifest_feeds.append(
+                        self._reuse_static_feed(
+                            feed,
+                            current_dir / feed.filename,
+                            snapshot_dir,
+                            timestamp_ms,
+                        )
                     )
-                )
+                else:
+                    manifest_feeds.append(
+                        self._reuse_current_static_feed(
+                            feed, current_dir / feed.filename, timestamp_ms
+                        )
+                    )
                 continue
             fetched = self._fetch_feed(feed)
             current_path = current_dir / feed.filename
-            snapshot_path = snapshot_dir / feed.filename
             _atomic_write(current_path, fetched["content"], binary=feed.binary)
-            _atomic_write(snapshot_path, fetched["content"], binary=feed.binary)
+            if snapshot_dir is not None:
+                feed_path = snapshot_dir / feed.filename
+                _atomic_write(feed_path, fetched["content"], binary=feed.binary)
+                status = "archived"
+            else:
+                feed_path = current_path
+                status = "current"
             meta = {
                 "name": feed.name,
                 "url": feed.url,
@@ -139,11 +158,12 @@ class TransitAgencyArchiveService:
                 "last_modified": fetched["last_modified"],
                 "content_type": fetched["content_type"],
                 "content_length": fetched["content_length"],
-                "status": "archived",
-                "path": str(snapshot_path.relative_to(self.cfg.root_dir)),
+                "status": status,
+                "path": str(feed_path.relative_to(self.cfg.root_dir)),
             }
             _write_json(current_dir / f"{feed.filename}.meta.json", meta)
-            _write_json(snapshot_dir / f"{feed.filename}.meta.json", meta)
+            if snapshot_dir is not None:
+                _write_json(snapshot_dir / f"{feed.filename}.meta.json", meta)
             manifest_feeds.append(meta)
 
         manifest = {
@@ -151,15 +171,20 @@ class TransitAgencyArchiveService:
             "agency_key": self.cfg.agency_key,
             "captured_at": isoformat_ms(timestamp_ms),
             "timestamp_ms": timestamp_ms,
-            "snapshot_path": str(snapshot_dir.relative_to(self.cfg.root_dir)),
+            "snapshot_path": str(snapshot_dir.relative_to(self.cfg.root_dir))
+            if snapshot_dir is not None
+            else "current",
+            "history_enabled": snapshot_dir is not None,
             "feeds": manifest_feeds,
         }
-        _write_json(snapshot_dir / "manifest.json", manifest)
+        if snapshot_dir is not None:
+            _write_json(snapshot_dir / "manifest.json", manifest)
         _write_json(current_dir / "manifest.json", manifest)
         logger.info(
-            "archived transit snapshot for agency=%s with %d feed results",
+            "refreshed transit feeds for agency=%s with %d feed results history=%s",
             self.cfg.agency_key,
             len(manifest_feeds),
+            "enabled" if snapshot_dir is not None else "disabled",
         )
         return manifest
 
@@ -222,6 +247,19 @@ class TransitAgencyArchiveService:
             "path": str(resolved_path.relative_to(self.cfg.root_dir)),
         }
 
+    def _reuse_current_static_feed(
+        self, feed: FeedTarget, current_path: Path, timestamp_ms: int
+    ) -> Dict[str, Any]:
+        return {
+            "name": feed.name,
+            "url": feed.url,
+            "filename": feed.filename,
+            "captured_at": isoformat_ms(timestamp_ms),
+            "timestamp_ms": timestamp_ms,
+            "status": "reused_current_static",
+            "path": str(current_path.relative_to(self.cfg.root_dir)),
+        }
+
     def _latest_archived_feed(self, filename: str) -> Optional[Path]:
         candidates = sorted(
             path
@@ -256,6 +294,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--static-refresh-seconds",
         type=int,
         default=int(os.getenv("TRANSIT_STATIC_REFRESH_SECONDS", "21600")),
+    )
+    parser.add_argument(
+        "--current-only",
+        action="store_true",
+        default=_truthy_env("TRANSIT_ARCHIVE_CURRENT_ONLY"),
+        help="Refresh only current feed files and skip timestamped archive windows",
     )
     parser.add_argument(
         "--system-name", default=os.getenv("TRANSIT_SYSTEM_NAME", adapter.system_name)
@@ -328,6 +372,7 @@ def main() -> int:
         vehicle_positions_url=_optional_url(args.vehicle_positions_url),
         trip_updates_url=_optional_url(args.trip_updates_url),
         alerts_url=_optional_url(args.alerts_url),
+        write_history=not bool(args.current_only),
     )
     service = TransitAgencyArchiveService(cfg)
 
@@ -365,6 +410,10 @@ def _write_json(path: Path, payload: Dict[str, Any]) -> None:
 def _optional_url(value: str | None) -> Optional[str]:
     text = str(value or "").strip()
     return text or None
+
+
+def _truthy_env(name: str) -> bool:
+    return str(os.getenv(name, "")).strip().lower() in {"1", "true", "yes", "on"}
 
 
 if __name__ == "__main__":

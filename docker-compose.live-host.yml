@@ -1,0 +1,21 @@
+# Host deployment override for live MBTA service behind Caddy.
+# Keeps app ports on loopback and disables replay/archive serving.
+services:
+  valkey:
+    ports: !override
+      - "127.0.0.1:6379:6379"
+
+  archive:
+    environment:
+      TRANSIT_ARCHIVE_CURRENT_ONLY: "1"
+
+  api:
+    environment:
+      TRANSIT_REPLAY_ENABLED: "0"
+      TRANSIT_SYSTEM_NAME: "MBTA Live"
+    ports: !override
+      - "127.0.0.1:8000:8000"
+
+  frontend:
+    ports: !override
+      - "127.0.0.1:8080:80"

@@ -152,6 +152,16 @@ When you want live feed freshness:
 3. validate LA Metro websocket capture health separately
 4. only then start the default `archive`, `ingest`, `api`, and `frontend` services
 
+For the public MBTA live site, use the live host override instead of the seeded
+demo profile. It binds app ports to loopback, disables replay serving, and
+refreshes only `data/feeds/mbta/current/` rather than writing timestamped archive
+windows:
+
+```bash
+docker compose -f docker-compose.transit.yml -f docker-compose.live-host.yml --profile demo stop api-demo frontend-demo
+docker compose -f docker-compose.transit.yml -f docker-compose.live-host.yml up -d --build valkey archive ingest api frontend
+```
+
 For a host-based live MBTA backend, prefer the committed `systemd --user`
 target instead of ad hoc shell processes:
 

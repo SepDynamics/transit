@@ -132,3 +132,46 @@ def test_mbta_archive_service_reuses_latest_archived_static_when_current_copy_is
     assert static_result["path"] == "archive/2024/03/09/010000Z/MBTA_GTFS.zip"
     assert not (snapshot_dir / "MBTA_GTFS.zip").exists()
     assert all(call[0] != "https://example.test/gtfs.zip" for call in session.calls)
+
+
+def test_mbta_archive_service_can_refresh_current_without_snapshot_archive(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr("time.time", lambda: 1_710_000_160)
+    session = _FakeSession(
+        {
+            "https://example.test/gtfs.zip": _FakeResponse(b"PK\x03\x04fake-zip"),
+            "https://example.test/vehicles.json": _FakeResponse(
+                b'{"entity":[{"id":"v1"}]}'
+            ),
+            "https://example.test/trips.json": _FakeResponse(
+                b'{"entity":[{"id":"t1"}]}'
+            ),
+            "https://example.test/alerts.json": _FakeResponse(
+                b'{"entity":[{"id":"a1"}]}'
+            ),
+        }
+    )
+    service = MBTAArchiveService(
+        MBTAArchiveConfig(
+            root_dir=tmp_path,
+            interval_seconds=30,
+            timeout_seconds=5,
+            static_refresh_seconds=3600,
+            static_url="https://example.test/gtfs.zip",
+            vehicle_positions_url="https://example.test/vehicles.json",
+            trip_updates_url="https://example.test/trips.json",
+            alerts_url="https://example.test/alerts.json",
+            write_history=False,
+        ),
+        session=session,
+    )
+
+    manifest = service.run_once()
+
+    current_dir = tmp_path / "current"
+    assert manifest["snapshot_path"] == "current"
+    assert manifest["history_enabled"] is False
+    assert (current_dir / "VehiclePositions_enhanced.json").exists()
+    assert not (tmp_path / "archive").exists()
+    assert all(row["status"] == "current" for row in manifest["feeds"])

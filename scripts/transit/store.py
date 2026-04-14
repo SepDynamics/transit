@@ -228,56 +228,41 @@ class TransitStore:
 
         self._execute_with_retry(_execute_pipeline)
 
-        # Process vehicle data separately (still individual operations for now)
-        for vehicle in entities.get("vehicles") or []:
-            if not isinstance(vehicle, dict):
-                continue
-            entity_id = str(vehicle.get("entity_id") or "").strip()
-            if not entity_id:
-                continue
-
-            def _set_vehicle_meta():
-                self.client.set(
+        def _write_history_pipeline():
+            pipe = self.client.pipeline()
+            for vehicle in entities.get("vehicles") or []:
+                if not isinstance(vehicle, dict):
+                    continue
+                entity_id = str(vehicle.get("entity_id") or "").strip()
+                if not entity_id:
+                    continue
+                pipe.set(
                     self.vehicle_meta_key(entity_id, trace_id=snapshot_trace_id),
                     self._dumps(vehicle),
                 )
+                if snapshot_trace_id:
+                    pipe.sadd(
+                        self.trace_vehicle_entities_key(snapshot_trace_id), entity_id
+                    )
 
-            def _sadd_trace_vehicle():
-                self.client.sadd(
-                    self.trace_vehicle_entities_key(snapshot_trace_id), entity_id
-                )
-
-            self._execute_with_retry(_set_vehicle_meta)
-            if snapshot_trace_id:
-                self._execute_with_retry(_sadd_trace_vehicle)
-
-            observation = dict(vehicle.get("observation") or {})
-            if observation:
-
-                def _zadd_observation():
-                    self.client.zadd(
-                        self.observation_history_key(entity_id),
+                observation = dict(vehicle.get("observation") or {})
+                if observation:
+                    history_key = self.observation_history_key(entity_id)
+                    pipe.zadd(
+                        history_key,
                         {
                             self._dumps(observation): int(
                                 observation.get("timestamp_ms") or 0
                             )
                         },
                     )
+                    self._pipe_trim_sorted_set(pipe, history_key, retention)
 
-                def _trim_observation():
-                    self._trim_sorted_set(
-                        self.observation_history_key(entity_id), retention
-                    )
-
-                self._execute_with_retry(_zadd_observation)
-                self._execute_with_retry(_trim_observation)
-
-            regime = dict(vehicle.get("regime") or {})
-            if regime:
-
-                def _zadd_regime():
-                    self.client.zadd(
-                        self.vehicle_regime_history_key(entity_id),
+                regime = dict(vehicle.get("regime") or {})
+                if regime:
+                    history_key = self.vehicle_regime_history_key(entity_id)
+                    pipe.zadd(
+                        history_key,
                         {
                             self._dumps(regime): int(
                                 regime.get("timestamp_ms")
@@ -286,107 +271,89 @@ class TransitStore:
                             )
                         },
                     )
+                    self._pipe_trim_sorted_set(pipe, history_key, retention)
 
-                def _trim_regime():
-                    self._trim_sorted_set(
-                        self.vehicle_regime_history_key(entity_id), retention
-                    )
-
-                self._execute_with_retry(_zadd_regime)
-                self._execute_with_retry(_trim_regime)
-
-        for regime in regimes.get("regimes") or []:
-            if not isinstance(regime, dict):
-                continue
-            entity_id = str(regime.get("entity_id") or "").strip()
-            if not entity_id:
-                continue
-            self.client.zadd(
-                self.corridor_regime_history_key(entity_id),
-                {self._dumps(regime): int(regime.get("timestamp_ms") or 0)},
-            )
-            self._trim_sorted_set(
-                self.corridor_regime_history_key(entity_id), retention
-            )
-
-        for line in entities.get("lines") or []:
-            if not isinstance(line, dict):
-                continue
-            entity_id = str(line.get("entity_id") or "").strip()
-            if not entity_id:
-                continue
-            merged_line = {
-                **line,
-                "timestamp_ms": int(
-                    line.get("timestamp_ms")
-                    or corridor_regimes_by_entity.get(entity_id, {}).get("timestamp_ms")
-                    or int(time.time() * 1000)
-                ),
-                "source": str(
-                    line.get("source")
-                    or corridor_regimes_by_entity.get(entity_id, {}).get("source")
-                    or "live"
-                ),
-                "collection_source": str(
-                    line.get("collection_source")
-                    or corridor_regimes_by_entity.get(entity_id, {}).get(
-                        "collection_source"
-                    )
-                    or "gtfs_rt"
-                ),
-                "trace_id": line.get(
-                    "trace_id",
-                    corridor_regimes_by_entity.get(entity_id, {}).get("trace_id"),
-                ),
-            }
-            self.client.set(
-                self.corridor_meta_key(entity_id, trace_id=snapshot_trace_id),
-                self._dumps(merged_line),
-            )
-            if snapshot_trace_id:
-                self.client.sadd(
-                    self.trace_corridor_entities_key(snapshot_trace_id), entity_id
+            for regime in regimes.get("regimes") or []:
+                if not isinstance(regime, dict):
+                    continue
+                entity_id = str(regime.get("entity_id") or "").strip()
+                if not entity_id:
+                    continue
+                history_key = self.corridor_regime_history_key(entity_id)
+                pipe.zadd(
+                    history_key,
+                    {self._dumps(regime): int(regime.get("timestamp_ms") or 0)},
                 )
-            self.client.zadd(
-                self.corridor_summary_history_key(entity_id),
-                {self._dumps(merged_line): int(merged_line.get("timestamp_ms") or 0)},
-            )
-            self._trim_sorted_set(
-                self.corridor_summary_history_key(entity_id), retention
-            )
+                self._pipe_trim_sorted_set(pipe, history_key, retention)
 
-        for incident in incidents.get("incidents") or []:
-            if not isinstance(incident, dict):
-                continue
-            entity_id = str(incident.get("entity_id") or "").strip()
-            if not entity_id:
-                continue
-            self.client.zadd(
-                self.corridor_incident_history_key(entity_id),
-                {self._dumps(incident): int(incident.get("timestamp_ms") or 0)},
-            )
-            self._trim_sorted_set(
-                self.corridor_incident_history_key(entity_id), retention
-            )
-
-        if snapshot_trace_id:
-
-            def _sadd_trace_ids():
-                self.client.sadd("transit:trace_ids", snapshot_trace_id)
-
-            def _zadd_trace_timestamps():
-                self.client.zadd(
-                    "transit:trace_timestamps",
-                    {snapshot_trace_id: snapshot_timestamp_ms},
+            for line in entities.get("lines") or []:
+                if not isinstance(line, dict):
+                    continue
+                entity_id = str(line.get("entity_id") or "").strip()
+                if not entity_id:
+                    continue
+                merged_line = {
+                    **line,
+                    "timestamp_ms": int(
+                        line.get("timestamp_ms")
+                        or corridor_regimes_by_entity.get(entity_id, {}).get(
+                            "timestamp_ms"
+                        )
+                        or int(time.time() * 1000)
+                    ),
+                    "source": str(
+                        line.get("source")
+                        or corridor_regimes_by_entity.get(entity_id, {}).get("source")
+                        or "live"
+                    ),
+                    "collection_source": str(
+                        line.get("collection_source")
+                        or corridor_regimes_by_entity.get(entity_id, {}).get(
+                            "collection_source"
+                        )
+                        or "gtfs_rt"
+                    ),
+                    "trace_id": line.get(
+                        "trace_id",
+                        corridor_regimes_by_entity.get(entity_id, {}).get("trace_id"),
+                    ),
+                }
+                pipe.set(
+                    self.corridor_meta_key(entity_id, trace_id=snapshot_trace_id),
+                    self._dumps(merged_line),
                 )
+                if snapshot_trace_id:
+                    pipe.sadd(
+                        self.trace_corridor_entities_key(snapshot_trace_id), entity_id
+                    )
+                history_key = self.corridor_summary_history_key(entity_id)
+                pipe.zadd(
+                    history_key,
+                    {
+                        self._dumps(merged_line): int(
+                            merged_line.get("timestamp_ms") or 0
+                        )
+                    },
+                )
+                self._pipe_trim_sorted_set(pipe, history_key, retention)
 
-            self._execute_with_retry(_sadd_trace_ids)
-            self._execute_with_retry(_zadd_trace_timestamps)
+            for incident in incidents.get("incidents") or []:
+                if not isinstance(incident, dict):
+                    continue
+                entity_id = str(incident.get("entity_id") or "").strip()
+                if not entity_id:
+                    continue
+                history_key = self.corridor_incident_history_key(entity_id)
+                pipe.zadd(
+                    history_key,
+                    {self._dumps(incident): int(incident.get("timestamp_ms") or 0)},
+                )
+                self._pipe_trim_sorted_set(pipe, history_key, retention)
 
-        def _set_sources_last():
-            self.client.set("transit:sources:last", self._dumps(self.sources()))
+            pipe.set("transit:sources:last", self._dumps(self.sources()))
+            pipe.execute()
 
-        self._execute_with_retry(_set_sources_last)
+        self._execute_with_retry(_write_history_pipeline)
 
     def write_replay_trace(self, trace: TransitReplayTrace) -> None:
         payload = trace.to_json()
@@ -567,7 +534,8 @@ class TransitStore:
         }
 
     def sources(self) -> Dict[str, Any]:
-        traces = self.list_replay_traces()
+        replay_enabled = self._replay_enabled()
+        traces = self.list_replay_traces() if replay_enabled else []
         trace_ids = [
             str(row.get("trace_id") or "") for row in traces if row.get("trace_id")
         ]
@@ -586,14 +554,17 @@ class TransitStore:
             or int(live_feed_status.get("trip_update_count") or 0) > 0
             or int(live_feed_status.get("alert_count") or 0) > 0
         )
-        has_replay = bool(traces)
+        has_replay = replay_enabled and bool(traces)
+        scopes = [{"id": "live", "label": "Live feed"}]
+        if replay_enabled:
+            scopes = [
+                {"id": "all", "label": "All feeds"},
+                *scopes,
+                {"id": "replay", "label": "Replay"},
+            ]
         return {
             "generated_at": isoformat_ms(),
-            "scopes": [
-                {"id": "all", "label": "All feeds"},
-                {"id": "live", "label": "Live feed"},
-                {"id": "replay", "label": "Replay"},
-            ],
+            "scopes": scopes,
             "available": {"live": has_live, "replay": has_replay},
             "configured_feeds": configured_feeds,
             "traces": traces,
@@ -1164,6 +1135,8 @@ class TransitStore:
         ]
 
     def list_trace_ids(self) -> List[str]:
+        if not self._replay_enabled():
+            return []
         ranked = [
             str(value)
             for value in (
@@ -1340,20 +1313,23 @@ class TransitStore:
         default: Dict[str, Any],
     ) -> Dict[str, Any]:
         explicit_trace = trace_id not in (None, "")
+        replay_enabled = self._replay_enabled()
+        if not replay_enabled and (explicit_trace or scope == "replay"):
+            return dict(default)
         resolved_trace_id = self._resolve_trace_id(scope=scope, trace_id=trace_id)
         keys: List[str] = []
         if resolved_trace_id:
             keys.append(self.trace_payload_key(resolved_trace_id, kind))
         if explicit_trace:
             pass
-        elif scope == "replay":
+        elif replay_enabled and scope == "replay":
             keys.append(self.replay_payload_key(kind))
         else:
             keys.append(self.live_payload_key(kind))
-            if scope == "all":
+            if replay_enabled and scope == "all":
                 keys.append(self.replay_payload_key(kind))
-        legacy_key = f"transit:{kind}:last"
-        keys.append(legacy_key)
+        if replay_enabled:
+            keys.append(f"transit:{kind}:last")
         for key in keys:
             payload = self.read_json_key(key, default={})
             if payload:
@@ -1380,6 +1356,8 @@ class TransitStore:
         pipe.set(self.live_payload_key(kind), self._dumps(payload))
 
     def _resolve_trace_id(self, *, scope: str, trace_id: str | None) -> str | None:
+        if not self._replay_enabled():
+            return None
         if trace_id not in (None, ""):
             return str(trace_id)
         if scope == "replay":
@@ -1563,6 +1541,20 @@ class TransitStore:
         count = int(self.client.zcard(key) or 0)
         if count > retention:
             self.client.zremrangebyrank(key, 0, count - retention - 1)
+
+    @staticmethod
+    def _pipe_trim_sorted_set(pipe: Any, key: str, retention: int) -> None:
+        retention = max(1, int(retention or 1))
+        pipe.zremrangebyrank(key, 0, -retention - 1)
+
+    @staticmethod
+    def _replay_enabled() -> bool:
+        return str(os.getenv("TRANSIT_REPLAY_ENABLED", "1")).strip().lower() not in {
+            "0",
+            "false",
+            "no",
+            "off",
+        }
 
     @staticmethod
     def _default_health() -> Dict[str, Any]:

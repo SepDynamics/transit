@@ -35,9 +35,17 @@ def test_transit_store_persists_latest_payloads_and_vehicle_history(valkey_url):
 def test_transit_store_keeps_live_and_replay_snapshots_side_by_side(valkey_url):
     store = TransitStore(valkey_url)
 
-    store.write_snapshot(_snapshot(timestamp_ms=1_710_000_100_000, delay_seconds=90, hazard=0.42))
     store.write_snapshot(
-        _snapshot(timestamp_ms=1_710_000_200_000, delay_seconds=300, hazard=0.88, source="replay", trace_id="case-red"),
+        _snapshot(timestamp_ms=1_710_000_100_000, delay_seconds=90, hazard=0.42)
+    )
+    store.write_snapshot(
+        _snapshot(
+            timestamp_ms=1_710_000_200_000,
+            delay_seconds=300,
+            hazard=0.88,
+            source="replay",
+            trace_id="case-red",
+        ),
         source="replay",
         trace_id="case-red",
     )
@@ -60,6 +68,32 @@ def test_transit_store_keeps_live_and_replay_snapshots_side_by_side(valkey_url):
     assert sources["trace_ids"] == ["case-red"]
     assert sources["traces"][0]["trace_id"] == "case-red"
     assert sources["traces"][0]["latest_snapshot_timestamp_ms"] == 1_710_000_200_000
+
+
+def test_transit_store_can_disable_replay_surface(valkey_url, monkeypatch):
+    store = TransitStore(valkey_url)
+
+    store.write_snapshot(_snapshot(timestamp_ms=1_710_000_100_000, delay_seconds=90, hazard=0.42))
+    store.write_snapshot(
+        _snapshot(timestamp_ms=1_710_000_200_000, delay_seconds=300, hazard=0.88, source="replay", trace_id="case-red"),
+        source="replay",
+        trace_id="case-red",
+    )
+
+    monkeypatch.setenv("TRANSIT_REPLAY_ENABLED", "0")
+
+    sources = store.sources()
+    live_entities = store.entities(scope="live")
+    all_entities = store.entities(scope="all")
+    replay_entities = store.entities(scope="replay", trace_id="case-red")
+
+    assert sources["scopes"] == [{"id": "live", "label": "Live feed"}]
+    assert sources["available"] == {"live": True, "replay": False}
+    assert sources["trace_ids"] == []
+    assert sources["traces"] == []
+    assert live_entities["vehicles"][0]["source"] == "live"
+    assert all_entities["vehicles"][0]["source"] == "live"
+    assert replay_entities["vehicles"] == []
 
 
 def test_transit_store_clear_runtime_state_removes_live_replay_and_status_keys(valkey_url):

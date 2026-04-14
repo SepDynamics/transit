@@ -78,12 +78,11 @@ export function useTransitData(): TransitDataState {
   });
   const [sourceResponse, setSourceResponse] = useState<SourceResponse>({
     scopes: [
-      { id: "all", label: "All feeds" },
       { id: "live", label: "Live feed" },
     ],
     traces: [],
   });
-  const [scope, setScope] = useState("all");
+  const [scope, setScope] = useState("live");
   const [selectedTraceId, setSelectedTraceId] = useState("");
   const [selectedCorridorId, setSelectedCorridorId] = useState<string | null>(null);
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
