@@ -60,7 +60,7 @@ chown -R 999:999 data/feeds logs/transit
 ## Verify Public Health
 
 ```bash
-make transit-live-health
+PYTHONPATH=. python3 scripts/transit/live_health.py
 curl -fsSI https://sepdynamics.co
 curl -fsS https://sepdynamics.co/api/status/network
 curl -fsS https://sepdynamics.co/api/status/routes
@@ -68,7 +68,7 @@ curl -fsS https://sepdynamics.co/api/status/routes
 
 Expected:
 
-- `make transit-live-health` reports no failed checks
+- `scripts/transit/live_health.py` reports no failed checks
 - site returns `200`
 - status endpoints return JSON
 - `active_route_count` and route rows are non-zero during service hours
