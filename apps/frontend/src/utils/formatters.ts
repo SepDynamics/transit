@@ -72,17 +72,17 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 const REGIME_LABELS: Record<string, string> = {
-  healthy: "Service looks normal",
-  recovering: "Service is recovering",
-  data_sparse: "Not enough data",
-  bunching_onset: "Vehicles are bunching",
-  corridor_unstable: "Route looks uneven",
-  headway_collapse: "Large gap or bunching",
-  service_degraded: "Service disruption",
-  terminal_congestion: "Terminal is crowded",
-  stop_dwell_instability: "Long stop time",
-  terminal_blocked: "Terminal blocked",
-  feed_incoherent: "Data looks unreliable",
+  healthy: "Service normal",
+  recovering: "Recovering",
+  data_sparse: "Telemetry degraded",
+  bunching_onset: "Early bunching",
+  corridor_unstable: "Service irregularity",
+  headway_collapse: "Severe bunching / service gap",
+  service_degraded: "Confirmed disruption",
+  terminal_congestion: "Terminal congestion",
+  stop_dwell_instability: "Service irregularity",
+  terminal_blocked: "Terminal congestion",
+  feed_incoherent: "Telemetry degraded",
 };
 
 const ACTIVITY_STATUS_LABELS: Record<string, string> = {

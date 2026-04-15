@@ -12,9 +12,8 @@ import ScorecardPanel from "./panels/ScorecardPanel";
 import TechnicalStackPanel from "./panels/TechnicalStackPanel";
 import ToolbarPanel from "./panels/ToolbarPanel";
 import TrendPanel from "./panels/TrendPanel";
-import ValueAddPanel from "./panels/ValueAddPanel";
 import VehicleInventory from "./panels/VehicleInventory";
-import WhatThisMeansPanel from "./panels/WhatThisMeansPanel";
+import EvidenceDrawer from "./panels/EvidenceDrawer";
 import "./LiveConsole.css";
 
 /** Minimal display shape shared between LineCard and HistoryEntity. */
@@ -98,12 +97,6 @@ export default function LiveConsole() {
       <div className="sentinel__shell">
         <HeroPanel serviceState={serviceState} transitHealth={transitHealth} />
 
-        <ValueAddPanel
-          transitHealth={transitHealth}
-          sourceResponse={sourceResponse}
-          scorecardResponse={scorecardResponse}
-        />
-
         <TechnicalStackPanel
           transitHealth={transitHealth}
           sourceResponse={sourceResponse}
@@ -127,16 +120,19 @@ export default function LiveConsole() {
 
         <OverviewMetrics transitHealth={transitHealth} />
 
-        <WhatThisMeansPanel
-          transitHealth={transitHealth}
-          scorecardResponse={scorecardResponse}
-        />
-
         <PriorityCorridorsPanel
           lines={visibleLines}
           scorecardResponse={scorecardResponse}
           selectedCorridorId={selectedCorridorId}
           onSelectCorridor={(id) => selectCorridor(id)}
+        />
+
+        <EvidenceDrawer
+          selectedCorridor={selectedCorridor}
+          selectedCorridorId={selectedCorridorId}
+          corridorHistory={corridorHistory}
+          incidentResponse={incidentResponse}
+          regimeResponse={regimeResponse}
         />
 
         <MapSection mapData={mapData} />

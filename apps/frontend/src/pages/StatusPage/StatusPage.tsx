@@ -26,6 +26,7 @@ const STATUS_REFRESH_MS = 30_000;
 const STATUS_HIDDEN_REFRESH_MS = 60_000;
 const STATUS_SCORECARD_LIMIT = 60;
 const SEVERITY_ORDER = ["severe", "disruption", "delay", "advisory", "good", "unknown"] as const;
+const ROUTE_GROUP_ORDER = ["Rapid Transit", "Bus", "Commuter Rail", "Ferry", "Other Routes"] as const;
 type SeverityFilter = "all" | RouteStatus["severity"];
 
 type StatusDataState = {
@@ -58,6 +59,22 @@ const routeMatchesHash = (route: RouteStatus, hashId: string | null): boolean =>
     .some((value) => String(value) === hashId || slugify(String(value)) === hashId);
 };
 
+const normalizeSearch = (value: string): string =>
+  value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+const compactSearch = (value: string): string => normalizeSearch(value).replace(/\s+/g, "");
+
+const severityRank = (severity: RouteStatus["severity"]): number => {
+  const rank = SEVERITY_ORDER.indexOf(severity);
+  return rank === -1 ? SEVERITY_ORDER.length : rank;
+};
+
 const getSelectedRouteId = (): string | null => {
   if (typeof window === "undefined") return null;
   const match = window.location.hash.match(/^#status\/route\/(.+)$/);
@@ -65,12 +82,27 @@ const getSelectedRouteId = (): string | null => {
 };
 
 const inferRouteGroup = (route: RouteStatus): string => {
-  const token = `${route.route_id ?? ""} ${route.label ?? ""}`.toLowerCase();
-  if (/\b(commuter rail|cr-|fairmount|framingham|worcester|lowell|fitchburg)\b/.test(token)) return "Commuter Rail";
-  if (/\b(ferry|boat)\b/.test(token)) return "Ferry";
-  if (/\b(red|orange|blue|green|mattapan|line)\b/.test(token)) return "Rapid Transit";
-  if (/^\s*\d/.test(route.route_id ?? route.label)) return "Bus";
-  return route.agency_key ? route.agency_key.toUpperCase() : "Other Routes";
+  const routeId = String(route.route_id ?? "");
+  const label = String(route.label ?? "");
+  const normalized = normalizeSearch(`${routeId} ${label}`);
+  const compact = compactSearch(`${routeId} ${label}`);
+
+  if (
+    /^cr[-_]?/i.test(routeId) ||
+    /\bcommuter rail\b/.test(normalized) ||
+    /(fairmount|framingham|worcester|lowell|fitchburg|haverhill|kingston|greenbush|newburyport|rockport|providence|stoughton|needham|middleborough|newbedford)/.test(compact)
+  ) {
+    return "Commuter Rail";
+  }
+  if (/\b(ferry|boat)\b/.test(normalized) || /^boat[-_]?/i.test(routeId)) return "Ferry";
+  if (
+    /^(red|orange|blue|green|mattapan)/i.test(routeId) ||
+    /(redline|orangeline|blueline|greenline|greenb|greenc|greend|greene|mattapanline|rapidtransit)/.test(compact)
+  ) {
+    return "Rapid Transit";
+  }
+  if (/^\s*\d/.test(routeId || label)) return "Bus";
+  return "Other Routes";
 };
 
 const groupRoutes = (routes: RouteStatus[]): RouteGroup[] => {
@@ -79,7 +111,45 @@ const groupRoutes = (routes: RouteStatus[]): RouteGroup[] => {
     const label = inferRouteGroup(route);
     groups.set(label, [...(groups.get(label) ?? []), route]);
   });
-  return [...groups.entries()].map(([label, groupedRoutes]) => ({ label, routes: groupedRoutes }));
+  return [...groups.entries()]
+    .map(([label, groupedRoutes]) => ({
+      label,
+      routes: [...groupedRoutes].sort((left, right) => {
+        const severityDelta = severityRank(left.severity) - severityRank(right.severity);
+        return severityDelta || left.label.localeCompare(right.label);
+      }),
+    }))
+    .sort((left, right) => {
+      const leftRank = ROUTE_GROUP_ORDER.indexOf(left.label as (typeof ROUTE_GROUP_ORDER)[number]);
+      const rightRank = ROUTE_GROUP_ORDER.indexOf(right.label as (typeof ROUTE_GROUP_ORDER)[number]);
+      const normalizedLeftRank = leftRank === -1 ? ROUTE_GROUP_ORDER.length : leftRank;
+      const normalizedRightRank = rightRank === -1 ? ROUTE_GROUP_ORDER.length : rightRank;
+      return normalizedLeftRank - normalizedRightRank || left.label.localeCompare(right.label);
+    });
+};
+
+const routeMatchesSearch = (route: RouteStatus, rawQuery: string): boolean => {
+  const query = normalizeSearch(rawQuery);
+  if (!query) return true;
+  const compactQuery = compactSearch(rawQuery);
+  const group = inferRouteGroup(route);
+  const searchText = normalizeSearch(
+    [
+      route.label,
+      route.route_id,
+      route.entity_id,
+      route.headline,
+      route.short_summary,
+      route.agency_key,
+      group,
+      route.route_id ? `route ${route.route_id}` : null,
+    ]
+      .filter(Boolean)
+      .join(" "),
+  );
+  const compactText = searchText.replace(/\s+/g, "");
+  if (compactQuery && compactText.includes(compactQuery)) return true;
+  return query.split(/\s+/).every((token) => searchText.includes(token) || compactText.includes(token));
 };
 
 // ---------------------------------------------------------------------------
@@ -315,24 +385,25 @@ export default function StatusPage() {
     [routeList, selectedRouteId],
   );
 
-  const filteredRoutes = useMemo(() => {
-    const query = searchTerm.trim().toLowerCase();
-    return routeList.filter((route) => {
-      const severityMatch = severityFilter === "all" || route.severity === severityFilter;
-      if (!severityMatch) return false;
-      if (!query) return true;
-      return [route.label, route.route_id, route.headline, route.short_summary, route.agency_key]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(query));
-    });
-  }, [routeList, searchTerm, severityFilter]);
+  const searchMatchedRoutes = useMemo(
+    () => routeList.filter((route) => routeMatchesSearch(route, searchTerm)),
+    [routeList, searchTerm],
+  );
+
+  const filteredRoutes = useMemo(
+    () =>
+      searchMatchedRoutes.filter(
+        (route) => severityFilter === "all" || route.severity === severityFilter,
+      ),
+    [searchMatchedRoutes, severityFilter],
+  );
 
   const routeGroups = useMemo(() => groupRoutes(filteredRoutes), [filteredRoutes]);
   const severityCounts = useMemo(() => {
-    const counts = new Map<SeverityFilter, number>([["all", routeList.length]]);
-    routeList.forEach((route) => counts.set(route.severity, (counts.get(route.severity) ?? 0) + 1));
+    const counts = new Map<SeverityFilter, number>([["all", searchMatchedRoutes.length]]);
+    searchMatchedRoutes.forEach((route) => counts.set(route.severity, (counts.get(route.severity) ?? 0) + 1));
     return counts;
-  }, [routeList]);
+  }, [searchMatchedRoutes]);
 
   return (
     <main className="status-page">
@@ -381,7 +452,7 @@ export default function StatusPage() {
                   type="search"
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder="Red, Green-B, 15"
+                  placeholder="Red Line, Redline, Green-B, 15"
                 />
               </label>
               <div className="severity-filters" aria-label="Severity filters">
