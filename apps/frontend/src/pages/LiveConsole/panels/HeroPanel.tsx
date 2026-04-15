@@ -10,37 +10,38 @@ export default function HeroPanel({ serviceState, transitHealth }: HeroPanelProp
   return (
     <section className="hero panel">
       <div className="hero__copy">
-        <div className="hero__eyebrow">Transit Sentinel</div>
-        <h1 className="hero__title">Public feed signals into operator-ready priorities.</h1>
+        <div className="hero__eyebrow">Transit Sentinel for Boston</div>
+        <h1 className="hero__title">Show leaders which bus routes need help first.</h1>
         <p className="hero__summary">
-          GTFS schedules, vehicle positions, trip updates, and alerts become corridor
-          risk, evidence, replay traces, and recommended control actions.
+          Boston already wants shorter commutes and more reliable transit. This
+          turns public MBTA data into plain answers: where buses are getting
+          stuck, which fix to try, and how to prove it worked.
         </p>
         <div className="hero__chips">
-          <span className="chip">Public-data proof</span>
-          <span className="chip">Replayable incidents</span>
-          <span className="chip">Operator action queue</span>
+          <span className="chip">Boston priority corridors</span>
+          <span className="chip">Before and after proof</span>
+          <span className="chip">No new hardware</span>
         </div>
       </div>
       <div className="hero__rail">
         <div className={`status-pill status-pill--${serviceTone(serviceState)}`}>
           <span className="status-pill__dot" />
-          API {serviceState}
+          Data system {serviceState}
         </div>
         <div className="hero__meta">
-          <span>Feed source</span>
+          <span>Data source</span>
           <strong>{transitHealth?.feed_status?.collection_source ?? "awaiting feed"}</strong>
         </div>
         <div className="hero__meta">
-          <span>Last feed tick</span>
+          <span>Last update</span>
           <strong>{relativeTime(transitHealth?.feed_status?.updated_at)}</strong>
         </div>
         <div className="hero__meta">
-          <span>Visible vehicles</span>
+          <span>Vehicles seen</span>
           <strong>{transitHealth?.feed_status?.vehicle_count ?? 0}</strong>
         </div>
         <div className="hero__meta">
-          <span>Active alerts</span>
+          <span>Alerts seen</span>
           <strong>{transitHealth?.feed_status?.alert_count ?? 0}</strong>
         </div>
       </div>

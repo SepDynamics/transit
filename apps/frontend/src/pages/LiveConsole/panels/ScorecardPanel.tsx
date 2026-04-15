@@ -2,10 +2,10 @@ import type { ScorecardResponse } from "../../../types/transit";
 import {
   actionTone,
   formatDelay,
-  formatHazard,
   formatPercent,
   formatActionLabel,
   formatRegimeLabel,
+  formatRiskWithScore,
 } from "../../../utils/formatters";
 
 interface ScorecardPanelProps {
@@ -26,61 +26,59 @@ export default function ScorecardPanel({
       <article className="panel">
         <div className="section__header">
           <div>
-            <h2 className="section__title">Network scorecard</h2>
+            <h2 className="section__title">Reliability proof</h2>
             <p className="section__hint">
-              Rolling public-data KPI summary over the persisted scorecard window.
+              A saved record of how service looked over recent public-data checks.
             </p>
           </div>
         </div>
         <div className="detail-grid detail-grid--expanded">
           <div className="detail-card">
-            <span>Window snapshots</span>
+            <span>Saved checks</span>
             <strong>{scorecardResponse?.window_snapshots ?? 0}</strong>
           </div>
           <div className="detail-card">
-            <span>Tracked corridors</span>
+            <span>Routes tracked</span>
             <strong>{scorecardResponse?.corridor_count ?? 0}</strong>
           </div>
           <div className="detail-card">
-            <span>Total incidents</span>
+            <span>Problems found</span>
             <strong>{scorecardResponse?.total_incidents ?? 0}</strong>
           </div>
           <div className="detail-card">
-            <span>Average risk</span>
-            <strong>{formatHazard(scorecardResponse?.network.avg_hazard)}</strong>
+            <span>Network risk</span>
+            <strong>{formatRiskWithScore(scorecardResponse?.network.avg_hazard)}</strong>
           </div>
           <div className="detail-card">
             <span>Average delay</span>
             <strong>{formatDelay(scorecardResponse?.network.avg_delay_seconds)}</strong>
           </div>
           <div className="detail-card">
-            <span>At-risk snapshots</span>
+            <span>At-risk checks</span>
             <strong>{formatPercent(scorecardResponse?.network.unstable_pct, 1)}</strong>
           </div>
         </div>
         <div className="signature-list">
           <article className="signature-card">
             <div className="signature-card__header">
-              <strong>Network action mix</strong>
-              <span>{Object.keys(scorecardResponse?.network.top_actions ?? {}).length} actions</span>
+              <strong>Action history</strong>
+              <span>{Object.keys(scorecardResponse?.network.top_actions ?? {}).length} move types</span>
             </div>
             <p>
               {Object.entries(scorecardResponse?.network.top_actions ?? {})
                 .map(([action, count]) => `${formatActionLabel(action)} ${count}`)
-                .join(" • ") || "No rolling action history yet."}
+                .join(" • ") || "No saved action history yet."}
             </p>
           </article>
           <article className="signature-card">
             <div className="signature-card__header">
-              <strong>Network service-state mix</strong>
-              <span>
-                {scorecardResponse?.network.unstable_corridor_count ?? 0} at-risk corridors
-              </span>
+              <strong>Service pattern history</strong>
+              <span>{scorecardResponse?.network.unstable_corridor_count ?? 0} routes at risk</span>
             </div>
             <p>
               {Object.entries(scorecardResponse?.network.top_regimes ?? {})
                 .map(([regime, count]) => `${formatRegimeLabel(regime)} ${count}`)
-                .join(" • ") || "No rolling regime history yet."}
+                .join(" • ") || "No saved pattern history yet."}
             </p>
           </article>
         </div>
@@ -89,9 +87,9 @@ export default function ScorecardPanel({
       <article className="panel">
         <div className="section__header">
           <div>
-            <h2 className="section__title">Corridor scorecard watchlist</h2>
+            <h2 className="section__title">Routes to watch</h2>
             <p className="section__hint">
-              Highest-risk corridors over the rolling scorecard window.
+              The routes with the most trouble in the saved checks.
             </p>
           </div>
         </div>
@@ -115,12 +113,12 @@ export default function ScorecardPanel({
               </div>
               <div className="scorecard-card__stats">
                 <div>
-                  <span>Avg risk</span>
-                  <strong>{formatHazard(corridor.avg_hazard)}</strong>
+                  <span>Average risk</span>
+                  <strong>{formatRiskWithScore(corridor.avg_hazard)}</strong>
                 </div>
                 <div>
-                  <span>P90 risk</span>
-                  <strong>{formatHazard(corridor.hazard_p90)}</strong>
+                  <span>Worst 10%</span>
+                  <strong>{formatRiskWithScore(corridor.hazard_p90)}</strong>
                 </div>
                 <div>
                   <span>Avg delay</span>
@@ -131,23 +129,23 @@ export default function ScorecardPanel({
                   <strong>{formatPercent(corridor.unstable_pct, 1)}</strong>
                 </div>
                 <div>
-                  <span>Incidents</span>
+                  <span>Problems</span>
                   <strong>{corridor.incident_count}</strong>
                 </div>
                 <div>
-                  <span>Snapshots</span>
+                  <span>Checks</span>
                   <strong>{corridor.snapshot_count}</strong>
                 </div>
               </div>
               <div className="signature-card__meta">
                 <span>{formatRegimeLabel(corridor.top_regime)}</span>
-                <span>{formatPercent(corridor.healthy_pct, 1)} stable snapshots</span>
+                <span>{formatPercent(corridor.healthy_pct, 1)} normal checks</span>
                 <span>{formatPercent(corridor.on_time_pct, 1)} delay under 2m</span>
               </div>
             </button>
           ))}
           {!scorecardTopCorridors.length ? (
-            <div className="empty-state">No scorecard history yet for the selected scope.</div>
+            <div className="empty-state">No saved reliability checks yet for this view.</div>
           ) : null}
         </div>
       </article>

@@ -1,5 +1,5 @@
 /**
- * TransitMap — Geographic map view for Transit Sentinel.
+ * TransitMap - Geographic map view for Transit Sentinel.
  *
  * Uses MapLibre GL (open-source, no API key required) to render:
  *  - Vehicle positions as colored circles keyed by hazard regime
@@ -18,7 +18,7 @@ import type {
   VehicleMapFeature,
   CorridorMapFeature,
 } from "../types/transit";
-import { formatRegimeLabel } from "../utils/formatters";
+import { formatRegimeLabel, formatRiskWithScore } from "../utils/formatters";
 
 // ---------------------------------------------------------------------------
 // Regime → color mapping (matches the LiveConsole CSS badge colors)
@@ -28,11 +28,11 @@ const REGIME_COLORS: Record<string, string> = {
   bunching_onset: "#f59e0b",
   headway_collapse: "#ef4444",
   terminal_congestion: "#f97316",
-  stop_dwell_instability: "#a855f7",
-  corridor_unstable: "#ec4899",
+  stop_dwell_instability: "#2563eb",
+  corridor_unstable: "#be123c",
   service_degraded: "#dc2626",
   feed_incoherent: "#6b7280",
-  unknown: "#3b82f6",
+  unknown: "#64748b",
 };
 
 function regimeColor(regime: string | null | undefined): string {
@@ -198,7 +198,7 @@ export default function TransitMap({
           "line-join": "round",
         },
         paint: {
-          "line-color": "rgba(15,23,42,0.28)",
+          "line-color": "rgba(18,33,29,0.28)",
           "line-width": [
             "interpolate",
             ["linear"],
@@ -318,16 +318,16 @@ export default function TransitMap({
       const color = regimeColor(regime);
       const hazard =
         typeof props.hazard_score === "number"
-          ? props.hazard_score.toFixed(2)
-          : "n/a";
+          ? formatRiskWithScore(props.hazard_score)
+          : "No signal";
 
       const html = `
         <div style="font-size:12px;line-height:1.6;min-width:160px;">
           <div style="font-weight:700;font-size:13px;margin-bottom:4px;">
             ${props.label ?? props.route_id ?? props.vehicle_id ?? "Vehicle"}
           </div>
-          <div>Vehicle: <b>${props.vehicle_id ?? "—"}</b></div>
-          <div>Route: <b>${props.route_id ?? "—"}</b></div>
+          <div>Vehicle: <b>${props.vehicle_id ?? "n/a"}</b></div>
+          <div>Route: <b>${props.route_id ?? "n/a"}</b></div>
           <div>Delay: <b>${delayStr}</b></div>
           <div>
             Service state:&nbsp;
@@ -335,8 +335,8 @@ export default function TransitMap({
               ${regimeLabel}
             </span>
           </div>
-          <div>Risk score: <b>${hazard}</b></div>
-          <div>Status: <b>${props.current_status ?? "—"}</b></div>
+          <div>Risk: <b>${hazard}</b></div>
+          <div>Status: <b>${props.current_status ?? "n/a"}</b></div>
         </div>
       `;
 
@@ -424,8 +424,9 @@ export default function TransitMap({
             position: "absolute",
             top: 10,
             left: 10,
-            background: "rgba(15,23,42,0.85)",
-            color: "#e2e8f0",
+            background: "rgba(255,255,255,0.94)",
+            color: "#253a34",
+            border: "1px solid rgba(28,86,73,0.16)",
             padding: "6px 10px",
             borderRadius: 6,
             fontSize: 12,
@@ -437,7 +438,7 @@ export default function TransitMap({
             <b>{mapData.vehicle_count}</b> vehicles
           </div>
           <div>
-            <b>{mapData.corridor_count}</b> corridors
+            <b>{mapData.corridor_count}</b> routes
           </div>
         </div>
       )}
@@ -448,8 +449,9 @@ export default function TransitMap({
           position: "absolute",
           bottom: 32,
           right: 10,
-          background: "rgba(15,23,42,0.85)",
-          color: "#e2e8f0",
+          background: "rgba(255,255,255,0.94)",
+          color: "#253a34",
+          border: "1px solid rgba(28,86,73,0.16)",
           padding: "8px 10px",
           borderRadius: 6,
           fontSize: 11,
@@ -459,7 +461,7 @@ export default function TransitMap({
         }}
       >
         <div style={{ fontWeight: 700, marginBottom: 2, fontSize: 12 }}>
-          Regime
+          Route health
         </div>
         {legendItems.map(([regime, color]) => (
           <div key={regime} style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -473,7 +475,7 @@ export default function TransitMap({
                 flexShrink: 0,
               }}
             />
-            <span>{regime.replace(/_/g, " ")}</span>
+            <span>{formatRegimeLabel(regime)}</span>
           </div>
         ))}
       </div>

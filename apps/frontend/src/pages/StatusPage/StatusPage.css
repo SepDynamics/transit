@@ -55,8 +55,8 @@
 }
 
 .network-banner--unknown {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(15, 159, 120, 0.05);
+  border-color: rgba(28, 86, 73, 0.16);
 }
 
 .network-banner__status {
@@ -112,7 +112,7 @@
 .network-banner__stat span {
   font-size: 0.75rem;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0;
   color: var(--text-subtle);
 }
 
@@ -141,7 +141,7 @@
   margin: 0;
   font-size: 1rem;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0;
   color: var(--text-subtle);
   font-family: var(--font-body);
   font-weight: 500;
@@ -165,8 +165,8 @@
 .route-tile {
   border-radius: 8px;
   padding: 18px 20px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(28, 86, 73, 0.12);
+  background: rgba(15, 159, 120, 0.04);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -180,12 +180,12 @@
 }
 
 .route-tile:hover {
-  border-color: rgba(130, 188, 204, 0.22);
+  border-color: rgba(28, 86, 73, 0.22);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
 }
 
 .route-tile:focus-visible {
-  outline: 2px solid rgba(130, 188, 204, 0.8);
+  outline: 2px solid rgba(28, 86, 73, 0.8);
   outline-offset: 3px;
 }
 
@@ -195,7 +195,7 @@
 .route-tile--disruption { border-left: 3px solid #ef4444; }
 .route-tile--severe { border-left: 3px solid #dc2626; }
 .route-tile--unknown { border-left: 3px solid #6b7280; }
-.route-tile--selected { box-shadow: 0 0 0 2px rgba(130, 188, 204, 0.35); }
+.route-tile--selected { box-shadow: 0 0 0 2px rgba(28, 86, 73, 0.35); }
 
 .route-tile__header {
   display: flex;
@@ -217,39 +217,39 @@
   padding: 4px 10px;
   font-size: 0.74rem;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
   flex-shrink: 0;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(28, 86, 73, 0.14);
 }
 
 .severity-badge--good {
   background: rgba(34, 197, 94, 0.12);
-  color: #4ade80;
+  color: #166534;
 }
 
 .severity-badge--advisory {
   background: rgba(234, 179, 8, 0.14);
-  color: #fde047;
+  color: #854d0e;
 }
 
 .severity-badge--delay {
   background: rgba(249, 115, 22, 0.14);
-  color: #fb923c;
+  color: #9a3412;
 }
 
 .severity-badge--disruption {
   background: rgba(239, 68, 68, 0.14);
-  color: #f87171;
+  color: #991b1b;
 }
 
 .severity-badge--severe {
   background: rgba(220, 38, 38, 0.18);
-  color: #fca5a5;
+  color: #7f1d1d;
 }
 
 .severity-badge--unknown {
   background: rgba(107, 114, 128, 0.14);
-  color: #9ca3af;
+  color: #4b5563;
 }
 
 .route-tile__body {
@@ -278,8 +278,8 @@
   color: var(--text-muted);
   padding: 8px 10px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(15, 159, 120, 0.05);
+  border: 1px solid rgba(28, 86, 73, 0.12);
   line-height: 1.45;
 }
 
@@ -321,8 +321,8 @@
 
 .alert-card--good,
 .alert-card--unknown {
-  background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(15, 159, 120, 0.04);
+  border-color: rgba(28, 86, 73, 0.14);
 }
 
 .alert-card__header {
@@ -335,7 +335,7 @@
 .alert-card__route {
   font-size: 0.8rem;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0;
   color: var(--text-subtle);
 }
 
@@ -365,9 +365,9 @@
   padding: 10px 12px;
   font-size: 0.72rem;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0;
   color: var(--text-subtle);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid rgba(28, 86, 73, 0.12);
 }
 
 .scorecard-table th:not(:first-child),
@@ -377,7 +377,7 @@
 
 .scorecard-table td {
   padding: 10px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(15, 159, 120, 0.05);
   color: var(--text-main);
 }
 
@@ -399,7 +399,7 @@
   width: 72px;
   height: 6px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(28, 86, 73, 0.14);
   overflow: hidden;
 }
 
@@ -427,8 +427,8 @@
 .status-search input {
   min-height: 42px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(28, 86, 73, 0.16);
+  background: rgba(15, 159, 120, 0.05);
   color: var(--text-main);
   font: inherit;
   text-transform: none;
@@ -445,8 +445,8 @@
 .severity-filter {
   min-height: 42px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(28, 86, 73, 0.16);
+  background: rgba(15, 159, 120, 0.05);
   color: var(--text-muted);
   padding: 0 10px;
   display: inline-flex;
@@ -461,9 +461,9 @@
 }
 
 .severity-filter--active {
-  border-color: rgba(130, 188, 204, 0.5);
+  border-color: rgba(28, 86, 73, 0.5);
   color: var(--text-main);
-  background: rgba(130, 188, 204, 0.11);
+  background: rgba(28, 86, 73, 0.11);
 }
 
 .route-groups {
@@ -499,8 +499,8 @@
 .route-detail {
   border-radius: 8px;
   padding: 18px;
-  border: 1px solid rgba(130, 188, 204, 0.28);
-  background: rgba(130, 188, 204, 0.08);
+  border: 1px solid rgba(28, 86, 73, 0.28);
+  background: rgba(28, 86, 73, 0.08);
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -553,10 +553,10 @@
 
 .status-empty {
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(28, 86, 73, 0.14);
   padding: 18px;
   color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(15, 159, 120, 0.04);
 }
 
 .on-time-bar__fill--good { background: #22c55e; }

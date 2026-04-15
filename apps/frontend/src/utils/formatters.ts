@@ -11,6 +11,17 @@ export const formatPercent = (value?: number | null, digits = 0): string =>
 export const formatHazard = (value?: number | null): string =>
   typeof value === "number" && Number.isFinite(value) ? value.toFixed(2) : "0.00";
 
+export const formatRiskLevel = (value?: number | null): string => {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "No signal";
+  if (value >= 0.75) return "High";
+  if (value >= 0.45) return "Watch";
+  if (value >= 0.2) return "Low";
+  return "Calm";
+};
+
+export const formatRiskWithScore = (value?: number | null): string =>
+  `${formatRiskLevel(value)} (${formatHazard(value)})`;
+
 export const formatDelay = (value?: number | null): string => {
   if (typeof value !== "number" || !Number.isFinite(value)) return "n/a";
   const sign = value < 0 ? "-" : "";
@@ -51,27 +62,27 @@ export const humanizeToken = (value?: string | null): string =>
   value ? value.replace(/_/g, " ") : "n/a";
 
 const ACTION_LABELS: Record<string, string> = {
-  dispatch_relief: "Dispatch relief",
-  short_turn: "Short turn",
-  inspect_terminal: "Inspect terminal",
-  hold: "Hold to rebalance",
-  warn_riders: "Publish rider advisory",
-  mark_feed_degraded: "Mark telemetry degraded",
-  monitor: "Monitor",
+  dispatch_relief: "Send extra service",
+  short_turn: "Turn a vehicle early",
+  inspect_terminal: "Check the terminal",
+  hold: "Hold vehicles to even service",
+  warn_riders: "Tell riders",
+  mark_feed_degraded: "Flag bad data",
+  monitor: "Watch",
 };
 
 const REGIME_LABELS: Record<string, string> = {
-  healthy: "Stable service",
-  recovering: "Recovering service",
-  data_sparse: "Limited telemetry",
-  bunching_onset: "Early bunching",
-  corridor_unstable: "Service irregularity",
-  headway_collapse: "Severe bunching / service gap",
-  service_degraded: "Confirmed disruption",
-  terminal_congestion: "Terminal congestion",
-  stop_dwell_instability: "Extended dwell",
+  healthy: "Service looks normal",
+  recovering: "Service is recovering",
+  data_sparse: "Not enough data",
+  bunching_onset: "Vehicles are bunching",
+  corridor_unstable: "Route looks uneven",
+  headway_collapse: "Large gap or bunching",
+  service_degraded: "Service disruption",
+  terminal_congestion: "Terminal is crowded",
+  stop_dwell_instability: "Long stop time",
   terminal_blocked: "Terminal blocked",
-  feed_incoherent: "Telemetry degraded",
+  feed_incoherent: "Data looks unreliable",
 };
 
 const ACTIVITY_STATUS_LABELS: Record<string, string> = {
@@ -91,27 +102,28 @@ const ACTIVITY_REASON_LABELS: Record<string, string> = {
 export const formatActionLabel = (
   action?: string | null,
   fallback?: string | null,
-): string => fallback || (action ? ACTION_LABELS[action] ?? humanizeToken(action) : "Monitor");
+): string =>
+  action ? ACTION_LABELS[action] ?? fallback ?? humanizeToken(action) : fallback || "Watch";
 
 export const formatRegimeLabel = (
   regime?: string | null,
   fallback?: string | null,
 ): string =>
-  fallback || (regime ? REGIME_LABELS[regime] ?? humanizeToken(regime) : "Stable service");
+  regime
+    ? REGIME_LABELS[regime] ?? fallback ?? humanizeToken(regime)
+    : fallback || "Service looks normal";
 
 export const formatActivityStatusLabel = (
   status?: string | null,
   fallback?: string | null,
 ): string =>
-  fallback ||
-  (status ? ACTIVITY_STATUS_LABELS[status] ?? humanizeToken(status) : "n/a");
+  status ? ACTIVITY_STATUS_LABELS[status] ?? fallback ?? humanizeToken(status) : fallback || "n/a";
 
 export const formatActivityReasonLabel = (
   reason?: string | null,
   fallback?: string | null,
 ): string =>
-  fallback ||
-  (reason ? ACTIVITY_REASON_LABELS[reason] ?? humanizeToken(reason) : "n/a");
+  reason ? ACTIVITY_REASON_LABELS[reason] ?? fallback ?? humanizeToken(reason) : fallback || "n/a";
 
 export const formatPriorityLabel = (
   priorityScore?: number | null,

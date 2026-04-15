@@ -2,10 +2,10 @@ import type { TrendResponse } from "../../../types/transit";
 import {
   actionTone,
   formatDelay,
-  formatHazard,
   formatActionLabel,
   formatActivityStatusLabel,
   formatRegimeLabel,
+  formatRiskWithScore,
 } from "../../../utils/formatters";
 
 interface TrendPanelProps {
@@ -24,10 +24,9 @@ export default function TrendPanel({
       <article className="panel">
         <div className="section__header">
           <div>
-            <h2 className="section__title">Corridor trend watch</h2>
+            <h2 className="section__title">Risk getting better or worse</h2>
             <p className="section__hint">
-              Rolling corridor memory from the persisted transit store, ordered by current
-              service risk.
+              Recent saved checks, sorted by the routes that need attention now.
             </p>
           </div>
         </div>
@@ -52,10 +51,10 @@ export default function TrendPanel({
               <div className="trend-card__stats">
                 <div>
                   <span>Latest risk</span>
-                  <strong>{formatHazard(corridor.latest_hazard)}</strong>
+                  <strong>{formatRiskWithScore(corridor.latest_hazard)}</strong>
                 </div>
                 <div>
-                  <span>Recent incidents</span>
+                  <span>Recent problems</span>
                   <strong>{corridor.incident_count}</strong>
                 </div>
                 <div>
@@ -63,7 +62,7 @@ export default function TrendPanel({
                   <strong>{formatDelay(corridor.latest_delay_seconds)}</strong>
                 </div>
                 <div>
-                  <span>Snapshots</span>
+                  <span>Checks</span>
                   <strong>{corridor.snapshot_count}</strong>
                 </div>
               </div>
@@ -89,7 +88,7 @@ export default function TrendPanel({
             </button>
           ))}
           {!trendResponse.corridors.length ? (
-            <div className="empty-state">No corridor trend history yet.</div>
+            <div className="empty-state">No saved route history yet.</div>
           ) : null}
         </div>
       </article>
@@ -97,15 +96,15 @@ export default function TrendPanel({
       <article className="panel">
         <div className="section__header">
           <div>
-            <h2 className="section__title">Trend summary</h2>
+            <h2 className="section__title">Recent pattern summary</h2>
             <p className="section__hint">
-              Recent corridor and action mix over the rolling store window.
+              A plain count of routes, problems, and repeated recommended moves.
             </p>
           </div>
         </div>
         <div className="detail-grid detail-grid--expanded">
           <div className="detail-card">
-            <span>Tracked corridors</span>
+            <span>Routes checked</span>
             <strong>{trendResponse.summary.corridor_count}</strong>
           </div>
           <div className="detail-card">
@@ -113,27 +112,25 @@ export default function TrendPanel({
             <strong>{trendResponse.summary.unstable_corridor_count}</strong>
           </div>
           <div className="detail-card">
-            <span>Recent incidents</span>
+            <span>Recent problems</span>
             <strong>{trendResponse.summary.recent_incident_count}</strong>
           </div>
         </div>
         <div className="signature-list">
           <article className="signature-card">
             <div className="signature-card__header">
-              <strong>Recent action mix</strong>
-              <span>
-                {Object.keys(trendResponse.summary.recent_action_counts).length} actions
-              </span>
+              <strong>Recommended moves</strong>
+              <span>{Object.keys(trendResponse.summary.recent_action_counts).length} types</span>
             </div>
             <p>
               {Object.entries(trendResponse.summary.recent_action_counts)
                 .map(([action, count]) => `${formatActionLabel(action)} ${count}`)
-                .join(" • ") || "No recent action memory yet."}
+                .join(" • ") || "No recent move history yet."}
             </p>
           </article>
           <article className="signature-card">
             <div className="signature-card__header">
-              <strong>Recent regime mix</strong>
+              <strong>Service patterns</strong>
               <span>
                 {Object.keys(trendResponse.summary.recent_regime_counts).length} states
               </span>
@@ -141,7 +138,7 @@ export default function TrendPanel({
             <p>
               {Object.entries(trendResponse.summary.recent_regime_counts)
                 .map(([regime, count]) => `${formatRegimeLabel(regime)} ${count}`)
-                .join(" • ") || "No recent regime memory yet."}
+                .join(" • ") || "No recent service pattern yet."}
             </p>
           </article>
         </div>

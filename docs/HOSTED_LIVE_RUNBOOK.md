@@ -40,6 +40,14 @@ Use the live host override for the public MBTA site. It binds app ports to
 loopback, disables replay serving, uses the MBTA live system name, and refreshes
 only `data/feeds/mbta/current/` instead of growing timestamped archive windows.
 
+Ensure the non-root backend containers can write the live feed and log paths on
+the host before starting the stack:
+
+```bash
+mkdir -p data/feeds/mbta/current logs/transit
+chown -R 999:999 data/feeds logs/transit
+```
+
 ```bash
 docker compose -f docker-compose.transit.yml -f docker-compose.live-host.yml --profile demo stop api-demo frontend-demo
 docker compose -f docker-compose.transit.yml -f docker-compose.live-host.yml up -d --build valkey archive ingest api frontend

@@ -1,16 +1,20 @@
 import type { LineCard } from "../../types/transit";
 import { useTransitData } from "../../hooks/useTransitData";
 import { compareOperationalPriority } from "../../utils/formatters";
+import BostonStakeholderPanel from "./panels/BostonStakeholderPanel";
 import CorridorMemoryPanel from "./panels/CorridorMemoryPanel";
 import CorridorOverview from "./panels/CorridorOverview";
 import HeroPanel from "./panels/HeroPanel";
 import MapSection from "./panels/MapSection";
 import OverviewMetrics from "./panels/OverviewMetrics";
+import PilotProposalPanel from "./panels/PilotProposalPanel";
+import PriorityCorridorsPanel from "./panels/PriorityCorridorsPanel";
 import ScorecardPanel from "./panels/ScorecardPanel";
 import ToolbarPanel from "./panels/ToolbarPanel";
 import TrendPanel from "./panels/TrendPanel";
 import ValueAddPanel from "./panels/ValueAddPanel";
 import VehicleInventory from "./panels/VehicleInventory";
+import WhatThisMeansPanel from "./panels/WhatThisMeansPanel";
 import "./LiveConsole.css";
 
 /** Minimal display shape shared between LineCard and HistoryEntity. */
@@ -64,6 +68,7 @@ export default function LiveConsole() {
   const scheduledLaterLines = [...(entities.scheduled_later_lines ?? [])].sort(
     compareOperationalPriority,
   );
+  const visibleLines = [...(entities.lines ?? [])].sort(compareOperationalPriority);
 
   const selectedCorridorFromLine = entities.lines.find(
     (line) => line.entity_id === selectedCorridorId,
@@ -99,6 +104,12 @@ export default function LiveConsole() {
           scorecardResponse={scorecardResponse}
         />
 
+        <BostonStakeholderPanel
+          transitHealth={transitHealth}
+          sourceResponse={sourceResponse}
+          scorecardResponse={scorecardResponse}
+        />
+
         <ToolbarPanel
           sourceResponse={sourceResponse}
           replayTraces={replayTraces}
@@ -115,6 +126,18 @@ export default function LiveConsole() {
         ) : null}
 
         <OverviewMetrics transitHealth={transitHealth} />
+
+        <WhatThisMeansPanel
+          transitHealth={transitHealth}
+          scorecardResponse={scorecardResponse}
+        />
+
+        <PriorityCorridorsPanel
+          lines={visibleLines}
+          scorecardResponse={scorecardResponse}
+          selectedCorridorId={selectedCorridorId}
+          onSelectCorridor={(id) => selectCorridor(id)}
+        />
 
         <MapSection mapData={mapData} />
 
@@ -135,6 +158,11 @@ export default function LiveConsole() {
           trendResponse={trendResponse}
           selectedCorridorId={selectedCorridorId}
           onSelectCorridor={(id) => selectCorridor(id)}
+        />
+
+        <PilotProposalPanel
+          sourceResponse={sourceResponse}
+          scorecardResponse={scorecardResponse}
         />
 
         <CorridorMemoryPanel

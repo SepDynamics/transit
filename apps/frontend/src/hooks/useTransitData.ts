@@ -134,7 +134,7 @@ export function useTransitData(): TransitDataState {
     }
   }, [scope, selectedTraceId, sourceResponse.trace_ids, sourceResponse.traces]);
 
-  // Main dashboard poll — health, entities, regimes, incidents, trends (5 s)
+  // Main dashboard poll - health, entities, regimes, incidents, trends (5 s)
   useEffect(() => {
     let active = true;
     const loadDashboard = async () => {
@@ -172,7 +172,7 @@ export function useTransitData(): TransitDataState {
     };
   }, [scope, selectedTraceId]);
 
-  // Scorecard poll — 10 s is sufficient
+  // Scorecard poll - 10 s is sufficient
   useEffect(() => {
     let active = true;
     const loadScorecard = async () => {
@@ -195,7 +195,7 @@ export function useTransitData(): TransitDataState {
     };
   }, [scope, selectedTraceId]);
 
-  // Map data poll — 5 s, best-effort (failures don't degrade main dashboard)
+  // Map data poll - 5 s, best-effort (failures don't degrade main dashboard)
   useEffect(() => {
     let active = true;
     const loadMap = async () => {

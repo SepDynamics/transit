@@ -182,7 +182,7 @@ function NetworkBanner({ network }: { network: PublicStatusNetworkResponse }) {
         </div>
         <div className="network-banner__stat">
           <span>Feed</span>
-          <strong>{network.feed_status?.collection_source ?? "—"}</strong>
+          <strong>{network.feed_status?.collection_source ?? "n/a"}</strong>
         </div>
       </div>
     </div>
@@ -342,7 +342,7 @@ export default function StatusPage() {
             <div className="network-banner__status">
               <div className="network-banner__dot severity-dot--unknown" />
               <div className="network-banner__label">
-                <div className="network-banner__title">Loading service status…</div>
+                <div className="network-banner__title">Loading service status...</div>
               </div>
             </div>
           </div>
@@ -505,7 +505,7 @@ export default function StatusPage() {
 
         {/* Footer */}
         <div className="status-footer">
-          <span>Transit Sentinel — Public Service Status</span>
+          <span>Transit Sentinel - Public Service Status</span>
           {now && <span>{refreshing ? "Refreshing" : "Updated"} {relativeTime(now)}</span>}
         </div>
       </div>

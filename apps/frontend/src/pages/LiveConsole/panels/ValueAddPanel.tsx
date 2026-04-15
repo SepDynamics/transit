@@ -5,8 +5,8 @@ import type {
 } from "../../../types/transit";
 import {
   formatActionLabel,
-  formatHazard,
   formatPriorityLabel,
+  formatRiskWithScore,
 } from "../../../utils/formatters";
 
 interface ValueAddPanelProps {
@@ -45,22 +45,23 @@ export default function ValueAddPanel({
     0;
   const scorecardSnapshots = scorecardResponse?.window_snapshots ?? 0;
   const feedLaneLabel = `${feedCount} feed lane${feedCount === 1 ? "" : "s"}`;
+  const topConcern = worstCorridor?.label ?? "no urgent route yet";
 
   return (
     <section className="value-add" aria-labelledby="value-add-title">
       <div className="value-add__intro">
-        <span className="value-add__eyebrow">Value path</span>
-        <h2 id="value-add-title">Public signals become prioritized action.</h2>
+        <span className="value-add__eyebrow">What it does</span>
+        <h2 id="value-add-title">From public data to a clear next move.</h2>
         <p>
-          Schedule, vehicle, trip, and alert evidence is scored by corridor,
-          ordered by operating risk, and kept replayable for review.
+          Instead of asking people to read raw feeds, Transit Sentinel explains
+          the issue, ranks the response, and saves the evidence.
         </p>
       </div>
       <ol className="value-flow" aria-label="Transit Sentinel value path">
         <li className="value-flow__step">
           <span className="value-flow__number">1</span>
           <div>
-            <strong>Public evidence</strong>
+            <strong>Reads the public feed</strong>
             <span>
               {feedLaneLabel}, {vehicleCount} vehicles, {tripUpdateCount} trip updates,
               {" "}
@@ -71,34 +72,37 @@ export default function ValueAddPanel({
         <li className="value-flow__step">
           <span className="value-flow__number">2</span>
           <div>
-            <strong>Corridor risk</strong>
+            <strong>Finds route trouble</strong>
             <span>
-              {scoredCorridors} corridors scored, average risk{" "}
-              {formatHazard(transitHealth?.avg_hazard)}
+              {scoredCorridors} routes checked. Network risk is{" "}
+              {formatRiskWithScore(transitHealth?.avg_hazard)}
             </span>
           </div>
         </li>
         <li className="value-flow__step">
           <span className="value-flow__number">3</span>
           <div>
-            <strong>Action queue</strong>
+            <strong>Ranks the response</strong>
             <span>
+              Top concern: {topConcern}.{" "}
               {formatPriorityLabel(
                 worstCorridor?.priority_score,
                 worstCorridor?.priority_label,
               )}{" "}
-              priority, {formatActionLabel(worstCorridor?.action, worstCorridor?.action_label)}
-              {" "}top action, {actionKindCount} action types active
+              priority. Suggested move:{" "}
+              {formatActionLabel(worstCorridor?.action, worstCorridor?.action_label)}.
+              {" "}
+              {actionKindCount} move type{actionKindCount === 1 ? "" : "s"} active
             </span>
           </div>
         </li>
         <li className="value-flow__step">
           <span className="value-flow__number">4</span>
           <div>
-            <strong>Replay proof</strong>
+            <strong>Keeps the receipt</strong>
             <span>
               {replayCount} replay trace{replayCount === 1 ? "" : "s"},{" "}
-              {scorecardSnapshots} scorecard snapshots
+              {scorecardSnapshots} saved check{scorecardSnapshots === 1 ? "" : "s"}
             </span>
           </div>
         </li>

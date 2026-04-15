@@ -34,6 +34,7 @@ import {
   formatPercent,
   formatPriorityLabel,
   formatRegimeLabel,
+  formatRiskWithScore,
   priorityTone,
   relativeTimeFromMs,
   topFactorSummary,
@@ -73,7 +74,7 @@ export default function CorridorMemoryPanel({
       );
       setAcks((prev) => ({ ...prev, [incidentId]: result }));
     } catch {
-      // silently ignore — ack is best-effort from the UI side
+      // silently ignore - ack is best-effort from the UI side
     } finally {
       setAckPending((prev) => ({ ...prev, [incidentId]: false }));
     }
@@ -95,11 +96,11 @@ export default function CorridorMemoryPanel({
       <article className="panel">
         <div className="section__header">
           <div>
-            <h2 className="section__title">Selected corridor memory</h2>
+            <h2 className="section__title">Selected route evidence</h2>
             <p className="section__hint">
               {selectedCorridor
-                ? `${selectedCorridor.label ?? "Unknown corridor"} with ${vehiclesOnSelectedCorridor.length} visible vehicles in this scope`
-                : "Select a corridor above"}
+                ? `${selectedCorridor.label ?? "Unknown route"} has ${vehiclesOnSelectedCorridor.length} visible vehicles in this view.`
+                : "Select a route above."}
             </p>
           </div>
         </div>
@@ -119,7 +120,7 @@ export default function CorridorMemoryPanel({
         </div>
         <div className="detail-grid">
           <div className="detail-card">
-            <span>Service state</span>
+            <span>Service label</span>
             <strong>
               {formatRegimeLabel(
                 selectedCorridorRegime?.regime ?? selectedCorridor?.current_regime,
@@ -129,9 +130,9 @@ export default function CorridorMemoryPanel({
             </strong>
           </div>
           <div className="detail-card">
-            <span>Risk score</span>
+            <span>Risk</span>
             <strong>
-              {formatHazard(
+              {formatRiskWithScore(
                 selectedCorridorRegime?.hazard ?? selectedCorridor?.avg_hazard,
               )}
             </strong>
@@ -146,7 +147,7 @@ export default function CorridorMemoryPanel({
             </strong>
           </div>
           <div className="detail-card">
-            <span>Recent incidents</span>
+            <span>Recent problems</span>
             <strong>{corridorHistory.incidents.length}</strong>
           </div>
           <div className="detail-card">
@@ -183,9 +184,9 @@ export default function CorridorMemoryPanel({
               {vehicle.label}
             </button>
           ))}
-          {!vehiclesOnSelectedCorridor.length ? (
+              {!vehiclesOnSelectedCorridor.length ? (
             <div className="empty-state">
-              No visible vehicles on this corridor in the selected scope.
+              No visible vehicles on this route in the selected view.
             </div>
           ) : null}
         </div>
@@ -207,7 +208,7 @@ export default function CorridorMemoryPanel({
           ))}
           {!corridorIncidents.length ? (
             <div className="empty-state">
-              No persisted incident memory yet for this corridor.
+              No saved problem history yet for this route.
             </div>
           ) : null}
         </div>
@@ -216,11 +217,11 @@ export default function CorridorMemoryPanel({
       <article className="panel">
         <div className="section__header">
           <div>
-            <h2 className="section__title">Incident feed</h2>
+            <h2 className="section__title">Priority list</h2>
             <p className="section__hint">
-              Current action queue across the network, ordered by operational priority.
+              The current network problems, ordered by what should be handled first.
               {selectedCorridor
-                ? ` Selected corridor: ${selectedCorridor.label ?? selectedCorridor.entity_id} (${formatActivityStatusLabel(
+                ? ` Selected route: ${selectedCorridor.label ?? selectedCorridor.entity_id} (${formatActivityStatusLabel(
                     selectedCorridor.activity_status,
                     selectedCorridor.activity_status_label,
                   )}).`
@@ -265,7 +266,7 @@ export default function CorridorMemoryPanel({
                       onClick={() => handleAck(incident.incident_id)}
                       disabled={pending}
                     >
-                      {pending ? "Acknowledging…" : "Acknowledge"}
+                      {pending ? "Acknowledging..." : "Acknowledge"}
                     </button>
                   )}
                 </div>
@@ -273,7 +274,7 @@ export default function CorridorMemoryPanel({
             );
           })}
           {!incidentResponse.incidents.length ? (
-            <div className="empty-state">No active incidents.</div>
+            <div className="empty-state">No active problems.</div>
           ) : null}
         </div>
       </article>

@@ -14,7 +14,7 @@ export default function MapSection({ mapData }: MapSectionProps) {
         <div>
           <h2 className="section__title">Live map</h2>
           <p className="section__hint">
-            Vehicle positions colored by corridor regime. Click a vehicle for details.
+            Vehicles are colored by route health. Click a vehicle for details.
           </p>
         </div>
       </div>

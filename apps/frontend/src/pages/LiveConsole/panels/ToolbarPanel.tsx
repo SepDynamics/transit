@@ -13,7 +13,7 @@ interface ToolbarPanelProps {
 const traceOptionLabel = (trace: TransitReplayTrace): string => {
   const parts = [trace.trace_id];
   if (typeof trace.snapshot_count === "number" && trace.snapshot_count > 0) {
-    parts.push(`${trace.snapshot_count} snapshots`);
+    parts.push(`${trace.snapshot_count} saved checks`);
   }
   if (trace.latest_snapshot_timestamp_ms) {
     parts.push(relativeTimeFromMs(trace.latest_snapshot_timestamp_ms));
@@ -32,13 +32,13 @@ export default function ToolbarPanel({
   return (
     <section className="toolbar panel">
       <div>
-        <h2 className="section__title">View scope</h2>
-        <p className="section__hint">Switch between the configured transit feed views.</p>
+        <h2 className="section__title">Choose the data view</h2>
+        <p className="section__hint">Use live data for today, or replay saved proof from an earlier event.</p>
       </div>
       <div className="toolbar__controls">
         {replayTraces.length ? (
           <label className="trace-picker">
-            <span>Replay trace</span>
+            <span>Saved replay</span>
             <select
               value={selectedTraceId}
               onChange={(event) => onTraceChange(event.target.value)}

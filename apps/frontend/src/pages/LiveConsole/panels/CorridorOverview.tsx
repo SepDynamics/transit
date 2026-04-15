@@ -1,12 +1,12 @@
 import type { LineCard } from "../../../types/transit";
 import {
   formatDelay,
-  formatHazard,
   formatSignalPercent,
   formatActionLabel,
   formatActivityReasonLabel,
   formatPriorityLabel,
   formatRegimeLabel,
+  formatRiskWithScore,
   priorityTone,
 } from "../../../utils/formatters";
 
@@ -63,12 +63,12 @@ function CorridorCards({
               <strong>{formatDelay(line.median_delay_seconds)}</strong>
             </div>
             <div>
-              <span>Headway compression</span>
+              <span>Vehicles bunching</span>
               <strong>{formatSignalPercent(line.compressed_headway_share)}</strong>
             </div>
             <div>
-              <span>Risk score</span>
-              <strong>{formatHazard(line.avg_hazard)}</strong>
+              <span>Risk</span>
+              <strong>{formatRiskWithScore(line.avg_hazard)}</strong>
             </div>
             <div>
               <span>Alerts</span>
@@ -101,9 +101,9 @@ export default function CorridorOverview({
     <section className="section panel">
       <div className="section__header">
         <div>
-          <h2 className="section__title">Corridor overview</h2>
+          <h2 className="section__title">Route overview</h2>
           <p className="section__hint">
-            Current route-level rollups split between live telemetry and later scheduled service.
+            Routes with live vehicle data come first, sorted by what needs attention.
           </p>
         </div>
       </div>
@@ -111,13 +111,13 @@ export default function CorridorOverview({
         <div>
           <h3 className="section__title">Active Now</h3>
           <p className="section__hint">
-            Corridors with current vehicle or trip telemetry, ordered by operational priority.
+            Routes with vehicles or trip updates reporting right now.
           </p>
         </div>
       </div>
       <CorridorCards
         lines={activeLines}
-        emptyLabel="No active corridors with live telemetry."
+        emptyLabel="No active routes with live data."
         selectedCorridorId={selectedCorridorId}
         onSelectCorridor={onSelectCorridor}
       />
@@ -125,13 +125,13 @@ export default function CorridorOverview({
         <div>
           <h3 className="section__title">Scheduled Later</h3>
           <p className="section__hint">
-            Corridors without live telemetry right now that are expected back in service later.
+            Routes expected to return later, but not reporting vehicles right now.
           </p>
         </div>
       </div>
       <CorridorCards
         lines={scheduledLaterLines}
-        emptyLabel="No scheduled-later corridors in this snapshot."
+        emptyLabel="No later routes in this check."
         selectedCorridorId={selectedCorridorId}
         onSelectCorridor={onSelectCorridor}
       />

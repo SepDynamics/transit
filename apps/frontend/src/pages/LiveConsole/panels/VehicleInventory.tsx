@@ -6,10 +6,10 @@ import type {
 import {
   actionTone,
   formatDelay,
-  formatHazard,
   formatPercent,
   formatActionLabel,
   formatRegimeLabel,
+  formatRiskWithScore,
   humanizeToken,
   topFactorSummary,
 } from "../../../utils/formatters";
@@ -41,9 +41,9 @@ export default function VehicleInventory({
       <section className="section panel">
         <div className="section__header">
           <div>
-            <h2 className="section__title">Vehicle inventory</h2>
+            <h2 className="section__title">Vehicles currently visible</h2>
             <p className="section__hint">
-              Current vehicle observations and assigned corridor state.
+              Each vehicle from the public feed, with its route, delay, and current route health.
             </p>
           </div>
         </div>
@@ -89,8 +89,8 @@ export default function VehicleInventory({
                     <strong>{humanizeToken(vehicle.occupancy_status)}</strong>
                   </div>
                   <div>
-                    <span>Risk score</span>
-                    <strong>{formatHazard(vehicle.regime?.hazard)}</strong>
+                    <span>Risk</span>
+                    <strong>{formatRiskWithScore(vehicle.regime?.hazard)}</strong>
                   </div>
                 </div>
                 <div className="vehicle-card__footer">
@@ -113,7 +113,7 @@ export default function VehicleInventory({
           <div className="section__header">
             <div>
               <h2 className="section__title">Selected vehicle details</h2>
-              <p className="section__hint">Latest feed evidence for the selected vehicle.</p>
+              <p className="section__hint">The latest public-feed facts for this vehicle.</p>
             </div>
           </div>
           <div className="detail-grid detail-grid--expanded">
@@ -157,7 +157,7 @@ export default function VehicleInventory({
             <div>
               <h2 className="section__title">Recurring signatures</h2>
               <p className="section__hint">
-                Repeated corridor fingerprints in the current snapshot.
+                Repeated service patterns found in the current check.
               </p>
             </div>
           </div>
@@ -166,7 +166,7 @@ export default function VehicleInventory({
               <article key={signature.signature} className="signature-card">
                 <div className="signature-card__header">
                   <strong>{signature.signature}</strong>
-                  <span>{signature.entity_count} corridors</span>
+                  <span>{signature.entity_count} routes</span>
                 </div>
                 <p>
                   {signature.regimes.map((regime) => formatRegimeLabel(regime)).join(", ")} •{" "}
@@ -175,7 +175,7 @@ export default function VehicleInventory({
               </article>
             ))}
             {!regimeResponse.recurring_regimes.length ? (
-              <div className="empty-state">No recurring signatures yet.</div>
+              <div className="empty-state">No repeated patterns yet.</div>
             ) : null}
           </div>
         </article>

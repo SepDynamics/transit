@@ -1,15 +1,17 @@
 :root {
-  --bg-base: #071116;
-  --bg-wash: #13252c;
-  --border-strong: rgba(126, 169, 181, 0.18);
-  --text-strong: #eef7f6;
-  --text-main: #d9e7e5;
-  --text-muted: #9ab1b4;
-  --text-subtle: #6b858b;
-  --accent: #49c6b0;
-  --accent-2: #7ae2c7;
-  --warning: #ffb151;
-  --danger: #ff6b57;
+  --bg-base: #f6faf8;
+  --bg-wash: #e8f3ef;
+  --surface: #ffffff;
+  --surface-soft: #eef7f3;
+  --border-strong: rgba(28, 86, 73, 0.16);
+  --text-strong: #12211d;
+  --text-main: #253a34;
+  --text-muted: #52645f;
+  --text-subtle: #6f817c;
+  --accent: #0f9f78;
+  --accent-2: #0b6f5d;
+  --warning: #a86000;
+  --danger: #c9352b;
   --font-display: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
   --font-body: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
   --font-mono: "IBM Plex Mono", "SFMono-Regular", monospace;
@@ -27,8 +29,8 @@ body,
 
 html {
   background:
-    radial-gradient(circle at top left, rgba(73, 198, 176, 0.12), transparent 32%),
-    radial-gradient(circle at top right, rgba(255, 161, 88, 0.12), transparent 28%),
+    linear-gradient(135deg, rgba(15, 159, 120, 0.08), transparent 36%),
+    linear-gradient(225deg, rgba(168, 96, 0, 0.08), transparent 32%),
     linear-gradient(180deg, var(--bg-wash), var(--bg-base));
 }
 
@@ -68,16 +70,16 @@ pre {
   display: flex;
   gap: 4px;
   padding: 12px 20px;
-  background: rgba(7, 17, 22, 0.88);
+  background: rgba(246, 250, 248, 0.9);
   backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(126, 169, 181, 0.1);
+  border-bottom: 1px solid rgba(28, 86, 73, 0.12);
 }
 
 .app-nav__link {
   display: inline-flex;
   align-items: center;
   padding: 7px 16px;
-  border-radius: 999px;
+  border-radius: 8px;
   font-size: 0.88rem;
   font-family: var(--font-body);
   text-decoration: none;
@@ -91,13 +93,13 @@ pre {
 
 .app-nav__link:hover {
   color: var(--text-strong);
-  border-color: rgba(126, 169, 181, 0.18);
+  border-color: rgba(28, 86, 73, 0.18);
 }
 
 .app-nav__link--active {
-  background: rgba(73, 198, 176, 0.12);
+  background: rgba(15, 159, 120, 0.1);
   color: var(--accent-2);
-  border-color: rgba(73, 198, 176, 0.28);
+  border-color: rgba(15, 159, 120, 0.28);
 }
 
 @media (max-width: 480px) {
