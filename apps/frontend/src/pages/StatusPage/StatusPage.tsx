@@ -22,6 +22,9 @@ import { fetchJson } from "../../utils/api";
 import { formatDelay, formatPercent, relativeTime, relativeTimeFromMs } from "../../utils/formatters";
 import "./StatusPage.css";
 
+const STATUS_REFRESH_MS = 30_000;
+const STATUS_HIDDEN_REFRESH_MS = 60_000;
+const STATUS_SCORECARD_LIMIT = 120;
 const SEVERITY_ORDER = ["severe", "disruption", "delay", "advisory", "good", "unknown"] as const;
 type SeverityFilter = "all" | RouteStatus["severity"];
 
@@ -106,7 +109,7 @@ function useStatusData() {
 
     const load = async () => {
       if (document.visibilityState === "hidden") {
-        schedule(15_000);
+        schedule(STATUS_HIDDEN_REFRESH_MS);
         return;
       }
       controller?.abort();
@@ -118,7 +121,7 @@ function useStatusData() {
             fetchJson<PublicStatusNetworkResponse>("/api/status/network", { signal: controller.signal }),
             fetchJson<PublicStatusRoutesResponse>("/api/status/routes", { signal: controller.signal }),
             fetchJson<PublicStatusAlertsResponse>("/api/status/alerts", { signal: controller.signal }),
-            fetchJson<PublicStatusScorecardResponse>("/api/status/scorecard?limit=288", { signal: controller.signal }),
+            fetchJson<PublicStatusScorecardResponse>(`/api/status/scorecard?limit=${STATUS_SCORECARD_LIMIT}`, { signal: controller.signal }),
           ]);
         if (!active) return;
         setData({
@@ -131,7 +134,7 @@ function useStatusData() {
         setLoading(false);
         setRefreshing(false);
         setError(null);
-        schedule(15_000);
+        schedule(STATUS_REFRESH_MS);
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return;
         if (!active) return;

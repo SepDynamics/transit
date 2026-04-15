@@ -25,6 +25,14 @@ const replayTraces = (payload: SourceResponse): TransitReplayTrace[] =>
     ? payload.traces
     : (payload.trace_ids ?? []).map((trace_id) => ({ trace_id }));
 
+const SOURCE_POLL_MS = 30_000;
+const DASHBOARD_POLL_MS = 10_000;
+const SCORECARD_POLL_MS = 30_000;
+const MAP_POLL_MS = 15_000;
+const HISTORY_POLL_MS = 15_000;
+const SCORECARD_LIMIT = 120;
+const HISTORY_LIMIT = 36;
+
 export interface TransitDataState {
   serviceState: ServiceState;
   error: string | null;
@@ -101,7 +109,7 @@ export function useTransitData(): TransitDataState {
   const [mapData, setMapData] = useState<TransitMapResponse | null>(null);
   const [scorecardResponse, setScorecardResponse] = useState<ScorecardResponse | null>(null);
 
-  // Poll available sources / replay traces every 10 s
+  // Poll available sources / replay traces.
   useEffect(() => {
     let active = true;
     const loadSources = async () => {
@@ -114,7 +122,7 @@ export function useTransitData(): TransitDataState {
       }
     };
     loadSources();
-    const timer = window.setInterval(loadSources, 10_000);
+    const timer = window.setInterval(loadSources, SOURCE_POLL_MS);
     return () => {
       active = false;
       window.clearInterval(timer);
@@ -135,7 +143,7 @@ export function useTransitData(): TransitDataState {
     }
   }, [scope, selectedTraceId, sourceResponse.trace_ids, sourceResponse.traces]);
 
-  // Main dashboard poll - health, entities, regimes, incidents, trends (5 s)
+  // Main dashboard poll - health, entities, regimes, incidents, trends.
   useEffect(() => {
     let active = true;
     const loadDashboard = async () => {
@@ -170,21 +178,21 @@ export function useTransitData(): TransitDataState {
       }
     };
     loadDashboard();
-    const timer = window.setInterval(loadDashboard, 5_000);
+    const timer = window.setInterval(loadDashboard, DASHBOARD_POLL_MS);
     return () => {
       active = false;
       window.clearInterval(timer);
     };
   }, [scope, selectedTraceId]);
 
-  // Scorecard poll - 10 s is sufficient
+  // Scorecard poll.
   useEffect(() => {
     let active = true;
     const loadScorecard = async () => {
       const query = buildTransitQuery(scope, selectedTraceId || undefined);
       try {
         const payload = await fetchJson<ScorecardResponse>(
-          `/api/transit/scorecard?${query}&limit=720`,
+          `/api/transit/scorecard?${query}&limit=${SCORECARD_LIMIT}`,
         );
         if (!active) return;
         setScorecardResponse(payload);
@@ -193,14 +201,14 @@ export function useTransitData(): TransitDataState {
       }
     };
     loadScorecard();
-    const timer = window.setInterval(loadScorecard, 10_000);
+    const timer = window.setInterval(loadScorecard, SCORECARD_POLL_MS);
     return () => {
       active = false;
       window.clearInterval(timer);
     };
   }, [scope, selectedTraceId]);
 
-  // Map data poll - 5 s, best-effort (failures don't degrade main dashboard)
+  // Map data poll, best-effort. Failures don't degrade main dashboard.
   useEffect(() => {
     let active = true;
     const loadMap = async () => {
@@ -214,7 +222,7 @@ export function useTransitData(): TransitDataState {
       }
     };
     loadMap();
-    const timer = window.setInterval(loadMap, 5_000);
+    const timer = window.setInterval(loadMap, MAP_POLL_MS);
     return () => {
       active = false;
       window.clearInterval(timer);
@@ -262,7 +270,7 @@ export function useTransitData(): TransitDataState {
       const query = buildTransitQuery(scope, selectedTraceId || undefined);
       try {
         const payload = await fetchJson<VehicleHistoryResponse>(
-          `/api/transit/history?${query}&entity_id=${encodeURIComponent(selectedEntityId)}&limit=72`,
+          `/api/transit/history?${query}&entity_id=${encodeURIComponent(selectedEntityId)}&limit=${HISTORY_LIMIT}`,
         );
         if (!active) return;
         setVehicleHistory(payload);
@@ -271,7 +279,7 @@ export function useTransitData(): TransitDataState {
       }
     };
     loadVehicleHistory();
-    const timer = window.setInterval(loadVehicleHistory, 5_000);
+    const timer = window.setInterval(loadVehicleHistory, HISTORY_POLL_MS);
     return () => {
       active = false;
       window.clearInterval(timer);
@@ -289,7 +297,7 @@ export function useTransitData(): TransitDataState {
       const query = buildTransitQuery(scope, selectedTraceId || undefined);
       try {
         const payload = await fetchJson<CorridorHistoryResponse>(
-          `/api/transit/history?${query}&entity_id=${encodeURIComponent(selectedCorridorId)}&limit=72`,
+          `/api/transit/history?${query}&entity_id=${encodeURIComponent(selectedCorridorId)}&limit=${HISTORY_LIMIT}`,
         );
         if (!active) return;
         setCorridorHistory(payload);
@@ -298,7 +306,7 @@ export function useTransitData(): TransitDataState {
       }
     };
     loadCorridorHistory();
-    const timer = window.setInterval(loadCorridorHistory, 5_000);
+    const timer = window.setInterval(loadCorridorHistory, HISTORY_POLL_MS);
     return () => {
       active = false;
       window.clearInterval(timer);
