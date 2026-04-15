@@ -30,7 +30,7 @@ const DASHBOARD_POLL_MS = 10_000;
 const SCORECARD_POLL_MS = 30_000;
 const MAP_POLL_MS = 15_000;
 const HISTORY_POLL_MS = 15_000;
-const SCORECARD_LIMIT = 120;
+const SCORECARD_LIMIT = 60;
 const HISTORY_LIMIT = 36;
 
 export interface TransitDataState {

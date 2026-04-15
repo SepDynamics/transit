@@ -60,6 +60,7 @@ class TransitAPIService:
         self._scorecard_cache_ttl = _float_env(
             "TRANSIT_API_SCORECARD_CACHE_TTL_SECONDS", 60.0
         )
+        self._scorecard_max_limit = _int_env("TRANSIT_API_SCORECARD_MAX_LIMIT", 2000)
         self._scorecard_cache_max_limit = _int_env(
             "TRANSIT_API_SCORECARD_CACHE_MAX_LIMIT", 240
         )
@@ -224,7 +225,8 @@ class TransitAPIService:
         limit: int = 720,
     ) -> Dict[str, Any]:
         """Rolling KPI scorecard for the operations dashboard and contract reporting."""
-        if int(limit) <= max(0, self._scorecard_cache_max_limit):
+        limit = max(1, min(int(limit), max(1, self._scorecard_max_limit)))
+        if limit <= max(0, self._scorecard_cache_max_limit):
             return self._cached_payload(
                 ("scorecard", scope, trace_id, int(limit)),
                 lambda: self.store.scorecard(

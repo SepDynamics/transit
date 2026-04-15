@@ -24,7 +24,7 @@ import "./StatusPage.css";
 
 const STATUS_REFRESH_MS = 30_000;
 const STATUS_HIDDEN_REFRESH_MS = 60_000;
-const STATUS_SCORECARD_LIMIT = 120;
+const STATUS_SCORECARD_LIMIT = 60;
 const SEVERITY_ORDER = ["severe", "disruption", "delay", "advisory", "good", "unknown"] as const;
 type SeverityFilter = "all" | RouteStatus["severity"];
 
