@@ -120,6 +120,7 @@ cached:
 - `TRANSIT_API_SCORECARD_CACHE_TTL_SECONDS=60`
 - `TRANSIT_API_MAX_CONCURRENT_REQUESTS=4`
 - `TRANSIT_API_REQUEST_QUEUE_SIZE=8`
+- `TRANSIT_API_REQUIRE_AUTH=1`
 
 Full entities, history, map, and large scorecard payloads are intentionally not
 kept in the generic API cache on the small live host.
@@ -137,11 +138,13 @@ container. It provides:
 - vehicle and corridor drilldowns
 - trend and scorecard panels
 
-The console uses a consolidated dashboard endpoint for the main polling path.
-Slower scorecard, map, source, and history polls are kept separate so the main
-dashboard can stay responsive without overloading the API. The MapLibre bundle
-is lazy-loaded from the map panel instead of being pulled into the first app
-chunk.
+The live public frontend defaults to status-only because `/api/transit/*`
+requires bearer auth. In trusted deployments, the console uses a consolidated
+dashboard endpoint for the main polling path. Slower scorecard, map, source,
+and history polls are kept separate so the main dashboard can stay responsive
+without overloading the API. Map and history polls run every 30 seconds, while
+the dashboard poll remains 10 seconds. The MapLibre bundle is lazy-loaded from
+the map panel instead of being pulled into the first app chunk.
 
 ### Replay And Calibration
 
@@ -159,7 +162,7 @@ healthy.
 - LA Metro rail and bus collection exist, but public alert quality is weaker
   than MBTA.
 - There is no Caltrans adapter in the repo today.
-- Auth/RBAC exists but is optional by default. Require auth before exposing ops
-  endpoints beyond a trusted deployment.
+- Auth/RBAC exists for `/api/transit/*`. The live host requires bearer auth and
+  keeps the public frontend on `/api/status/*`.
 - Public feeds can prove service instability and rider-facing status; they do
   not expose internal dispatch constraints.

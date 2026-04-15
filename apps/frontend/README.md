@@ -20,8 +20,8 @@ The frontend intentionally avoids 5-second polling for every endpoint:
 - sources: 30 seconds
 - main dashboard: 10 seconds
 - scorecard: 30 seconds, 60-sample limit
-- map: 15 seconds
-- selected history: 15 seconds, 36-sample limit
+- map: 30 seconds
+- selected history: 30 seconds, 36-sample limit
 - public status page: 30 seconds
 
 If a panel needs fresher data, prefer adding it to the dashboard payload or a
@@ -53,5 +53,7 @@ set.
 
 Set `API_BEARER_TOKEN` in the frontend container runtime config when the ops
 API requires bearer auth. Public `/api/status/*` requests do not need a token.
+Set `OPS_CONSOLE_ENABLED=0` for public status-only deployments where the ops
+console should not be exposed.
 
 The bundled API schema lives at `public/static/transit.openapi.yaml`.

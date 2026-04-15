@@ -3,9 +3,10 @@ info:
   title: Transit Sentinel API
   version: 1.0.0
   description: >
-    HTTP API for Transit Sentinel live, replay, public status, incident, map,
-    and scorecard surfaces. Authentication is optional by default; when
-    TRANSIT_API_REQUIRE_AUTH=1 is set, ops endpoints require bearer tokens.
+    HTTP API for Transit Sentinel live public status and frontend-consumed
+    operations surfaces. Public /api/status/* endpoints are open. Operations
+    endpoints under /api/transit/* require bearer authentication when
+    TRANSIT_API_REQUIRE_AUTH=1 is set.
 servers:
   - url: http://localhost:8000
 tags:
@@ -825,6 +826,32 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CorridorTrend"
+    TransitDashboardResponse:
+      type: object
+      additionalProperties: true
+      required: [health, entities, regimes, incidents, trends]
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+        scope:
+          type: string
+        trace_id:
+          type: string
+          nullable: true
+        health:
+          $ref: "#/components/schemas/TransitHealthResponse"
+        entities:
+          $ref: "#/components/schemas/TransitEntitiesResponse"
+        regimes:
+          $ref: "#/components/schemas/TransitRegimeResponse"
+        incidents:
+          $ref: "#/components/schemas/TransitIncidentResponse"
+        trends:
+          $ref: "#/components/schemas/TransitTrendResponse"
+        read_model:
+          type: object
+          additionalProperties: true
     HistoryEntity:
       type: object
       additionalProperties: true
@@ -1417,6 +1444,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PublicStatusScorecardResponse"
+  /api/transit/dashboard:
+    get:
+      tags: [Operations]
+      summary: Consolidated operations dashboard
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Scope"
+        - $ref: "#/components/parameters/TraceId"
+      responses:
+        "200":
+          description: Main console payload with compact entities, incidents, regimes, and trends.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitDashboardResponse"
+        "401":
+          description: Missing or insufficient bearer token when auth is enabled.
   /api/transit/health:
     get:
       tags: [Operations]

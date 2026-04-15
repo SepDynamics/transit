@@ -7,6 +7,7 @@ The host checkout is expected at `~/transit`.
 
 - public URL: `https://sepdynamics.co/`
 - public status API: `https://sepdynamics.co/api/status/network`
+- public frontend defaults to status-only on the live host
 - runtime: Docker Compose
 - compose files: `docker-compose.transit.yml` plus `docker-compose.live-host.yml`
 - services: `valkey`, `archive`, `ingest`, `api`, `frontend`
@@ -60,7 +61,8 @@ chown -R 999:999 data/feeds logs/transit
 ## Verify Public Health
 
 ```bash
-PYTHONPATH=. python3 scripts/transit/live_health.py
+PYTHONPATH=. python3 scripts/transit/live_health.py \
+  --alert-log-file logs/transit/live_health_alerts.jsonl
 curl -fsSI https://sepdynamics.co
 curl -fsS https://sepdynamics.co/api/status/network
 curl -fsS https://sepdynamics.co/api/status/routes
@@ -106,20 +108,46 @@ docker exec transit-sentinel-valkey redis-cli MGET \
   transit:status:network:last
 ```
 
+## Health Alerts
+
+`scripts/transit/live_health.py` exits non-zero on failed checks and can emit
+deduplicated alerts to a JSONL file and/or webhook. Defaults:
+
+- host memory warning/failure: `85%` / `92%`
+- swap warning/failure: `25%` / `60%`
+- Valkey memory warning/failure: `75%` / `90%` of `maxmemory` or the container
+  memory limit
+- local/public API latency warning/failure: `1500ms` / `5000ms`
+- 503 warning: 10 recent `server_busy`/`503` matches
+
+Cron guardrails used on the hosted droplet:
+
+```cron
+*/15 * * * * cd /root/transit && set -a; [ -f .env ] && . ./.env; set +a; PYTHONPATH=. python3 scripts/transit/live_health.py --json --alert-log-file logs/transit/live_health_alerts.jsonl >> logs/transit/live_health.jsonl 2>&1
+17 7 * * 0 docker exec transit-sentinel-api python3 /app/scripts/transit/prune_history.py --retention 120 >> /root/transit/logs/transit/prune_history.log 2>&1
+```
+
+Set `TRANSIT_LIVE_HEALTH_ALERT_WEBHOOK_URL` in `~/transit/.env` if an external
+webhook should receive alerts. Do not commit that value.
+
 ## Ops Auth
 
 `/api/status/*` stays public. `/api/transit/*` is the operations surface and
-should require bearer auth before the console is shared outside trusted users.
-Set both values in the host shell or deployment environment before rebuilding:
+requires bearer auth on the live host. The public frontend should stay
+status-only unless an explicit protected console deployment is added.
+
+Host-local `.env` values:
 
 ```bash
-export TRANSIT_API_REQUIRE_AUTH=1
-export TRANSIT_API_TOKENS='readonly-token:viewer,operator-token:operator,admin-token:admin'
-export TRANSIT_FRONTEND_API_BEARER_TOKEN='readonly-token'
+TRANSIT_API_REQUIRE_AUTH=1
+TRANSIT_API_TOKENS='readonly-token:viewer,operator-token:operator,admin-token:admin'
+TRANSIT_OPS_CONSOLE_ENABLED=0
+TRANSIT_FRONTEND_API_BEARER_TOKEN=
 ```
 
-The frontend container injects `TRANSIT_FRONTEND_API_BEARER_TOKEN` into the
-runtime config as `API_BEARER_TOKEN`. Do not commit real tokens.
+Do not inject an ops bearer token into the public frontend. Browser-visible
+tokens are not an auth boundary. Use a private client, a protected reverse proxy
+route, or a future login flow for operator console access.
 
 ## Caddy
 

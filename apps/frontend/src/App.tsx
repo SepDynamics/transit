@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import LiveConsole from "./pages/LiveConsole/LiveConsole";
 import StatusPage from "./pages/StatusPage/StatusPage";
+import { OPS_CONSOLE_ENABLED } from "./utils/api";
 
 type View = "ops" | "status";
 
 function getViewFromHash(): View {
+  if (!OPS_CONSOLE_ENABLED) return "status";
   const hash = typeof window !== "undefined" ? window.location.hash : "";
   return hash.startsWith("#status") ? "status" : "ops";
 }
@@ -21,13 +23,15 @@ export default function App() {
   return (
     <>
       <nav className="app-nav">
-        <a
-          href="#ops"
-          className={view === "ops" ? "app-nav__link app-nav__link--active" : "app-nav__link"}
-          onClick={() => setView("ops")}
-        >
-          Operations
-        </a>
+        {OPS_CONSOLE_ENABLED && (
+          <a
+            href="#ops"
+            className={view === "ops" ? "app-nav__link app-nav__link--active" : "app-nav__link"}
+            onClick={() => setView("ops")}
+          >
+            Operations
+          </a>
+        )}
         <a
           href="#status"
           className={view === "status" ? "app-nav__link app-nav__link--active" : "app-nav__link"}

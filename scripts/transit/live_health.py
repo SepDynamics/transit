@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -14,6 +15,7 @@ import sys
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Iterable
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -53,6 +55,7 @@ class CommandResult:
 def main() -> int:
     args = build_parser().parse_args()
     report = build_report(args)
+    report["alert"] = maybe_send_alert(report, args)
     if args.json:
         print(json.dumps(json_report(report), indent=2, sort_keys=True))
     else:
@@ -118,6 +121,87 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="emit machine-readable JSON instead of the text report.",
     )
+    parser.add_argument(
+        "--warn-host-memory-pct",
+        type=float,
+        default=float(os.getenv("TRANSIT_LIVE_HEALTH_WARN_MEMORY_PCT", "85")),
+    )
+    parser.add_argument(
+        "--fail-host-memory-pct",
+        type=float,
+        default=float(os.getenv("TRANSIT_LIVE_HEALTH_FAIL_MEMORY_PCT", "92")),
+    )
+    parser.add_argument(
+        "--warn-swap-pct",
+        type=float,
+        default=float(os.getenv("TRANSIT_LIVE_HEALTH_WARN_SWAP_PCT", "25")),
+    )
+    parser.add_argument(
+        "--fail-swap-pct",
+        type=float,
+        default=float(os.getenv("TRANSIT_LIVE_HEALTH_FAIL_SWAP_PCT", "60")),
+    )
+    parser.add_argument(
+        "--warn-valkey-memory-pct",
+        type=float,
+        default=float(os.getenv("TRANSIT_LIVE_HEALTH_WARN_VALKEY_MEMORY_PCT", "75")),
+        help="warn when Valkey used memory crosses this percent of maxmemory or container limit.",
+    )
+    parser.add_argument(
+        "--fail-valkey-memory-pct",
+        type=float,
+        default=float(os.getenv("TRANSIT_LIVE_HEALTH_FAIL_VALKEY_MEMORY_PCT", "90")),
+        help="fail when Valkey used memory crosses this percent of maxmemory or container limit.",
+    )
+    parser.add_argument(
+        "--warn-api-latency-ms",
+        type=float,
+        default=float(os.getenv("TRANSIT_LIVE_HEALTH_WARN_API_LATENCY_MS", "1500")),
+    )
+    parser.add_argument(
+        "--fail-api-latency-ms",
+        type=float,
+        default=float(os.getenv("TRANSIT_LIVE_HEALTH_FAIL_API_LATENCY_MS", "5000")),
+    )
+    parser.add_argument(
+        "--warn-public-latency-ms",
+        type=float,
+        default=float(os.getenv("TRANSIT_LIVE_HEALTH_WARN_PUBLIC_LATENCY_MS", "1500")),
+    )
+    parser.add_argument(
+        "--fail-public-latency-ms",
+        type=float,
+        default=float(os.getenv("TRANSIT_LIVE_HEALTH_FAIL_PUBLIC_LATENCY_MS", "5000")),
+    )
+    parser.add_argument(
+        "--alert-webhook-url",
+        default=os.getenv("TRANSIT_LIVE_HEALTH_ALERT_WEBHOOK_URL", ""),
+        help="optional webhook POST target for warn/fail alerts.",
+    )
+    parser.add_argument(
+        "--alert-log-file",
+        default=os.getenv("TRANSIT_LIVE_HEALTH_ALERT_LOG_FILE", ""),
+        help="optional JSONL alert log file.",
+    )
+    parser.add_argument(
+        "--alert-state-file",
+        default=os.getenv(
+            "TRANSIT_LIVE_HEALTH_ALERT_STATE_FILE",
+            "logs/transit/live_health_alert_state.json",
+        ),
+        help="state file used to de-duplicate repeated alerts.",
+    )
+    parser.add_argument(
+        "--alert-dedupe-seconds",
+        type=float,
+        default=float(os.getenv("TRANSIT_LIVE_HEALTH_ALERT_DEDUPE_SECONDS", "900")),
+    )
+    parser.add_argument(
+        "--alert-min-status",
+        choices=("warn", "fail"),
+        default=os.getenv("TRANSIT_LIVE_HEALTH_ALERT_MIN_STATUS", "warn"),
+        help="minimum overall status that triggers alert delivery.",
+    )
     return parser
 
 
@@ -143,11 +227,19 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
 
     host_memory = read_host_memory()
     report["host_memory"] = host_memory
-    report["checks"].append(host_memory_check(host_memory))
+    report["checks"].append(host_memory_check(host_memory, args))
 
     valkey_info = read_valkey_info(args, docker_ok=docker_ok)
     report["valkey_memory"] = valkey_info
-    report["checks"].append(valkey_memory_check(valkey_info))
+    report["checks"].append(
+        valkey_memory_check(
+            valkey_info,
+            args,
+            valkey_container_limit_bytes=_container_memory_limit(
+                container_rows, str(args.valkey_container)
+            ),
+        )
+    )
 
     report["largest_valkey_keys"] = largest_valkey_keys(
         args,
@@ -160,11 +252,25 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
 
     api_health = http_check(str(args.api_health_url), label="api_health")
     report["api_health"] = api_health
-    report["checks"].append(http_result_check("api_health", api_health))
+    report["checks"].append(
+        http_result_check(
+            "api_health",
+            api_health,
+            warn_latency_ms=float(args.warn_api_latency_ms),
+            fail_latency_ms=float(args.fail_api_latency_ms),
+        )
+    )
 
     public_status = http_check(str(args.public_status_url), label="public_status")
     report["public_status"] = public_status
-    report["checks"].append(http_result_check("public_status", public_status))
+    report["checks"].append(
+        http_result_check(
+            "public_status",
+            public_status,
+            warn_latency_ms=float(args.warn_public_latency_ms),
+            fail_latency_ms=float(args.fail_public_latency_ms),
+        )
+    )
 
     report["oom_evidence"] = recent_oom_evidence(str(args.since))
     report["checks"].append(oom_check(report["oom_evidence"]))
@@ -208,20 +314,22 @@ def inspect_containers(container_names: Iterable[str]) -> list[dict[str, Any]]:
             continue
         name = str(row.get("Name") or requested_name).lstrip("/")
         state = row.get("State") if isinstance(row.get("State"), dict) else {}
-        host_config = row.get("HostConfig") if isinstance(row.get("HostConfig"), dict) else {}
+        host_config = (
+            row.get("HostConfig") if isinstance(row.get("HostConfig"), dict) else {}
+        )
         rows.append(
             {
-            "name": name,
-            "present": True,
-            "status": state.get("Status"),
-            "running": bool(state.get("Running")),
-            "oom_killed": bool(state.get("OOMKilled")),
-            "restart_count": int(row.get("RestartCount") or 0),
-            "exit_code": state.get("ExitCode"),
-            "started_at": state.get("StartedAt"),
-            "finished_at": state.get("FinishedAt"),
-            "memory_limit_bytes": int(host_config.get("Memory") or 0),
-            "error": state.get("Error") or "",
+                "name": name,
+                "present": True,
+                "status": state.get("Status"),
+                "running": bool(state.get("Running")),
+                "oom_killed": bool(state.get("OOMKilled")),
+                "restart_count": int(row.get("RestartCount") or 0),
+                "exit_code": state.get("ExitCode"),
+                "started_at": state.get("StartedAt"),
+                "finished_at": state.get("FinishedAt"),
+                "memory_limit_bytes": int(host_config.get("Memory") or 0),
+                "error": state.get("Error") or "",
             }
         )
     return rows
@@ -504,7 +612,7 @@ def container_check(
     return Check("containers", "ok", f"{len(rows)} expected containers running")
 
 
-def host_memory_check(memory: dict[str, Any]) -> Check:
+def host_memory_check(memory: dict[str, Any], args: argparse.Namespace) -> Check:
     if memory.get("error"):
         return Check("host_memory", "warn", str(memory["error"]))
     mem_pct = float(memory.get("mem_used_pct") or 0.0)
@@ -515,18 +623,25 @@ def host_memory_check(memory: dict[str, Any]) -> Check:
         f"swap {human_bytes(memory.get('swap_used_bytes'))}/"
         f"{human_bytes(memory.get('swap_total_bytes'))} used ({swap_pct:.1f}%)"
     )
-    if mem_pct >= 92.0 or swap_pct >= 60.0:
+    if mem_pct >= float(args.fail_host_memory_pct) or swap_pct >= float(args.fail_swap_pct):
         return Check("host_memory", "fail", detail)
-    if mem_pct >= 85.0 or swap_pct >= 25.0:
+    if mem_pct >= float(args.warn_host_memory_pct) or swap_pct >= float(args.warn_swap_pct):
         return Check("host_memory", "warn", detail)
     return Check("host_memory", "ok", detail)
 
 
-def valkey_memory_check(info: dict[str, Any]) -> Check:
+def valkey_memory_check(
+    info: dict[str, Any],
+    args: argparse.Namespace,
+    *,
+    valkey_container_limit_bytes: int = 0,
+) -> Check:
     if info.get("error"):
         return Check("valkey_memory", "fail", str(info["error"]))
     used = int(info.get("used_memory_bytes") or 0)
-    maxmemory = int(info.get("maxmemory_bytes") or 0)
+    maxmemory = int(info.get("maxmemory_bytes") or 0) or int(
+        valkey_container_limit_bytes or 0
+    )
     frag = info.get("mem_fragmentation_ratio")
     detail = (
         f"used={info.get('used_memory_human') or human_bytes(used)} "
@@ -536,24 +651,33 @@ def valkey_memory_check(info: dict[str, Any]) -> Check:
     )
     if maxmemory > 0:
         pct = _pct(used, maxmemory)
-        detail = f"{detail} maxmemory={human_bytes(maxmemory)} ({pct:.1f}%)"
-        if pct >= 90.0:
+        limit_label = "maxmemory" if int(info.get("maxmemory_bytes") or 0) > 0 else "container_limit"
+        detail = f"{detail} {limit_label}={human_bytes(maxmemory)} ({pct:.1f}%)"
+        if pct >= float(args.fail_valkey_memory_pct):
             return Check("valkey_memory", "fail", detail)
-        if pct >= 75.0:
+        if pct >= float(args.warn_valkey_memory_pct):
             return Check("valkey_memory", "warn", detail)
     if frag is not None and frag >= 2.5:
         return Check("valkey_memory", "warn", detail)
     return Check("valkey_memory", "ok", detail)
 
 
-def http_result_check(name: str, result: dict[str, Any]) -> Check:
+def http_result_check(
+    name: str,
+    result: dict[str, Any],
+    *,
+    warn_latency_ms: float,
+    fail_latency_ms: float,
+) -> Check:
     if not result.get("ok"):
         return Check(name, "fail", f"{result.get('url')} failed: {result.get('error') or result.get('status_code')}")
     payload = result.get("payload") if isinstance(result.get("payload"), dict) else {}
     status = payload.get("status") or payload.get("severity") or "ok"
     latency = float(result.get("latency_ms") or 0.0)
     detail = f"{result.get('url')} {result.get('status_code')} {latency:.1f} ms status={status}"
-    if latency >= 2500.0:
+    if latency >= fail_latency_ms:
+        return Check(name, "fail", detail)
+    if latency >= warn_latency_ms:
         return Check(name, "warn", detail)
     return Check(name, "ok", detail)
 
@@ -576,9 +700,164 @@ def server_busy_check(evidence: dict[str, Any]) -> Check:
     return Check("server_busy_503", "ok", f"{count} recent 503/server_busy log matches")
 
 
+def maybe_send_alert(report: dict[str, Any], args: argparse.Namespace) -> dict[str, Any]:
+    webhook_url = str(args.alert_webhook_url or "").strip()
+    log_file = str(args.alert_log_file or "").strip()
+    if not webhook_url and not log_file:
+        return {"enabled": False}
+
+    overall = overall_status(report["checks"])
+    min_level = status_level(str(args.alert_min_status or "warn"))
+    if status_level(overall) < min_level:
+        return {"enabled": True, "sent": False, "reason": "below_threshold"}
+
+    alert_payload = build_alert_payload(report, overall)
+    signature = alert_payload["signature"]
+    state_path = Path(str(args.alert_state_file or "")).expanduser()
+    if is_duplicate_alert(
+        state_path,
+        signature=signature,
+        dedupe_seconds=float(args.alert_dedupe_seconds),
+    ):
+        return {
+            "enabled": True,
+            "sent": False,
+            "reason": "deduped",
+            "signature": signature,
+        }
+
+    deliveries = []
+    if log_file:
+        deliveries.append(write_alert_log(Path(log_file).expanduser(), alert_payload))
+    if webhook_url:
+        deliveries.append(post_alert_webhook(webhook_url, alert_payload))
+    write_alert_state(state_path, signature)
+    return {
+        "enabled": True,
+        "sent": any(row.get("ok") for row in deliveries),
+        "signature": signature,
+        "deliveries": deliveries,
+    }
+
+
+def build_alert_payload(report: dict[str, Any], overall: str) -> dict[str, Any]:
+    checks = [check.__dict__ for check in report["checks"] if check.status != "ok"]
+    summary = "; ".join(f"{row['name']}={row['status']}" for row in checks)
+    signature = "|".join(f"{row['name']}:{row['status']}:{row['detail']}" for row in checks)
+    return {
+        "service": "transit-sentinel-live-health",
+        "hostname": report.get("hostname"),
+        "generated_at": report.get("generated_at"),
+        "status": overall,
+        "summary": summary or overall,
+        "signature": hashlib.sha256(signature.encode("utf-8")).hexdigest(),
+        "checks": checks,
+        "host_memory": report.get("host_memory"),
+        "valkey_memory": {
+            key: value
+            for key, value in (report.get("valkey_memory") or {}).items()
+            if key != "raw"
+        },
+        "api_health": {
+            key: value
+            for key, value in (report.get("api_health") or {}).items()
+            if key != "payload"
+        },
+        "public_status": {
+            key: value
+            for key, value in (report.get("public_status") or {}).items()
+            if key != "payload"
+        },
+        "server_busy": report.get("server_busy"),
+    }
+
+
+def is_duplicate_alert(
+    state_path: Path,
+    *,
+    signature: str,
+    dedupe_seconds: float,
+) -> bool:
+    if not str(state_path):
+        return False
+    try:
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    if not isinstance(state, dict) or state.get("signature") != signature:
+        return False
+    last_sent_at = float(state.get("sent_at_epoch") or 0.0)
+    return (time.time() - last_sent_at) < max(0.0, dedupe_seconds)
+
+
+def write_alert_state(state_path: Path, signature: str) -> None:
+    if not str(state_path):
+        return
+    try:
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(
+            json.dumps(
+                {
+                    "signature": signature,
+                    "sent_at": _now_iso(),
+                    "sent_at_epoch": time.time(),
+                },
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
+    except OSError:
+        pass
+
+
+def write_alert_log(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(payload, sort_keys=True) + "\n")
+    except OSError as exc:
+        return {"target": str(path), "type": "log", "ok": False, "error": str(exc)}
+    return {"target": str(path), "type": "log", "ok": True}
+
+
+def post_alert_webhook(url: str, payload: dict[str, Any]) -> dict[str, Any]:
+    body = json.dumps(payload).encode("utf-8")
+    request = Request(
+        url,
+        data=body,
+        method="POST",
+        headers={"Content-Type": "application/json", "User-Agent": "transit-live-health/1.0"},
+    )
+    try:
+        with urlopen(request, timeout=10) as response:
+            ok = 200 <= int(response.status) < 300
+            return {"target": url, "type": "webhook", "ok": ok, "status_code": int(response.status)}
+    except (OSError, HTTPError, URLError) as exc:
+        return {"target": url, "type": "webhook", "ok": False, "error": str(exc)}
+
+
+def _container_memory_limit(rows: list[dict[str, Any]], name: str) -> int:
+    for row in rows:
+        if row.get("name") == name:
+            return int(row.get("memory_limit_bytes") or 0)
+    return 0
+
+
+def overall_status(checks: list[Check]) -> str:
+    if any(check.status == "fail" for check in checks):
+        return "fail"
+    if any(check.status == "warn" for check in checks):
+        return "warn"
+    return "ok"
+
+
+def status_level(status: str) -> int:
+    return {"ok": 0, "warn": 1, "fail": 2}.get(status, 0)
+
+
 def print_report(report: dict[str, Any]) -> None:
     checks: list[Check] = report["checks"]
-    overall = "fail" if any(check.status == "fail" for check in checks) else "warn" if any(check.status == "warn" for check in checks) else "ok"
+    overall = overall_status(checks)
     print("Transit Sentinel live health")
     print(f"Generated: {report['generated_at']} on {report['hostname']}")
     print(f"Overall: {overall.upper()}")
@@ -626,6 +905,14 @@ def print_report(report: dict[str, Any]) -> None:
     print(f"  server_busy_503 count={busy.get('count', 0)}")
     for line in busy.get("samples") or []:
         print(f"  503 {line}")
+    alert = report.get("alert") or {}
+    if alert.get("enabled"):
+        print()
+        print(
+            "Alert "
+            f"sent={alert.get('sent', False)} "
+            f"reason={alert.get('reason', 'delivered')}"
+        )
 
 
 def json_report(report: dict[str, Any]) -> dict[str, Any]:

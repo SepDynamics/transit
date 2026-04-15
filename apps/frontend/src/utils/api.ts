@@ -13,6 +13,7 @@ type RuntimeConfig = {
   API_URL?: string;
   API_BEARER_TOKEN?: string;
   DEMO_URL?: string;
+  OPS_CONSOLE_ENABLED?: string | boolean;
 };
 
 const runtimeConfig: RuntimeConfig =
@@ -34,6 +35,17 @@ export const DEMO_URL =
   stringOrUndefined(runtimeConfig.DEMO_URL) ??
   import.meta.env.VITE_DEMO_URL ??
   "https://calendly.com/sepdynamics/15min";
+
+const boolConfig = (value: unknown, fallback: boolean): boolean => {
+  if (typeof value === "boolean") return value;
+  if (typeof value !== "string" || value.length === 0) return fallback;
+  return !["0", "false", "no", "off"].includes(value.trim().toLowerCase());
+};
+
+export const OPS_CONSOLE_ENABLED = boolConfig(
+  runtimeConfig.OPS_CONSOLE_ENABLED ?? import.meta.env.VITE_OPS_CONSOLE_ENABLED,
+  true,
+);
 
 const normalisedBase = API_BASE ? API_BASE.replace(/\/$/, "") : "";
 

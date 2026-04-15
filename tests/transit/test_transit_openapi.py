@@ -1,0 +1,75 @@
+from pathlib import Path
+
+import yaml
+
+
+OPENAPI_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "apps"
+    / "frontend"
+    / "public"
+    / "static"
+    / "transit.openapi.yaml"
+)
+
+PUBLIC_PATHS = {
+    "/health",
+    "/api/health",
+    "/api/status",
+    "/api/status/network",
+    "/api/status/routes",
+    "/api/status/alerts",
+    "/api/status/scorecard",
+}
+
+FRONTEND_OPS_PATHS = {
+    "/api/transit/dashboard",
+    "/api/transit/health",
+    "/api/transit/entities",
+    "/api/transit/regimes",
+    "/api/transit/incidents",
+    "/api/transit/trends",
+    "/api/transit/history",
+    "/api/transit/sources",
+    "/api/transit/map",
+    "/api/transit/scorecard",
+}
+
+ADMIN_OPS_PATHS = {
+    "/api/transit/audit",
+    "/api/transit/incidents/ack",
+}
+
+
+def test_openapi_documents_public_and_frontend_consumed_paths():
+    spec = _load_spec()
+    paths = set(spec["paths"])
+
+    assert PUBLIC_PATHS <= paths
+    assert FRONTEND_OPS_PATHS <= paths
+    assert ADMIN_OPS_PATHS <= paths
+    assert "TransitDashboardResponse" in spec["components"]["schemas"]
+
+
+def test_openapi_marks_ops_paths_as_bearer_auth_and_public_status_open():
+    spec = _load_spec()
+
+    for path in FRONTEND_OPS_PATHS | ADMIN_OPS_PATHS:
+        operation = _first_operation(spec["paths"][path])
+        assert operation.get("security") == [{"bearerAuth": []}]
+
+    for path in PUBLIC_PATHS:
+        operation = _first_operation(spec["paths"][path])
+        assert "security" not in operation
+
+
+def _load_spec():
+    with OPENAPI_PATH.open(encoding="utf-8") as handle:
+        return yaml.safe_load(handle)
+
+
+def _first_operation(path_item):
+    for method in ("get", "post", "put", "patch", "delete"):
+        if method in path_item:
+            return path_item[method]
+    raise AssertionError("path item has no operation")
