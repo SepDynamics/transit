@@ -6,6 +6,7 @@ import copy
 import json
 import os
 import time
+import threading
 from collections import Counter
 from typing import Any, Dict, List, Optional
 import random
@@ -36,6 +37,15 @@ class TransitStore:
     """Persist latest transit payloads plus rolling per-vehicle history."""
 
     def __init__(self, redis_url: Optional[str] = None, client: Any = None) -> None:
+        self._json_cache_ttl = _float_env("TRANSIT_STORE_READ_CACHE_TTL_SECONDS", 5.0)
+        self._json_cache: Dict[str, tuple[float, Dict[str, Any]]] = {}
+        self._json_cache_lock = threading.RLock()
+        # Circuit breaker state
+        self._failure_count = 0
+        self._last_failure_time = None
+        self._circuit_open = False
+        self._failure_threshold = 5
+        self._recovery_timeout = 30  # seconds
         if client is not None:
             self.client = client
             return
@@ -50,13 +60,6 @@ class TransitStore:
             self.client.ping()
         except (redis.ConnectionError, redis.TimeoutError) as e:
             raise RuntimeError(f"Failed to connect to Redis: {e}") from e
-
-        # Circuit breaker state
-        self._failure_count = 0
-        self._last_failure_time = None
-        self._circuit_open = False
-        self._failure_threshold = 5
-        self._recovery_timeout = 30  # seconds
 
     def _should_attempt_reset(self) -> bool:
         """Check if enough time has passed to attempt reset."""
@@ -116,6 +119,7 @@ class TransitStore:
         retention: int = 720,
         source: Optional[str] = None,
         trace_id: Optional[str] = None,
+        write_history: bool = True,
     ) -> None:
         health = copy.deepcopy(dict(payload.get("health") or {}))
         entities = copy.deepcopy(dict(payload.get("entities") or {}))
@@ -227,6 +231,11 @@ class TransitStore:
             pipe.execute()
 
         self._execute_with_retry(_execute_pipeline)
+        self._clear_json_cache()
+        self._write_sources_last()
+
+        if not write_history:
+            return
 
         def _write_history_pipeline():
             pipe = self.client.pipeline()
@@ -350,10 +359,10 @@ class TransitStore:
                 )
                 self._pipe_trim_sorted_set(pipe, history_key, retention)
 
-            pipe.set("transit:sources:last", self._dumps(self.sources()))
             pipe.execute()
 
         self._execute_with_retry(_write_history_pipeline)
+        self._clear_json_cache()
 
     def write_replay_trace(self, trace: TransitReplayTrace) -> None:
         payload = trace.to_json()
@@ -365,6 +374,7 @@ class TransitStore:
             self.client.sadd("transit:trace_ids", trace.trace_id)
 
         self._execute_with_retry(_set_trace_meta)
+        self._clear_json_cache(self.trace_meta_key(trace.trace_id))
         self._execute_with_retry(_sadd_trace_ids)
 
         if trace.latest_snapshot_timestamp_ms is not None:
@@ -381,12 +391,14 @@ class TransitStore:
             self.client.set("transit:sources:last", self._dumps(self.sources()))
 
         self._execute_with_retry(_set_sources_last)
+        self._clear_json_cache("transit:sources:last")
 
     def write_status(self, key: str, payload: Dict[str, Any]) -> None:
         def _set_status():
             self.client.set(key, self._dumps(payload))
 
         self._execute_with_retry(_set_status)
+        self._clear_json_cache(key)
 
     def read_status(self, key: str) -> Dict[str, Any]:
         return self.read_json_key(key, default={})
@@ -398,9 +410,7 @@ class TransitStore:
         payload = self._read_latest_snapshot_part(
             "health", scope=scope, trace_id=trace_id, default=self._default_health()
         )
-        payload["scope"] = scope
-        payload["trace_id"] = resolved_trace_id
-        return payload
+        return {**payload, "scope": scope, "trace_id": resolved_trace_id}
 
     def entities(
         self, *, scope: str = "all", trace_id: str | None = None
@@ -539,18 +549,13 @@ class TransitStore:
         trace_ids = [
             str(row.get("trace_id") or "") for row in traces if row.get("trace_id")
         ]
-        live_entities = self.read_json_key(
-            self.live_payload_key("entities"), default={}
-        )
-        live_regimes = self.read_json_key(self.live_payload_key("regimes"), default={})
         live_health = self.read_json_key(self.live_payload_key("health"), default={})
         configured_feeds = self.read_json_key(self.configured_feeds_key(), default={})
         live_feed_status = live_health.get("feed_status") or {}
         has_live = bool(
-            (live_entities.get("vehicles") or [])
-            or (live_regimes.get("regimes") or [])
-            or (live_entities.get("lines") or [])
-            or (live_entities.get("active_lines") or [])
+            int(live_health.get("vehicle_count") or 0) > 0
+            or int(live_health.get("visible_line_count") or 0) > 0
+            or int(live_health.get("line_count") or 0) > 0
             or int(live_feed_status.get("trip_update_count") or 0) > 0
             or int(live_feed_status.get("alert_count") or 0) > 0
         )
@@ -865,39 +870,62 @@ class TransitStore:
         recent_regime_counts: Counter[str] = Counter()
         recent_incident_total = 0
 
+        corridor_lines: List[tuple[str, Dict[str, Any]]] = []
         for line in entities.get("lines") or []:
             if not isinstance(line, dict):
                 continue
             entity_id = str(line.get("entity_id") or "").strip()
             if not entity_id:
                 continue
-            summaries = [
-                row
-                for row in self.get_recent_corridor_summaries(entity_id, limit=window)
-                if scope_matches(row, scope)
-                and (
+            corridor_lines.append((entity_id, line))
+
+        raw_histories: List[Any] = []
+        if corridor_lines:
+            pipe = self.client.pipeline()
+            for entity_id, _line in corridor_lines:
+                pipe.zrange(self.corridor_summary_history_key(entity_id), -window, -1)
+                pipe.zrange(self.corridor_regime_history_key(entity_id), -window, -1)
+                pipe.zrange(self.corridor_incident_history_key(entity_id), -window, -1)
+            raw_histories = pipe.execute()
+
+        for index, (entity_id, line) in enumerate(corridor_lines):
+            history_offset = index * 3
+            summary_rows = raw_histories[history_offset] if raw_histories else []
+            regime_rows = raw_histories[history_offset + 1] if raw_histories else []
+            incident_rows = raw_histories[history_offset + 2] if raw_histories else []
+
+            summaries: List[Dict[str, Any]] = []
+            for payload in (self._loads(row) for row in summary_rows):
+                if not payload:
+                    continue
+                row = TransitCorridorSnapshot.from_mapping(payload).to_json()
+                if scope_matches(row, scope) and (
                     resolved_trace_id in (None, "")
                     or str(row.get("trace_id") or "") == resolved_trace_id
-                )
-            ]
-            regimes = [
-                row
-                for row in self.get_recent_corridor_regimes(entity_id, limit=window)
-                if scope_matches(row, scope)
-                and (
+                ):
+                    summaries.append(row)
+
+            regimes: List[Dict[str, Any]] = []
+            for payload in (self._loads(row) for row in regime_rows):
+                if not payload:
+                    continue
+                row = TransitRegimeRecord.from_mapping(payload).to_json()
+                if scope_matches(row, scope) and (
                     resolved_trace_id in (None, "")
                     or str(row.get("trace_id") or "") == resolved_trace_id
-                )
-            ]
-            incidents = [
-                row
-                for row in self.get_recent_corridor_incidents(entity_id, limit=window)
-                if scope_matches(row, scope)
-                and (
+                ):
+                    regimes.append(row)
+
+            incidents: List[Dict[str, Any]] = []
+            for payload in (self._loads(row) for row in incident_rows):
+                if not payload:
+                    continue
+                row = TransitIncidentRecord.from_mapping(payload).to_json()
+                if scope_matches(row, scope) and (
                     resolved_trace_id in (None, "")
                     or str(row.get("trace_id") or "") == resolved_trace_id
-                )
-            ]
+                ):
+                    incidents.append(row)
             if not summaries and not regimes and not incidents:
                 continue
 
@@ -1221,13 +1249,40 @@ class TransitStore:
     def read_json_key(
         self, key: str, *, default: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
+        now = time.monotonic()
+        if self._json_cache_ttl > 0:
+            with self._json_cache_lock:
+                cached = self._json_cache.get(key)
+                if cached and cached[0] >= now:
+                    return cached[1]
         raw = self.client.get(key)
         if not raw:
             return dict(default or {})
         try:
-            return json.loads(raw)
+            payload = json.loads(raw)
         except json.JSONDecodeError:
             return dict(default or {})
+        if self._json_cache_ttl > 0:
+            with self._json_cache_lock:
+                self._json_cache[key] = (now + self._json_cache_ttl, payload)
+        return payload
+
+    def _write_sources_last(self) -> None:
+        def _set_sources_last():
+            self.client.set("transit:sources:last", self._dumps(self.sources()))
+
+        self._execute_with_retry(_set_sources_last)
+        self._clear_json_cache("transit:sources:last")
+
+    def _clear_json_cache(self, *keys: str) -> None:
+        if self._json_cache_ttl <= 0:
+            return
+        with self._json_cache_lock:
+            if keys:
+                for key in keys:
+                    self._json_cache.pop(key, None)
+                return
+            self._json_cache.clear()
 
     @staticmethod
     def vehicle_meta_key(entity_id: str, *, trace_id: str | None = None) -> str:
@@ -1672,3 +1727,13 @@ class TransitStore:
             return json.loads(raw)
         except (TypeError, json.JSONDecodeError):
             return {}
+
+
+def _float_env(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None or str(raw).strip() == "":
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        return default

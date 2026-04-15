@@ -56,6 +56,17 @@ class _FakeTransitService:
             ],
         }
 
+    def transit_dashboard(self, *, scope: str = "all", trace_id=None):
+        return {
+            "scope": scope,
+            "trace_id": trace_id,
+            "health": self.transit_health(scope=scope, trace_id=trace_id),
+            "entities": self.transit_entities(scope=scope, trace_id=trace_id),
+            "regimes": self.transit_regimes(scope=scope, trace_id=trace_id),
+            "incidents": self.transit_incidents(scope=scope, trace_id=trace_id),
+            "trends": self.transit_trends(scope=scope, trace_id=trace_id),
+        }
+
     def transit_history(
         self, *, entity_id: str, scope: str = "all", trace_id=None, limit: int = 72
     ):
@@ -287,6 +298,23 @@ def test_transit_api_trends_endpoint_serves_json():
     assert payload["summary"]["corridor_count"] == 1
     assert payload["summary"]["recent_incident_count"] == 2
     assert payload["corridors"][0]["entity_id"] == "route:Red:0"
+
+
+def test_transit_api_dashboard_endpoint_serves_json():
+    server = start_transit_http_server(_FakeTransitService(), host="127.0.0.1", port=0)
+    try:
+        with urlopen(
+            f"http://127.0.0.1:{server.server_port}/api/transit/dashboard?scope=live"
+        ) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    finally:
+        server.shutdown()
+        server.server_close()
+
+    assert payload["scope"] == "live"
+    assert payload["health"]["status"] == "ok"
+    assert payload["entities"]["vehicles"] == []
+    assert payload["trends"]["summary"]["corridor_count"] == 1
 
 
 def test_transit_api_history_endpoint_serves_json():

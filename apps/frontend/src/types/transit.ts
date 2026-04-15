@@ -361,6 +361,17 @@ export interface TransitTrendResponse {
   corridors: CorridorTrend[];
 }
 
+export interface TransitDashboardResponse {
+  generated_at?: string;
+  scope?: string;
+  trace_id?: string | null;
+  health: TransitHealthResponse;
+  entities: TransitEntitiesResponse;
+  regimes: TransitRegimeResponse;
+  incidents: TransitIncidentResponse;
+  trends: TransitTrendResponse;
+}
+
 export type TransitHealth = TransitHealthResponse;
 export type LineCard = TransitCorridorSnapshot;
 export type VehicleCard = TransitVehicleSnapshot;
@@ -372,6 +383,7 @@ export type SourceResponse = TransitSourceResponse;
 export type VehicleHistoryResponse = TransitVehicleHistoryResponse;
 export type CorridorHistoryResponse = TransitCorridorHistoryResponse;
 export type TrendResponse = TransitTrendResponse;
+export type DashboardResponse = TransitDashboardResponse;
 
 // ---------------------------------------------------------------------------
 // Map endpoint types (/api/transit/map)

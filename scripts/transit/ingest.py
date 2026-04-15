@@ -30,6 +30,7 @@ class TransitIngestConfig:
     interval_seconds: float
     history_retention: int
     runtime: TransitRuntimeConfig
+    history_interval_seconds: float = 30.0
 
 
 class TransitIngestService:
@@ -38,6 +39,7 @@ class TransitIngestService:
         self.store = store or TransitStore(config.redis_url)
         self.snapshot_service = TransitSnapshotService(config.runtime)
         self._stop = False
+        self._last_history_write_at = 0.0
 
     def run(self) -> None:
         logger.info("Transit ingest service starting for system=%s", self.cfg.runtime.system_name)
@@ -59,7 +61,15 @@ class TransitIngestService:
             "alerts": bool(self.cfg.runtime.alerts_feed),
             "event_overlays": bool(self.cfg.runtime.event_overlays_feed),
         }
-        self.store.write_snapshot(payload, configured_feeds=configured_feeds, retention=self.cfg.history_retention)
+        write_history = self._should_write_history()
+        self.store.write_snapshot(
+            payload,
+            configured_feeds=configured_feeds,
+            retention=self.cfg.history_retention,
+            write_history=write_history,
+        )
+        if write_history:
+            self._last_history_write_at = time.monotonic()
         status = {
             "system_name": self.cfg.runtime.system_name,
             "agency_key": self.cfg.runtime.agency_key,
@@ -73,14 +83,23 @@ class TransitIngestService:
             status["archive_manifest"] = manifest
         self.store.write_status("ops:transit_ingest_status", status)
         logger.info(
-            "persisted transit snapshot with %d vehicles and %d incidents",
+            "persisted transit snapshot with %d vehicles and %d incidents history=%s",
             len((payload.get("entities") or {}).get("vehicles") or []),
             len((payload.get("incidents") or {}).get("incidents") or []),
+            write_history,
         )
         return payload
 
     def stop(self) -> None:
         self._stop = True
+
+    def _should_write_history(self) -> bool:
+        interval = float(self.cfg.history_interval_seconds or 0.0)
+        if interval <= 0:
+            return True
+        if self._last_history_write_at <= 0:
+            return True
+        return (time.monotonic() - self._last_history_write_at) >= interval
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -90,6 +109,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--redis", default=os.getenv("VALKEY_URL", "redis://localhost:6379/0"))
     parser.add_argument("--interval", type=float, default=float(os.getenv("TRANSIT_INGEST_INTERVAL_SECONDS", "5")))
     parser.add_argument("--history-retention", type=int, default=int(os.getenv("TRANSIT_HISTORY_RETENTION", "720")))
+    parser.add_argument("--history-interval", type=float, default=float(os.getenv("TRANSIT_HISTORY_INTERVAL_SECONDS", "30")))
     parser.add_argument("--agency", default=os.getenv("TRANSIT_AGENCY", adapter.key))
     parser.add_argument("--system-name", default=os.getenv("TRANSIT_SYSTEM_NAME", adapter.system_name))
     parser.add_argument("--static-feed", default=os.getenv("TRANSIT_GTFS_STATIC_PATH", default_feed_paths["static_gtfs"]))
@@ -120,6 +140,7 @@ def main() -> int:
         redis_url=str(args.redis),
         interval_seconds=max(1.0, float(args.interval)),
         history_retention=max(12, int(args.history_retention)),
+        history_interval_seconds=max(0.0, float(args.history_interval)),
         runtime=TransitRuntimeConfig(
             system_name=str(args.system_name or adapter.system_name),
             agency_key=adapter.key,

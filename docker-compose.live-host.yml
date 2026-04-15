@@ -13,6 +13,8 @@ services:
     environment:
       TRANSIT_REPLAY_ENABLED: "0"
       TRANSIT_SYSTEM_NAME: "MBTA Live"
+      TRANSIT_API_CACHE_TTL_SECONDS: "5"
+      TRANSIT_STORE_READ_CACHE_TTL_SECONDS: "5"
     ports: !override
       - "127.0.0.1:8000:8000"
 
@@ -23,3 +25,5 @@ services:
   ingest:
     environment:
       TRANSIT_GTFS_LIGHTWEIGHT: "1"
+      TRANSIT_HISTORY_INTERVAL_SECONDS: "30"
+      TRANSIT_SNAPSHOT_CACHE_TTL_SECONDS: "25"

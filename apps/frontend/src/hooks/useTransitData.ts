@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import type {
   CorridorHistoryResponse,
+  DashboardResponse,
   EntitiesResponse,
   IncidentResponse,
   RegimeResponse,
@@ -140,20 +141,15 @@ export function useTransitData(): TransitDataState {
     const loadDashboard = async () => {
       const query = buildTransitQuery(scope, selectedTraceId || undefined);
       try {
-        const [healthPayload, entitiesPayload, regimePayload, incidentPayload, trendPayload] =
-          await Promise.all([
-            fetchJson<TransitHealth>(`/api/transit/health?${query}`),
-            fetchJson<EntitiesResponse>(`/api/transit/entities?${query}`),
-            fetchJson<RegimeResponse>(`/api/transit/regimes?${query}`),
-            fetchJson<IncidentResponse>(`/api/transit/incidents?${query}`),
-            fetchJson<TrendResponse>(`/api/transit/trends?${query}`),
-          ]);
+        const dashboardPayload = await fetchJson<DashboardResponse>(
+          `/api/transit/dashboard?${query}`,
+        );
         if (!active) return;
-        setTransitHealth(healthPayload);
-        setEntities(entitiesPayload);
-        setRegimeResponse(regimePayload);
-        setIncidentResponse(incidentPayload);
-        setTrendResponse(trendPayload);
+        setTransitHealth(dashboardPayload.health);
+        setEntities(dashboardPayload.entities);
+        setRegimeResponse(dashboardPayload.regimes);
+        setIncidentResponse(dashboardPayload.incidents);
+        setTrendResponse(dashboardPayload.trends);
         setServiceState("online");
         setError(null);
       } catch (loadError) {

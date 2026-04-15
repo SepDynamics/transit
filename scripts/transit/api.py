@@ -13,7 +13,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Callable, Dict
 from urllib.parse import parse_qs, urlparse
 
 if __package__ in (None, ""):
@@ -54,8 +54,29 @@ class TransitAPIService:
     ) -> None:
         self.system_name = system_name
         self.store = store or TransitStore(redis_url)
+        self._cache_ttl = _float_env("TRANSIT_API_CACHE_TTL_SECONDS", 5.0)
+        self._cache: Dict[tuple[Any, ...], tuple[float, Dict[str, Any]]] = {}
+        self._cache_lock = threading.RLock()
+
+    def _cached_payload(
+        self, key: tuple[Any, ...], builder: Callable[[], Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        now = time.monotonic()
+        if self._cache_ttl > 0:
+            with self._cache_lock:
+                cached = self._cache.get(key)
+                if cached and cached[0] >= now:
+                    return cached[1]
+        payload = builder()
+        if self._cache_ttl > 0:
+            with self._cache_lock:
+                self._cache[key] = (now + self._cache_ttl, payload)
+        return payload
 
     def service_health(self) -> Dict[str, Any]:
+        return self._cached_payload(("service_health",), self._service_health_uncached)
+
+    def _service_health_uncached(self) -> Dict[str, Any]:
         ingest_status = self.store.read_status("ops:transit_ingest_status")
         latest_health = self.store.health()
         status = str(
@@ -125,27 +146,42 @@ class TransitAPIService:
     def transit_health(
         self, *, scope: str = "all", trace_id: str | None = None
     ) -> Dict[str, Any]:
-        return self.store.health(scope=scope, trace_id=trace_id)
+        return self._cached_payload(
+            ("health", scope, trace_id),
+            lambda: self.store.health(scope=scope, trace_id=trace_id),
+        )
 
     def transit_entities(
         self, *, scope: str = "all", trace_id: str | None = None
     ) -> Dict[str, Any]:
-        return self.store.entities(scope=scope, trace_id=trace_id)
+        return self._cached_payload(
+            ("entities", scope, trace_id),
+            lambda: self.store.entities(scope=scope, trace_id=trace_id),
+        )
 
     def transit_regimes(
         self, *, scope: str = "all", trace_id: str | None = None
     ) -> Dict[str, Any]:
-        return self.store.regimes(scope=scope, trace_id=trace_id)
+        return self._cached_payload(
+            ("regimes", scope, trace_id),
+            lambda: self.store.regimes(scope=scope, trace_id=trace_id),
+        )
 
     def transit_incidents(
         self, *, scope: str = "all", trace_id: str | None = None
     ) -> Dict[str, Any]:
-        return self.store.incidents(scope=scope, trace_id=trace_id)
+        return self._cached_payload(
+            ("incidents", scope, trace_id),
+            lambda: self.store.incidents(scope=scope, trace_id=trace_id),
+        )
 
     def transit_trends(
         self, *, scope: str = "all", trace_id: str | None = None
     ) -> Dict[str, Any]:
-        return self.store.trends(scope=scope, trace_id=trace_id)
+        return self._cached_payload(
+            ("trends", scope, trace_id),
+            lambda: self.store.trends(scope=scope, trace_id=trace_id),
+        )
 
     def transit_history(
         self,
@@ -155,12 +191,15 @@ class TransitAPIService:
         trace_id: str | None = None,
         limit: int = 72,
     ) -> Dict[str, Any]:
-        return self.store.history(
-            entity_id, scope=scope, trace_id=trace_id, limit=limit
+        return self._cached_payload(
+            ("history", entity_id, scope, trace_id, int(limit)),
+            lambda: self.store.history(
+                entity_id, scope=scope, trace_id=trace_id, limit=limit
+            ),
         )
 
     def transit_sources(self) -> Dict[str, Any]:
-        return self.store.sources()
+        return self._cached_payload(("sources",), self.store.sources)
 
     def transit_scorecard(
         self,
@@ -170,9 +209,40 @@ class TransitAPIService:
         limit: int = 720,
     ) -> Dict[str, Any]:
         """Rolling KPI scorecard for the operations dashboard and contract reporting."""
-        return self.store.scorecard(scope=scope, trace_id=trace_id, limit=limit)
+        return self._cached_payload(
+            ("scorecard", scope, trace_id, int(limit)),
+            lambda: self.store.scorecard(scope=scope, trace_id=trace_id, limit=limit),
+        )
+
+    def transit_dashboard(
+        self, *, scope: str = "all", trace_id: str | None = None
+    ) -> Dict[str, Any]:
+        """One-shot operations dashboard payload for the browser console."""
+
+        def _build() -> Dict[str, Any]:
+            health = self.transit_health(scope=scope, trace_id=trace_id)
+            return {
+                "generated_at": isoformat_ms(),
+                "scope": scope,
+                "trace_id": health.get("trace_id") or trace_id,
+                "health": health,
+                "entities": self.transit_entities(scope=scope, trace_id=trace_id),
+                "regimes": self.transit_regimes(scope=scope, trace_id=trace_id),
+                "incidents": self.transit_incidents(scope=scope, trace_id=trace_id),
+                "trends": self.transit_trends(scope=scope, trace_id=trace_id),
+            }
+
+        return self._cached_payload(("dashboard", scope, trace_id), _build)
 
     def public_status_routes(
+        self, *, scope: str = "live", trace_id: str | None = None
+    ) -> Dict[str, Any]:
+        return self._cached_payload(
+            ("public_status_routes", scope, trace_id),
+            lambda: self._public_status_routes_uncached(scope=scope, trace_id=trace_id),
+        )
+
+    def _public_status_routes_uncached(
         self, *, scope: str = "live", trace_id: str | None = None
     ) -> Dict[str, Any]:
         """Rider-facing route status list.
@@ -181,9 +251,9 @@ class TransitAPIService:
         severity tier, wording, and headline.  Suitable for status pages,
         digital signage, and third-party app integrations.
         """
-        entities = self.store.entities(scope=scope, trace_id=trace_id)
-        regimes_payload = self.store.regimes(scope=scope, trace_id=trace_id)
-        incidents_payload = self.store.incidents(scope=scope, trace_id=trace_id)
+        entities = self.transit_entities(scope=scope, trace_id=trace_id)
+        regimes_payload = self.transit_regimes(scope=scope, trace_id=trace_id)
+        incidents_payload = self.transit_incidents(scope=scope, trace_id=trace_id)
 
         regime_by_entity: Dict[str, Any] = {
             str(r.get("entity_id") or ""): r
@@ -234,12 +304,20 @@ class TransitAPIService:
     def public_status_network(
         self, *, scope: str = "live", trace_id: str | None = None
     ) -> Dict[str, Any]:
+        return self._cached_payload(
+            ("public_status_network", scope, trace_id),
+            lambda: self._public_status_network_uncached(scope=scope, trace_id=trace_id),
+        )
+
+    def _public_status_network_uncached(
+        self, *, scope: str = "live", trace_id: str | None = None
+    ) -> Dict[str, Any]:
         """Rider-facing network-level status summary.
 
         A single summary object for the whole network — suitable for a
         top-of-page banner or push notification about overall service quality.
         """
-        health = self.store.health(scope=scope, trace_id=trace_id)
+        health = self.transit_health(scope=scope, trace_id=trace_id)
         routes_payload = self.public_status_routes(scope=scope, trace_id=trace_id)
 
         route_severities = [
@@ -280,14 +358,22 @@ class TransitAPIService:
     def public_status_alerts(
         self, *, scope: str = "live", trace_id: str | None = None
     ) -> Dict[str, Any]:
+        return self._cached_payload(
+            ("public_status_alerts", scope, trace_id),
+            lambda: self._public_status_alerts_uncached(scope=scope, trace_id=trace_id),
+        )
+
+    def _public_status_alerts_uncached(
+        self, *, scope: str = "live", trace_id: str | None = None
+    ) -> Dict[str, Any]:
         """Rider-facing active alerts list.
 
         Returns only the incidents that have crossed the incident threshold,
         formatted as plain-language advisory text.  No internal scoring
         vocabulary is exposed.
         """
-        incidents_payload = self.store.incidents(scope=scope, trace_id=trace_id)
-        entities_payload = self.store.entities(scope=scope, trace_id=trace_id)
+        incidents_payload = self.transit_incidents(scope=scope, trace_id=trace_id)
+        entities_payload = self.transit_entities(scope=scope, trace_id=trace_id)
 
         # Build label index from lines
         label_by_entity: Dict[str, str] = {}
@@ -353,12 +439,26 @@ class TransitAPIService:
         trace_id: str | None = None,
         limit: int = 720,
     ) -> Dict[str, Any]:
+        return self._cached_payload(
+            ("public_status_scorecard", scope, trace_id, int(limit)),
+            lambda: self._public_status_scorecard_uncached(
+                scope=scope, trace_id=trace_id, limit=limit
+            ),
+        )
+
+    def _public_status_scorecard_uncached(
+        self,
+        *,
+        scope: str = "live",
+        trace_id: str | None = None,
+        limit: int = 720,
+    ) -> Dict[str, Any]:
         """Public reliability scorecard.
 
         Suitable for agency websites, weekly service reports, and rider apps
         that want historical reliability data without internal scoring detail.
         """
-        scorecard = self.store.scorecard(scope=scope, trace_id=trace_id, limit=limit)
+        scorecard = self.transit_scorecard(scope=scope, trace_id=trace_id, limit=limit)
 
         # Strip internal regime/action vocabulary, keep only public-ready fields
         public_corridors = []
@@ -399,6 +499,14 @@ class TransitAPIService:
     def transit_map(
         self, *, scope: str = "all", trace_id: str | None = None
     ) -> Dict[str, Any]:
+        return self._cached_payload(
+            ("map", scope, trace_id),
+            lambda: self._transit_map_uncached(scope=scope, trace_id=trace_id),
+        )
+
+    def _transit_map_uncached(
+        self, *, scope: str = "all", trace_id: str | None = None
+    ) -> Dict[str, Any]:
         """Return a GeoJSON-compatible map payload for the dashboard map view.
 
         Combines:
@@ -406,9 +514,9 @@ class TransitAPIService:
         - corridor regime summary keyed by entity_id
         - active incidents keyed by entity_id
         """
-        entities = self.store.entities(scope=scope, trace_id=trace_id)
-        regimes_payload = self.store.regimes(scope=scope, trace_id=trace_id)
-        incidents_payload = self.store.incidents(scope=scope, trace_id=trace_id)
+        entities = self.transit_entities(scope=scope, trace_id=trace_id)
+        regimes_payload = self.transit_regimes(scope=scope, trace_id=trace_id)
+        incidents_payload = self.transit_incidents(scope=scope, trace_id=trace_id)
 
         # Index regimes and incidents by entity_id for O(1) lookup
         regime_by_entity: Dict[str, Any] = {
@@ -612,6 +720,16 @@ def _regime_color(regime: Any, hazard_score: Any) -> str:
     return "#3b82f6"
 
 
+def _float_env(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None or str(raw).strip() == "":
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        return default
+
+
 class TransitAPIHandler(BaseHTTPRequestHandler):
     server_version = "TransitSentinel/1.0"
 
@@ -739,6 +857,9 @@ class TransitAPIHandler(BaseHTTPRequestHandler):
         if not ok:
             return
 
+        if parsed.path == "/api/transit/dashboard":
+            self._send_json(self.svc.transit_dashboard(scope=scope, trace_id=trace_id))
+            return
         if parsed.path == "/api/transit/health":
             self._send_json(self.svc.transit_health(scope=scope, trace_id=trace_id))
             return

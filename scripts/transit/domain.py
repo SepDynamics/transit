@@ -286,6 +286,7 @@ class TransitSnapshotService:
         self.cfg = config
         self._catalog_cache: Dict[str, Any] = {}
         self._snapshot_cache: Dict[str, Any] = {}
+        self._snapshot_cache_ttl = _float_env("TRANSIT_SNAPSHOT_CACHE_TTL_SECONDS", 2.0)
 
     def service_health(self) -> Dict[str, Any]:
         snapshot = self._build_snapshot()
@@ -415,9 +416,11 @@ class TransitSnapshotService:
         source_stamp = self._source_stamp()
         built_at = float(self._snapshot_cache.get("built_at") or 0.0)
         if (
+            self._snapshot_cache_ttl > 0
+            and
             now_ms is None
             and self._snapshot_cache.get("stamp") == source_stamp
-            and (time.monotonic() - built_at) <= 2.0
+            and (time.monotonic() - built_at) <= self._snapshot_cache_ttl
         ):
             return dict(self._snapshot_cache["payload"])
         errors: List[str] = []
@@ -2226,6 +2229,16 @@ def _env_flag(name: str, *, default: bool) -> bool:
     if raw is None or str(raw).strip() == "":
         return default
     return str(raw).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _float_env(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None or str(raw).strip() == "":
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        return default
 
 
 def _local_mtime_ns(source: str) -> Optional[int]:

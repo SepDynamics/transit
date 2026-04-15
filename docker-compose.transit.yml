@@ -36,6 +36,8 @@ services:
       PYTHONPATH: /app
       TRANSIT_INGEST_INTERVAL_SECONDS: "5"
       TRANSIT_HISTORY_RETENTION: "720"
+      TRANSIT_HISTORY_INTERVAL_SECONDS: "30"
+      TRANSIT_SNAPSHOT_CACHE_TTL_SECONDS: "10"
     volumes:
       - ./scripts:/app/scripts:ro
       - ./src:/app/src:ro
@@ -56,6 +58,8 @@ services:
       VALKEY_URL: redis://valkey:6379/0
       TRANSIT_API_PORT: "8000"
       TRANSIT_SYSTEM_NAME: "MBTA"
+      TRANSIT_API_CACHE_TTL_SECONDS: "5"
+      TRANSIT_STORE_READ_CACHE_TTL_SECONDS: "5"
       PYTHONPATH: /app
     volumes:
       - ./scripts:/app/scripts:ro
@@ -78,6 +82,8 @@ services:
       VALKEY_URL: redis://valkey:6379/0
       TRANSIT_API_PORT: "8000"
       TRANSIT_SYSTEM_NAME: "Transit Sentinel Demo"
+      TRANSIT_API_CACHE_TTL_SECONDS: "5"
+      TRANSIT_STORE_READ_CACHE_TTL_SECONDS: "5"
       PYTHONPATH: /app
     volumes:
       - ./scripts:/app/scripts:ro
