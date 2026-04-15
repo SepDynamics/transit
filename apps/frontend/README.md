@@ -1,16 +1,31 @@
 # Transit Sentinel Frontend
 
-React and Vite operations console for the Transit Sentinel API.
+React and Vite frontend for the Transit Sentinel API.
 
-## Current Features
+## Surfaces
 
-- network overview metrics
-- corridor overview and trend watch ordered by operational priority
-- incident feed with operator-facing service-state labels
-- vehicle inventory and drilldown
-- replay scope and trace selection
+- public status page backed by `/api/status/*`
+- operations console backed by `/api/transit/dashboard`
 - map view backed by `/api/transit/map`
-- network and corridor scorecards backed by `/api/transit/scorecard`
+- corridor and vehicle drilldowns backed by `/api/transit/history`
+- scorecards backed by `/api/transit/scorecard`
+
+The current copy should stay technical and operational. Avoid campaign-specific
+or external-audience copy in the product UI.
+
+## Polling Budget
+
+The frontend intentionally avoids 5-second polling for every endpoint:
+
+- sources: 30 seconds
+- main dashboard: 10 seconds
+- scorecard: 30 seconds, 60-sample limit
+- map: 15 seconds
+- selected history: 15 seconds, 36-sample limit
+- public status page: 30 seconds
+
+If a panel needs fresher data, prefer adding it to the dashboard payload or a
+specific lightweight endpoint before increasing global polling frequency.
 
 ## Local Development
 
@@ -27,9 +42,8 @@ Production build:
 npm run build
 ```
 
-For a durable hosted frontend, use the existing nginx/container path or another
-static host. `npm run dev` is a development server, not the supervised
-production runtime.
+The production container serves static assets through nginx and proxies API
+requests to the backend service. `npm run dev` is not a hosted runtime.
 
 ## Runtime Config
 
@@ -37,5 +51,4 @@ The app reads runtime config from `public/transit-sentinel-config.js` and
 defaults to same-origin API requests unless `API_URL` or `VITE_API_HOST` is
 set.
 
-The bundled API contract lives at `public/static/transit.openapi.yaml`.
-The expected backend runtime is `scripts/transit/api.py`.
+The bundled API schema lives at `public/static/transit.openapi.yaml`.

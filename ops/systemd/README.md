@@ -1,15 +1,17 @@
 # Transit Sentinel `systemd --user` Runtime
 
-These user-service units supervise the live MBTA stack outside Docker:
+These user-service units supervise the MBTA backend outside Docker:
 
 - `transit-sentinel-mbta-archive.service`
 - `transit-sentinel-mbta-ingest.service`
 - `transit-sentinel-api.service`
 - `transit-sentinel-mbta-live.target`
 
-They are designed for a persistent repo checkout on a Linux host where the
-frontend is served separately and the backend processes should survive terminal
-disconnects.
+They are optional. The current public `sepdynamics.co` deployment uses Docker
+Compose as documented in
+[`docs/LIVE_DEPLOYMENT.md`](/sep/transit-sentinel/docs/LIVE_DEPLOYMENT.md).
+Use this path only when a host should run archive, ingest, and API as user
+services while the frontend is served separately.
 
 ## Install
 
@@ -82,6 +84,6 @@ systemctl --user stop transit-sentinel-mbta-live.target
 
 ## Scope
 
-This path is for the backend live stack only. The React frontend should still
-be served via the existing container/nginx path or another separate static-host
-setup. Do not rely on `npm run dev` as the durable hosted frontend process.
+This path is backend-only. It does not run the React frontend, Caddy, nginx, or
+Docker container stack. Do not rely on `npm run dev` as a durable hosted
+frontend process.

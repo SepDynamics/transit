@@ -1,46 +1,44 @@
 # Transit Sentinel
 
-Transit Sentinel is a public-transit operations intelligence repo. It archives
-public GTFS and GTFS-RT feeds, persists rolling transit state in Valkey, scores
-corridor/service regimes, exposes incidents through an HTTP API and React
-console, and supports replay plus calibration on archived case packs.
+Transit Sentinel is a live public-transit operations engine. It archives public
+GTFS and GTFS-RT feeds, normalizes them into rolling corridor and vehicle state,
+scores service instability, and serves the result through an API, public status
+surface, and React operations console.
 
-## Current Repo Surface
+The current public deployment is the MBTA live lane behind `sepdynamics.co`.
+The repo also contains LA Metro rail and bus collection paths, replay tooling,
+case-pack calibration, notification dispatch, and benchmark artifact generation.
 
-- live archive lanes for MBTA and LA Metro
-- Valkey-backed ingest, replay, rolling history, incident memory, and scorecard aggregation
-- HTTP API for health, entities, regimes, incidents, trends, history, sources, map, and scorecard
-- React operations console with replay scope switching, map, trend watch, priority-ranked incident feed, and network scorecard
-- calibration and case-pack grading against committed public scenarios
-- notification dispatch to webhook, SMTP, and JSONL sinks
-- `systemd --user` assets for durable MBTA archive, ingest, and API supervision on Linux hosts
+## Current Stack
 
-## Supported Agency Lanes
+- Feed archive: `scripts/transit/archive.py` for HTTP feeds and
+  `scripts/transit/archive_ws.py` for websocket feeds.
+- Ingest and store: `scripts/transit/ingest.py` writes live state and rolling
+  history into Valkey.
+- API: `scripts/transit/api.py` serves `/api/transit/*`, `/api/status/*`, and
+  `/health`.
+- Frontend: `apps/frontend/` serves the public status page and operations
+  console through nginx in Docker.
+- Proof and calibration: `data/case-packs/`, `scripts/transit/replay.py`,
+  `scripts/transit/grade_calibration.py`, and
+  `scripts/transit/benchmark_artifacts.py`.
 
-- `mbta`
-- `lametro-rail`
-- `lametro-bus`
+## Documentation Map
 
-MBTA is the primary HTTP polling lane. LA Metro rail and bus use static GTFS
-plus websocket realtime collection for vehicle positions and trip updates.
+- [Architecture](/sep/transit-sentinel/docs/ARCHITECTURE.md): how archive,
+  ingest, Valkey, scoring, API, and frontend fit together.
+- [Live Deployment](/sep/transit-sentinel/docs/LIVE_DEPLOYMENT.md): how the
+  hosted MBTA stack is configured, verified, and recovered.
+- [Data And Calibration](/sep/transit-sentinel/docs/DATA_AND_CALIBRATION.md):
+  supported public-data lanes, case packs, replay, and grading workflow.
+- [Roadmap](/sep/transit-sentinel/docs/ROADMAP.md): current state, boundaries,
+  and the next sensible work.
+- [Repo Scope](/sep/transit-sentinel/docs/REPO_SCOPE.md): what belongs in this
+  repository.
+- [Systemd Backend Runtime](/sep/transit-sentinel/ops/systemd/README.md):
+  optional host-supervised backend process path.
 
-## Docs
-
-- [`docs/ARCHITECTURE.md`](/sep/transit-sentinel/docs/ARCHITECTURE.md)
-- [`docs/REPOSITORY_STATUS.md`](/sep/transit-sentinel/docs/REPOSITORY_STATUS.md)
-- [`docs/FRONTEND_VALUE_ADD_PLAN.md`](/sep/transit-sentinel/docs/FRONTEND_VALUE_ADD_PLAN.md)
-- [`docs/REPO_SCOPE.md`](/sep/transit-sentinel/docs/REPO_SCOPE.md)
-- [`docs/PUBLIC_DATA_OUTLINE.md`](/sep/transit-sentinel/docs/PUBLIC_DATA_OUTLINE.md)
-- [`docs/MBTA_DATA_LANE.md`](/sep/transit-sentinel/docs/MBTA_DATA_LANE.md)
-- [`docs/CALIBRATION_USE_CASE.md`](/sep/transit-sentinel/docs/CALIBRATION_USE_CASE.md)
-- [`docs/HOSTED_LIVE_RUNBOOK.md`](/sep/transit-sentinel/docs/HOSTED_LIVE_RUNBOOK.md)
-- [`docs/LIVE_OPERATIONS_RUNBOOK.md`](/sep/transit-sentinel/docs/LIVE_OPERATIONS_RUNBOOK.md)
-- [`docs/PROJECT_OUTLINE.md`](/sep/transit-sentinel/docs/PROJECT_OUTLINE.md)
-- [`docs/EXECUTION_BACKLOG.md`](/sep/transit-sentinel/docs/EXECUTION_BACKLOG.md)
-- [`docs/ROADMAP_90_DAYS.md`](/sep/transit-sentinel/docs/ROADMAP_90_DAYS.md)
-- [`ops/systemd/README.md`](/sep/transit-sentinel/ops/systemd/README.md)
-
-## Quick Start
+## Local Development
 
 Start Valkey:
 
@@ -48,13 +46,13 @@ Start Valkey:
 docker run --rm -p 6379:6379 redis:7-alpine
 ```
 
-Archive one MBTA snapshot:
+Capture one MBTA working set:
 
 ```bash
 make transit-mbta-archive ARGS="--once"
 ```
 
-Persist the current working set into Valkey:
+Ingest that working set into Valkey:
 
 ```bash
 make transit-ingest ARGS="--once --redis redis://localhost:6379/0"
@@ -74,93 +72,73 @@ npm install
 npm run dev
 ```
 
-Import archived snapshots as a replay trace:
-
-```bash
-make transit-replay ARGS="--redis redis://localhost:6379/0 --archive-root data/feeds/mbta --trace-id mbta-proof --max-snapshots 20"
-```
-
-LA Metro realtime archive targets:
-
-```bash
-make transit-lametro-rail-archive
-make transit-lametro-bus-archive
-```
-
-Notification sidecar example:
-
-```bash
-make transit-notify ARGS="--api http://localhost:8000 --webhook https://hooks.example.com/transit"
-```
-
-Containerized runtime:
+Run the container stack:
 
 ```bash
 docker compose -f docker-compose.transit.yml up --build
 ```
 
-Durable host-side live runtime with `systemd --user`:
+Run the live-host shape used by the public deployment:
 
 ```bash
-mkdir -p ~/.config/systemd/user ~/.config/transit-sentinel
-cp ops/systemd/user/*.service ~/.config/systemd/user/
-cp ops/systemd/user/*.target ~/.config/systemd/user/
-cp ops/systemd/user/transit-sentinel-mbta.env.example \
-  ~/.config/transit-sentinel/transit-sentinel-mbta.env
-systemctl --user daemon-reload
-loginctl enable-linger "$USER"
-systemctl --user enable --now transit-sentinel-mbta-live.target
+docker compose -f docker-compose.transit.yml -f docker-compose.live-host.yml up -d --build valkey archive ingest api frontend
 ```
 
-If the host is already running manual `archive.py`, `ingest.py`, or `api.py`
-loops, stop those first so the `systemd --user` target becomes the only owner
-of the feed collectors and port `8000`.
+## Checks
 
-Live operator surfaces now expose operator-facing service-state labels and an
-explicit action priority queue. Internal regime tokens still exist in the API
-for replay and scoring, but the live console should be read through labels such
-as `Service irregularity`, `Severe bunching / service gap`, and priority tiers
-`Immediate`, `High`, `Watch`, and `Monitor`.
-
-## Calibration And Checks
-
-Run the main repo checks:
+Run the main transit gate:
 
 ```bash
 make check
 ```
 
-Run the full repo sweep:
+Run all tests and frontend checks:
 
 ```bash
 make check-all
 ```
 
-Run the committed cross-city case-pack gate:
+Run committed case packs:
 
 ```bash
 make check-transit-case-packs
 ```
 
-Seed a repeatable demo state from the committed case packs:
+Build frontend production assets:
+
+```bash
+make frontend-build
+```
+
+## Common Operations
+
+Import archived MBTA snapshots as a replay trace:
+
+```bash
+make transit-replay ARGS="--redis redis://localhost:6379/0 --archive-root data/feeds/mbta --trace-id mbta-proof --max-snapshots 20"
+```
+
+Seed a deterministic fallback state from archive data or committed case packs:
 
 ```bash
 make transit-demo-seed ARGS="--redis redis://localhost:6379/0 --clear-store"
 ```
 
-`transit-demo-seed` now prefers recent archive windows from `data/feeds/mbta`
-and other available live archive roots. If no archive corpus is present, it
-falls back to the richer committed MBTA overnight pack before loading the
-smaller proof fixtures.
-
-Persist a proof window around a detected incident:
+Run notifications against a local API:
 
 ```bash
-make transit-proof-window ARGS="--archive-root data/feeds/mbta --incident-json path/to/incident.json"
+make transit-notify ARGS="--api http://localhost:8000"
 ```
 
-Generate benchmark artifacts under `artifacts/benchmarks/`:
+Generate benchmark artifacts:
 
 ```bash
 make transit-benchmark-artifacts ARGS="--archive-root data/case-packs --labels data/case-packs --artifact-name cross-city-suite"
 ```
+
+## Product Boundary
+
+This repo is strongest today as a public-data service-status layer, live
+operations console, and replayable proof system. It is not a dispatch
+replacement: public feeds do not include internal constraints such as crew,
+signals, supervisor assignments, or internal incident response state.

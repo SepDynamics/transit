@@ -1,71 +1,64 @@
-# Transit Sentinel Architecture
+# Architecture
 
-## Goal
+Transit Sentinel turns public feed activity into ranked operating context:
 
-Transit Sentinel watches public transit operations data, detects service
-instability early, and turns that state into operator-facing incidents,
-recommended actions, and proof artifacts.
+`GTFS / GTFS-RT -> archive -> ingest -> Valkey -> scoring -> API -> console/status`
+
+The live deployment currently favors a bounded, low-memory MBTA lane. Replay and
+LA Metro collection remain in the repo, but the public host is live-first and
+does not serve replay traces.
 
 ## Runtime Flow
 
-### 1. Archive Collectors
+### Archive
 
-The repo currently supports two archive paths:
+- `scripts/transit/archive.py` polls HTTP GTFS and GTFS-RT feeds.
+- `scripts/transit/archive_ws.py` collects websocket realtime feeds.
+- `data/feeds/<agency>/current/` is the ingest working set.
+- `data/feeds/<agency>/archive/...` is the replay and proof corpus when
+  history capture is enabled.
 
-- `scripts/transit/archive.py`
-  Polls configured HTTP feed URLs and writes snapshots to `data/feeds/<agency>/`.
-- `scripts/transit/archive_ws.py`
-  Collects websocket realtime feeds for agencies that do not expose the same
-  data over simple HTTP polling. This is the current LA Metro rail and bus
-  realtime lane.
+The live host override sets `TRANSIT_ARCHIVE_CURRENT_ONLY=1`, so the public
+deployment refreshes the current MBTA working set without growing local archive
+directories on every capture.
 
-Each archive lane maintains:
+### Ingest
 
-- a `current/` working set for ingest
-- timestamped `archive/YYYY/MM/DD/HHMMSSZ/` snapshots
-- feed metadata and capture manifests
+`scripts/transit/ingest.py` reads the current working set, normalizes routes,
+vehicles, alerts, and trip updates, scores corridor state, and writes the
+latest state plus rolling history into Valkey.
 
-### 2. Ingest And Replay
+The public host uses conservative ingest settings:
 
-- `scripts/transit/ingest.py`
-  Normalizes the current working set and persists the latest state to Valkey.
-- `scripts/transit/replay.py`
-  Imports archived snapshots into Valkey as named replay traces.
+- `TRANSIT_INGEST_INTERVAL_SECONDS=20`
+- `TRANSIT_HISTORY_RETENTION=120`
+- `TRANSIT_HISTORY_INTERVAL_SECONDS=60`
+- `TRANSIT_SNAPSHOT_CACHE_TTL_SECONDS=120`
 
-Live ingest and replay share the same store shape so the dashboard and API can
-switch between `scope=live`, `scope=replay`, and `scope=all`.
+That keeps a useful live scorecard window without allowing rolling history to
+consume the host.
 
-### 2.5. Runtime Supervision
+### Valkey
 
-For host-based live MBTA operation, the committed `systemd --user` assets under
-`ops/systemd/user/` supervise:
-
-- archive collection
-- the ingest loop
-- the API
-
-The grouped target `transit-sentinel-mbta-live.target` is the preferred
-non-container runtime path for a durable live backend.
-
-### 3. Rolling Store
-
-`scripts/transit/store.py` is the repo's operational memory layer. It retains:
+`scripts/transit/store.py` is the operational memory layer. It stores:
 
 - latest network health
-- latest corridor and vehicle entities
-- regime history
-- incident memory
-- rolling corridor trends
-- replay trace inventory
-- network and corridor scorecards
+- latest corridor, vehicle, regime, incident, feed-status, and error payloads
+- rolling vehicle and corridor history
+- replay trace metadata when replay is enabled
+- scorecard and trend source data
 
-This keeps dashboard reads cheap and lets the frontend drill into corridor and
-vehicle history without rereading raw archive files.
+The live compose override runs Valkey with AOF disabled and RDB snapshots:
 
-### 4. Scoring And Incidents
+```bash
+redis-server --appendonly no --save 300 1
+```
 
-The transit scorer converts rolling public-feed windows into transit-native
-regimes such as:
+Valkey has a container memory limit of `900m` in the compose stack.
+
+### Scoring
+
+The scoring layer emits internal regimes such as:
 
 - `healthy`
 - `bunching_onset`
@@ -76,90 +69,85 @@ regimes such as:
 - `service_degraded`
 - `feed_incoherent`
 
-Those regimes remain available in the API and store, but the live console maps
-them into operator-facing labels such as:
+The frontend should lead with operator language instead of raw regime tokens:
 
 - `Service irregularity`
 - `Severe bunching / service gap`
 - `Terminal congestion`
 - `Confirmed disruption`
 - `Telemetry degraded`
+- `Immediate`, `High`, `Watch`, and `Monitor`
 
-Actions are surfaced with an explicit operational priority queue:
+Internal tokens remain useful for replay, regression tests, and API consumers
+that need exact classifier output.
 
-- `hold`
-- `short_turn`
-- `dispatch_relief`
-- `inspect_terminal`
-- `warn_riders`
-- `mark_feed_degraded`
-- `monitor`
+### API
 
-Each scored output carries the raw hazard value, confidence, provenance, and
-feature evidence. The operator UI renders that hazard value as `Risk score` and
-assigns a priority tier of `Immediate`, `High`, `Watch`, or `Monitor`.
+`scripts/transit/api.py` serves:
 
-### 5. API Surface
+- `/health`
+- `/api/status/network`
+- `/api/status/routes`
+- `/api/status/alerts`
+- `/api/status/scorecard`
+- `/api/transit/dashboard`
+- `/api/transit/health`
+- `/api/transit/entities`
+- `/api/transit/regimes`
+- `/api/transit/incidents`
+- `/api/transit/trends`
+- `/api/transit/history`
+- `/api/transit/sources`
+- `/api/transit/map`
+- `/api/transit/scorecard`
 
-`scripts/transit/api.py` serves `/api/transit/*` endpoints for:
+The API reads from Valkey rather than raw archive files. On the live host,
+expensive scorecard reads are capped and cached:
 
-- `health`
-- `entities`
-- `regimes`
-- `incidents`
-- `trends`
-- `history`
-- `sources`
-- `map`
-- `scorecard`
+- `TRANSIT_API_CACHE_TTL_SECONDS=15`
+- `TRANSIT_API_CACHE_MAX_ENTRIES=6`
+- `TRANSIT_API_SCORECARD_MAX_LIMIT=60`
+- `TRANSIT_API_SCORECARD_CACHE_TTL_SECONDS=60`
+- `TRANSIT_API_MAX_CONCURRENT_REQUESTS=4`
+- `TRANSIT_API_REQUEST_QUEUE_SIZE=8`
 
-The API reads from Valkey, not directly from raw files, so live and replay views
-share the same contract.
+Full entities, history, map, and large scorecard payloads are intentionally not
+kept in the generic API cache on the small live host.
 
-### 6. Frontend
+### Frontend
 
-The React console under `apps/frontend/` is the main user-facing surface. It
-currently includes:
+`apps/frontend/` is a React/Vite app served by nginx in the production
+container. It provides:
 
-- network overview metrics
-- corridor overview cards
-- corridor trend watch
-- incident feed
-- vehicle inventory and drilldown
-- replay scope and trace selection
-- map view backed by `/api/transit/map`
-- KPI scorecard backed by `/api/transit/scorecard`
+- public status page
+- operations console
+- technical stack summary
+- priority corridor queue
+- map view
+- vehicle and corridor drilldowns
+- trend and scorecard panels
 
-### 7. Notifications And Reports
+The console now uses a consolidated dashboard endpoint for the main polling
+path. Slower scorecard, map, source, and history polls are kept separate so the
+main dashboard can stay responsive without overloading the API.
 
-The repo also supports operational sidecars and proof outputs:
+### Replay And Calibration
 
-- `scripts/transit/demo_seed.py` for deterministic hosted-demo seeding from committed case packs
-- `scripts/transit/notify.py` for webhook, SMTP, and JSONL notifications
-- `scripts/transit/report.py` for archive-based corridor summaries
-- `scripts/transit/grade_calibration.py` and `render_calibration_summary.py`
-  for case-pack grading and report generation
-- `scripts/transit/benchmark_artifacts.py` for repeatable artifact bundles under `artifacts/benchmarks/`
+Replay imports archived snapshots into the same Valkey shape as live ingest.
+Case packs under `data/case-packs/` keep scoring changes grounded in labeled
+public incidents and quiet controls.
 
-### 8. Case Packs
+Use replay and calibration for proof, regression, and demos. Do not treat a
+seeded replay state as the primary public deployment while the live MBTA lane is
+healthy.
 
-Committed proof data lives under `data/case-packs/`. These packs are used to:
+## Boundaries
 
-- replay known scenarios
-- compare Sentinel against a naive baseline
-- keep scoring changes regression-tested
-- demonstrate public-data proof of value
-
-## Supported Public-Data Lanes
-
-- MBTA: HTTP GTFS and GTFS-RT archive lane
-- LA Metro rail: static GTFS plus websocket realtime lane
-- LA Metro bus: static GTFS plus websocket realtime lane
-
-There is no Caltrans-specific adapter in the repo today.
-
-## Architectural Boundaries
-
-This repository is transit-only. Documentation, runtime code, test data, and
-case packs should describe the current transit product rather than stale repo
-history or unrelated infrastructure domains.
+- MBTA is the primary live lane.
+- LA Metro rail and bus collection exist, but public alert quality is weaker
+  than MBTA.
+- There is no Caltrans adapter in the repo today.
+- Auth/RBAC exists but is optional by default. Require auth before exposing ops
+  endpoints beyond a trusted deployment.
+- Public feeds can prove service instability and rider-facing status; they do
+  not expose internal dispatch constraints.
