@@ -21,6 +21,13 @@ except ImportError:  # pragma: no cover
     BusyLoadingError = Exception
 
 from scripts.shared.runtime import isoformat_ms, scope_matches
+from scripts.transit.severity import (
+    SEVERITY_COLOR,
+    SEVERITY_LABELS,
+    build_route_status,
+    classify_network_severity,
+    severity_rank,
+)
 from scripts.transit.transit_types import (
     TransitCorridorSnapshot,
     TransitFeedStatus,
@@ -31,6 +38,7 @@ from scripts.transit.transit_types import (
 )
 
 SNAPSHOT_PARTS = ("health", "entities", "regimes", "incidents", "feed_status", "errors")
+LIVE_READ_MODEL_PARTS = ("scorecard", "trends", "dashboard", "status:network")
 
 
 class TransitStore:
@@ -402,6 +410,110 @@ class TransitStore:
 
     def read_status(self, key: str) -> Dict[str, Any]:
         return self.read_json_key(key, default={})
+
+    def write_live_read_models(
+        self,
+        *,
+        scorecard_limit: int = 60,
+        trends_limit: int = 6,
+        trends_window: int = 24,
+        include_scorecard: bool = True,
+        include_trends: bool = True,
+        include_dashboard: bool = True,
+        include_status_network: bool = True,
+    ) -> Dict[str, Any]:
+        """Materialize live read models used by low-latency API paths."""
+        scorecard_limit = max(1, int(scorecard_limit or 1))
+        trends_limit = max(1, int(trends_limit or 1))
+        trends_window = max(1, int(trends_window or 1))
+        generated_at = isoformat_ms()
+        payloads: Dict[str, Dict[str, Any]] = {}
+
+        if include_scorecard:
+            payloads["scorecard"] = self._with_read_model_metadata(
+                self.scorecard(scope="live", limit=scorecard_limit),
+                kind="scorecard",
+                generated_at=generated_at,
+                limit=scorecard_limit,
+            )
+
+        if include_trends or include_dashboard:
+            trends_payload = self._with_read_model_metadata(
+                self.trends(scope="live", limit=trends_limit, window=trends_window),
+                kind="trends",
+                generated_at=generated_at,
+                limit=trends_limit,
+                window=trends_window,
+            )
+            if include_trends:
+                payloads["trends"] = trends_payload
+        else:
+            trends_payload = {}
+
+        health_payload: Dict[str, Any] = {}
+        entities_payload: Dict[str, Any] = {}
+        regimes_payload: Dict[str, Any] = {}
+        incidents_payload: Dict[str, Any] = {}
+        if include_dashboard or include_status_network:
+            health_payload = self.health(scope="live")
+            entities_payload = self.entities(scope="live")
+            regimes_payload = self.regimes(scope="live")
+            incidents_payload = self.incidents(scope="live")
+
+        if include_dashboard:
+            if not trends_payload:
+                trends_payload = self.read_live_read_model("trends")
+            payloads["dashboard"] = self._with_read_model_metadata(
+                {
+                    "generated_at": generated_at,
+                    "scope": "live",
+                    "trace_id": health_payload.get("trace_id"),
+                    "health": health_payload,
+                    "entities": _dashboard_entities_read_model(entities_payload),
+                    "regimes": regimes_payload,
+                    "incidents": incidents_payload,
+                    "trends": trends_payload
+                    if trends_payload
+                    else self.trends(
+                        scope="live", limit=trends_limit, window=trends_window
+                    ),
+                },
+                kind="dashboard",
+                generated_at=generated_at,
+                trends_limit=trends_limit,
+                trends_window=trends_window,
+            )
+
+        if include_status_network:
+            payloads["status:network"] = self._with_read_model_metadata(
+                _public_status_network_read_model(
+                    health_payload,
+                    entities_payload,
+                    regimes_payload,
+                    incidents_payload,
+                    generated_at=generated_at,
+                ),
+                kind="status:network",
+                generated_at=generated_at,
+            )
+
+        def _write_pipeline():
+            pipe = self.client.pipeline()
+            for kind, payload in payloads.items():
+                pipe.set(self.live_read_model_key(kind), self._dumps(payload))
+            pipe.execute()
+
+        if payloads:
+            self._execute_with_retry(_write_pipeline)
+            self._clear_json_cache(
+                *[self.live_read_model_key(kind) for kind in payloads]
+            )
+        return payloads
+
+    def read_live_read_model(self, kind: str) -> Dict[str, Any]:
+        if kind not in LIVE_READ_MODEL_PARTS:
+            return {}
+        return self.read_json_key(self.live_read_model_key(kind), default={})
 
     def health(
         self, *, scope: str = "all", trace_id: str | None = None
@@ -1317,6 +1429,12 @@ class TransitStore:
         return "transit:configured_feeds:last"
 
     @staticmethod
+    def live_read_model_key(kind: str) -> str:
+        if kind == "status:network":
+            return "transit:status:network:last"
+        return f"transit:{kind}:live:last"
+
+    @staticmethod
     def trace_vehicle_entities_key(trace_id: str) -> str:
         return f"transit:trace:{trace_id}:vehicles"
 
@@ -1506,6 +1624,24 @@ class TransitStore:
             if isinstance(row, dict)
         ]
         return normalized
+
+    @staticmethod
+    def _with_read_model_metadata(
+        payload: Dict[str, Any],
+        *,
+        kind: str,
+        generated_at: str,
+        **metadata: Any,
+    ) -> Dict[str, Any]:
+        return {
+            **copy.deepcopy(payload),
+            "read_model": {
+                "kind": kind,
+                "scope": "live",
+                "generated_at": generated_at,
+                **metadata,
+            },
+        }
 
     @staticmethod
     def _corridor_sort_key(row: Dict[str, Any]) -> tuple[int, float, int, int, str]:
@@ -1727,6 +1863,195 @@ class TransitStore:
             return json.loads(raw)
         except (TypeError, json.JSONDecodeError):
             return {}
+
+
+def _dashboard_entities_read_model(entities: Dict[str, Any]) -> Dict[str, Any]:
+    """Return the compact entity shape consumed by the operations dashboard."""
+    return {
+        "generated_at": entities.get("generated_at"),
+        "agency_key": entities.get("agency_key"),
+        "lines": [
+            _dashboard_corridor_read_model(row)
+            for row in (entities.get("lines") or [])
+            if isinstance(row, dict)
+        ],
+        "active_lines": [
+            _dashboard_corridor_read_model(row)
+            for row in (entities.get("active_lines") or [])
+            if isinstance(row, dict)
+        ],
+        "scheduled_later_lines": [
+            _dashboard_corridor_read_model(row)
+            for row in (entities.get("scheduled_later_lines") or [])
+            if isinstance(row, dict)
+        ],
+        "inactive_lines": [
+            _dashboard_corridor_read_model(row)
+            for row in (entities.get("inactive_lines") or [])
+            if isinstance(row, dict)
+        ],
+        "vehicles": [
+            _dashboard_vehicle_read_model(row)
+            for row in (entities.get("vehicles") or [])
+            if isinstance(row, dict)
+        ],
+    }
+
+
+def _dashboard_corridor_read_model(row: Dict[str, Any]) -> Dict[str, Any]:
+    keys = (
+        "entity_id",
+        "agency_key",
+        "corridor_id",
+        "route_id",
+        "direction_id",
+        "label",
+        "vehicle_count",
+        "median_delay_seconds",
+        "scheduled_headway_seconds",
+        "compressed_headway_share",
+        "avg_delay_seconds",
+        "top_action",
+        "top_action_label",
+        "avg_hazard",
+        "active_alert_count",
+        "current_regime",
+        "current_regime_label",
+        "priority_score",
+        "priority_label",
+        "activity_status",
+        "activity_status_label",
+        "activity_reason",
+        "activity_reason_label",
+        "route_mode",
+        "source",
+        "collection_source",
+        "trace_id",
+        "timestamp_ms",
+    )
+    return {key: row.get(key) for key in keys if key in row}
+
+
+def _dashboard_vehicle_read_model(row: Dict[str, Any]) -> Dict[str, Any]:
+    keys = (
+        "entity_id",
+        "label",
+        "vehicle_id",
+        "corridor_entity_id",
+        "agency_key",
+        "corridor_id",
+        "route_id",
+        "route_label",
+        "trip_id",
+        "direction_id",
+        "stop_id",
+        "status",
+        "delay_seconds",
+        "occupancy_status",
+        "source",
+        "collection_source",
+    )
+    payload = {key: row.get(key) for key in keys if key in row}
+    regime = row.get("regime")
+    if isinstance(regime, dict):
+        payload["regime"] = {
+            key: regime.get(key)
+            for key in (
+                "entity_id",
+                "label",
+                "route_id",
+                "regime",
+                "regime_label",
+                "hazard",
+                "action",
+                "action_label",
+                "confidence",
+                "priority_score",
+                "priority_label",
+                "timestamp_ms",
+            )
+            if key in regime
+        }
+    return payload
+
+
+def _public_status_network_read_model(
+    health: Dict[str, Any],
+    entities: Dict[str, Any],
+    regimes_payload: Dict[str, Any],
+    incidents_payload: Dict[str, Any],
+    *,
+    generated_at: str,
+) -> Dict[str, Any]:
+    routes = _public_route_status_rows(entities, regimes_payload, incidents_payload)
+    route_severities = [str(row.get("severity") or "good") for row in routes]
+    network_severity = classify_network_severity(route_severities)
+    active_count = int(health.get("active_line_count") or health.get("line_count") or 0)
+    incident_count = int(health.get("incident_count") or 0)
+    critical_count = int(health.get("critical_incidents") or 0)
+    disrupted_routes = [
+        {
+            "entity_id": row.get("entity_id"),
+            "label": row.get("label"),
+            "severity": row.get("severity"),
+        }
+        for row in routes
+        if row.get("severity") in ("delay", "disruption", "severe")
+    ]
+    return {
+        "generated_at": generated_at,
+        "scope": "live",
+        "severity": network_severity,
+        "severity_label": SEVERITY_LABELS.get(network_severity, network_severity),
+        "severity_color": SEVERITY_COLOR.get(network_severity, "gray"),
+        "active_route_count": active_count,
+        "incident_count": incident_count,
+        "critical_incident_count": critical_count,
+        "disrupted_route_count": len(disrupted_routes),
+        "disrupted_routes": disrupted_routes,
+        "feed_status": health.get("feed_status"),
+    }
+
+
+def _public_route_status_rows(
+    entities: Dict[str, Any],
+    regimes_payload: Dict[str, Any],
+    incidents_payload: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    regime_by_entity: Dict[str, Any] = {
+        str(row.get("entity_id") or ""): row
+        for row in (regimes_payload.get("regimes") or [])
+        if isinstance(row, dict) and row.get("entity_id")
+    }
+    incidents_by_entity: Dict[str, list] = {}
+    for incident in incidents_payload.get("incidents") or []:
+        if not isinstance(incident, dict):
+            continue
+        entity_id = str(incident.get("entity_id") or "")
+        incidents_by_entity.setdefault(entity_id, []).append(incident)
+
+    seen: set[str] = set()
+    rows: List[Dict[str, Any]] = []
+    for line in (entities.get("active_lines") or []) + (
+        entities.get("scheduled_later_lines") or []
+    ):
+        if not isinstance(line, dict):
+            continue
+        entity_id = str(line.get("entity_id") or "")
+        if not entity_id or entity_id in seen:
+            continue
+        seen.add(entity_id)
+        rows.append(
+            build_route_status(line, regime_by_entity, incidents_by_entity).to_json()
+        )
+
+    rows.sort(
+        key=lambda row: (
+            -severity_rank(str(row.get("severity") or "good")),
+            str(row.get("label") or ""),
+        )
+    )
+    return rows
 
 
 def _float_env(name: str, default: float) -> float:

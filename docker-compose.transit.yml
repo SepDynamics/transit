@@ -41,6 +41,10 @@ services:
       TRANSIT_HISTORY_RETENTION: "720"
       TRANSIT_HISTORY_INTERVAL_SECONDS: "30"
       TRANSIT_SNAPSHOT_CACHE_TTL_SECONDS: "10"
+      TRANSIT_READ_MODELS_ENABLED: "1"
+      TRANSIT_READ_MODEL_SCORECARD_LIMIT: "60"
+      TRANSIT_READ_MODEL_TRENDS_LIMIT: "6"
+      TRANSIT_READ_MODEL_TRENDS_WINDOW: "24"
     volumes:
       - ./scripts:/app/scripts:ro
       - ./src:/app/src:ro
@@ -66,6 +70,8 @@ services:
       TRANSIT_STORE_READ_CACHE_TTL_SECONDS: "5"
       TRANSIT_API_CACHE_MAX_ENTRIES: "24"
       TRANSIT_API_MAX_CONCURRENT_REQUESTS: "8"
+      TRANSIT_API_REQUIRE_AUTH: "${TRANSIT_API_REQUIRE_AUTH:-0}"
+      TRANSIT_API_TOKENS: "${TRANSIT_API_TOKENS:-}"
       PYTHONPATH: /app
     volumes:
       - ./scripts:/app/scripts:ro
@@ -93,6 +99,8 @@ services:
       TRANSIT_STORE_READ_CACHE_TTL_SECONDS: "5"
       TRANSIT_API_CACHE_MAX_ENTRIES: "24"
       TRANSIT_API_MAX_CONCURRENT_REQUESTS: "8"
+      TRANSIT_API_REQUIRE_AUTH: "${TRANSIT_API_REQUIRE_AUTH:-0}"
+      TRANSIT_API_TOKENS: "${TRANSIT_API_TOKENS:-}"
       PYTHONPATH: /app
     volumes:
       - ./scripts:/app/scripts:ro
@@ -113,6 +121,7 @@ services:
     mem_limit: 192m
     environment:
       API_URL: ""
+      API_BEARER_TOKEN: "${TRANSIT_FRONTEND_API_BEARER_TOKEN:-}"
       SERVER_NAME: "_"
       BACKEND_UPSTREAM: "http://api:8000"
     depends_on:
@@ -128,6 +137,7 @@ services:
     mem_limit: 192m
     environment:
       API_URL: ""
+      API_BEARER_TOKEN: "${TRANSIT_FRONTEND_API_BEARER_TOKEN:-}"
       SERVER_NAME: "_"
       BACKEND_UPSTREAM: "http://api-demo:8000"
     depends_on:

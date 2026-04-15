@@ -267,6 +267,95 @@ class _FakeTransitService:
         }
 
 
+class _ReadModelStore:
+    def __init__(self):
+        self.scorecard_calls = 0
+        self.trends_calls = 0
+        self.dashboard_calls = 0
+
+    def read_live_read_model(self, kind):
+        if kind == "scorecard":
+            return {
+                "generated_at": "2024-01-01T00:00:00.000Z",
+                "scope": "live",
+                "window_snapshots": 60,
+                "network": {"on_time_pct": 99.0},
+                "corridors": [],
+                "read_model": {
+                    "kind": "scorecard",
+                    "scope": "live",
+                    "generated_at": "2024-01-01T00:00:00.000Z",
+                    "limit": 60,
+                },
+            }
+        if kind == "trends":
+            return {
+                "generated_at": "2024-01-01T00:00:00.000Z",
+                "scope": "live",
+                "summary": {"corridor_count": 0},
+                "corridors": [],
+                "read_model": {
+                    "kind": "trends",
+                    "scope": "live",
+                    "generated_at": "2024-01-01T00:00:00.000Z",
+                    "limit": 6,
+                    "window": 24,
+                },
+            }
+        if kind == "dashboard":
+            return {
+                "generated_at": "2024-01-01T00:00:00.000Z",
+                "scope": "live",
+                "health": {"status": "ok"},
+                "entities": {"vehicles": []},
+                "regimes": {"regimes": []},
+                "incidents": {"incidents": []},
+                "trends": {"summary": {"corridor_count": 0}, "corridors": []},
+                "read_model": {
+                    "kind": "dashboard",
+                    "scope": "live",
+                    "generated_at": "2024-01-01T00:00:00.000Z",
+                },
+            }
+        if kind == "status:network":
+            return {
+                "generated_at": "2024-01-01T00:00:00.000Z",
+                "scope": "live",
+                "severity": "good",
+                "severity_label": "Good Service",
+                "severity_color": "green",
+                "active_route_count": 1,
+                "incident_count": 0,
+                "critical_incident_count": 0,
+                "disrupted_route_count": 0,
+                "disrupted_routes": [],
+                "read_model": {
+                    "kind": "status:network",
+                    "scope": "live",
+                    "generated_at": "2024-01-01T00:00:00.000Z",
+                },
+            }
+        return {}
+
+    def scorecard(self, **_kwargs):
+        self.scorecard_calls += 1
+        return {
+            "generated_at": "fallback",
+            "scope": "live",
+            "window_snapshots": 10,
+            "network": {"on_time_pct": 50.0},
+            "corridors": [],
+        }
+
+    def trends(self, **_kwargs):
+        self.trends_calls += 1
+        return {"generated_at": "fallback", "summary": {}, "corridors": []}
+
+    def health(self, **_kwargs):
+        self.dashboard_calls += 1
+        return {"status": "fallback"}
+
+
 def test_transit_api_health_endpoint_serves_json():
     server = start_transit_http_server(_FakeTransitService(), host="127.0.0.1", port=0)
     try:
@@ -539,3 +628,32 @@ def test_public_status_scorecard_endpoint_serves_json():
     # Internal vocab (regime/action counts) should not be on the public scorecard
     assert "top_regime" not in payload["corridors"][0]
     assert "regime_counts" not in payload["corridors"][0]
+
+
+def test_transit_api_service_uses_live_read_models_for_default_frontend_paths():
+    store = _ReadModelStore()
+    service = TransitAPIService("redis://unused", store=store)
+
+    scorecard = service.transit_scorecard(scope="live", limit=60)
+    trends = service.transit_trends(scope="live")
+    dashboard = service.transit_dashboard(scope="live")
+    network = service.public_status_network(scope="live")
+
+    assert scorecard["read_model"]["kind"] == "scorecard"
+    assert scorecard["network"]["on_time_pct"] == 99.0
+    assert trends["read_model"]["kind"] == "trends"
+    assert dashboard["read_model"]["kind"] == "dashboard"
+    assert network["read_model"]["kind"] == "status:network"
+    assert store.scorecard_calls == 0
+    assert store.trends_calls == 0
+    assert store.dashboard_calls == 0
+
+
+def test_transit_api_service_skips_scorecard_read_model_when_limit_differs():
+    store = _ReadModelStore()
+    service = TransitAPIService("redis://unused", store=store)
+
+    payload = service.transit_scorecard(scope="live", limit=10)
+
+    assert payload["generated_at"] == "fallback"
+    assert store.scorecard_calls == 1

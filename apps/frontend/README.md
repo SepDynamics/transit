@@ -6,7 +6,7 @@ React and Vite frontend for the Transit Sentinel API.
 
 - public status page backed by `/api/status/*`
 - operations console backed by `/api/transit/dashboard`
-- map view backed by `/api/transit/map`
+- lazy-loaded map view backed by `/api/transit/map`
 - corridor and vehicle drilldowns backed by `/api/transit/history`
 - scorecards backed by `/api/transit/scorecard`
 
@@ -50,5 +50,8 @@ requests to the backend service. `npm run dev` is not a hosted runtime.
 The app reads runtime config from `public/transit-sentinel-config.js` and
 defaults to same-origin API requests unless `API_URL` or `VITE_API_HOST` is
 set.
+
+Set `API_BEARER_TOKEN` in the frontend container runtime config when the ops
+API requires bearer auth. Public `/api/status/*` requests do not need a token.
 
 The bundled API schema lives at `public/static/transit.openapi.yaml`.

@@ -93,6 +93,32 @@ class TransitAPIService:
                     self._cache.popitem(last=False)
         return payload
 
+    def _live_read_model(
+        self,
+        kind: str,
+        *,
+        scope: str,
+        trace_id: str | None,
+        expected: Dict[str, Any] | None = None,
+    ) -> Dict[str, Any]:
+        if scope != "live" or trace_id not in (None, ""):
+            return {}
+        reader = getattr(self.store, "read_live_read_model", None)
+        if not callable(reader):
+            return {}
+        payload = reader(kind)
+        if not isinstance(payload, dict) or not payload:
+            return {}
+        metadata = payload.get("read_model")
+        if not isinstance(metadata, dict):
+            return {}
+        if metadata.get("kind") != kind or metadata.get("scope") != "live":
+            return {}
+        for key, expected_value in (expected or {}).items():
+            if str(metadata.get(key)) != str(expected_value):
+                return {}
+        return payload
+
     def service_health(self) -> Dict[str, Any]:
         return self._cached_payload(("service_health",), self._service_health_uncached)
 
@@ -197,6 +223,14 @@ class TransitAPIService:
     def transit_trends(
         self, *, scope: str = "all", trace_id: str | None = None
     ) -> Dict[str, Any]:
+        read_model = self._live_read_model(
+            "trends",
+            scope=scope,
+            trace_id=trace_id,
+            expected={"limit": 6, "window": 24},
+        )
+        if read_model:
+            return read_model
         return self._cached_payload(
             ("trends", scope, trace_id),
             lambda: self.store.trends(scope=scope, trace_id=trace_id),
@@ -226,6 +260,14 @@ class TransitAPIService:
     ) -> Dict[str, Any]:
         """Rolling KPI scorecard for the operations dashboard and contract reporting."""
         limit = max(1, min(int(limit), max(1, self._scorecard_max_limit)))
+        read_model = self._live_read_model(
+            "scorecard",
+            scope=scope,
+            trace_id=trace_id,
+            expected={"limit": limit},
+        )
+        if read_model:
+            return read_model
         if limit <= max(0, self._scorecard_cache_max_limit):
             return self._cached_payload(
                 ("scorecard", scope, trace_id, int(limit)),
@@ -240,6 +282,9 @@ class TransitAPIService:
         self, *, scope: str = "all", trace_id: str | None = None
     ) -> Dict[str, Any]:
         """One-shot operations dashboard payload for the browser console."""
+        read_model = self._live_read_model("dashboard", scope=scope, trace_id=trace_id)
+        if read_model:
+            return read_model
 
         def _build() -> Dict[str, Any]:
             health = self.store.health(scope=scope, trace_id=trace_id)
@@ -328,6 +373,11 @@ class TransitAPIService:
     def public_status_network(
         self, *, scope: str = "live", trace_id: str | None = None
     ) -> Dict[str, Any]:
+        read_model = self._live_read_model(
+            "status:network", scope=scope, trace_id=trace_id
+        )
+        if read_model:
+            return read_model
         return self._cached_payload(
             ("public_status_network", scope, trace_id),
             lambda: self._public_status_network_uncached(scope=scope, trace_id=trace_id),

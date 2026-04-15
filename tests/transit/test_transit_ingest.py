@@ -43,6 +43,8 @@ def test_transit_ingest_service_persists_current_snapshot_to_store(tmp_path, val
     history = store.history("vehicle:1811")
     trends = store.trends(limit=5, window=12)
     status = store.read_status("ops:transit_ingest_status")
+    read_model_scorecard = store.read_live_read_model("scorecard")
+    read_model_dashboard = store.read_live_read_model("dashboard")
 
     assert payload["health"]["line_count"] == 1
     assert health["line_count"] == 1
@@ -52,6 +54,10 @@ def test_transit_ingest_service_persists_current_snapshot_to_store(tmp_path, val
     assert trends["corridors"][0]["entity_id"] == "route:Red:0"
     assert status["status"] == "ok"
     assert status["archive_manifest"]["snapshot_path"] == "archive/2026/04/04/010000Z"
+    assert status["read_models"]["status"] == "ok"
+    assert "scorecard" in status["read_models"]["updated"]
+    assert read_model_scorecard["read_model"]["limit"] == 60
+    assert read_model_dashboard["health"]["line_count"] == 1
 
 
 def _build_static_feed() -> bytes:

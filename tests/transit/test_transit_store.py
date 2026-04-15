@@ -139,6 +139,34 @@ def test_transit_store_scorecard_aggregates_network_kpis(valkey_url):
     assert scorecard["corridors"][0]["top_action"] == "hold"
 
 
+def test_transit_store_materializes_live_read_models(valkey_url):
+    store = TransitStore(valkey_url)
+
+    store.write_snapshot(_snapshot(timestamp_ms=1_710_000_100_000, delay_seconds=90, hazard=0.42))
+    store.write_snapshot(_snapshot(timestamp_ms=1_710_000_160_000, delay_seconds=240, hazard=0.81))
+
+    read_models = store.write_live_read_models(
+        scorecard_limit=10,
+        trends_limit=5,
+        trends_window=10,
+    )
+
+    assert sorted(read_models) == ["dashboard", "scorecard", "status:network", "trends"]
+    scorecard = store.read_live_read_model("scorecard")
+    trends = store.read_live_read_model("trends")
+    dashboard = store.read_live_read_model("dashboard")
+    network = store.read_live_read_model("status:network")
+
+    assert scorecard["read_model"]["limit"] == 10
+    assert scorecard["network"]["avg_hazard"] == 0.615
+    assert trends["read_model"]["window"] == 10
+    assert trends["corridors"][0]["entity_id"] == "route:Red:0"
+    assert dashboard["read_model"]["kind"] == "dashboard"
+    assert dashboard["entities"]["vehicles"][0]["entity_id"] == "vehicle:1811"
+    assert network["read_model"]["kind"] == "status:network"
+    assert network["severity"] in {"delay", "disruption", "severe"}
+
+
 def test_transit_store_sorts_active_lines_and_incidents_by_priority(valkey_url):
     store = TransitStore(valkey_url)
 

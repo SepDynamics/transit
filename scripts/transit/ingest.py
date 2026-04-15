@@ -31,6 +31,10 @@ class TransitIngestConfig:
     history_retention: int
     runtime: TransitRuntimeConfig
     history_interval_seconds: float = 30.0
+    materialize_read_models: bool = True
+    read_model_scorecard_limit: int = 60
+    read_model_trends_limit: int = 6
+    read_model_trends_window: int = 24
 
 
 class TransitIngestService:
@@ -70,6 +74,28 @@ class TransitIngestService:
         )
         if write_history:
             self._last_history_write_at = time.monotonic()
+        read_model_status: Dict[str, Any] = {"enabled": self.cfg.materialize_read_models}
+        if self.cfg.materialize_read_models:
+            try:
+                should_refresh_rollups = (
+                    write_history
+                    or not self.store.read_live_read_model("trends")
+                    or not self.store.read_live_read_model("scorecard")
+                )
+                read_models = self.store.write_live_read_models(
+                    scorecard_limit=self.cfg.read_model_scorecard_limit,
+                    trends_limit=self.cfg.read_model_trends_limit,
+                    trends_window=self.cfg.read_model_trends_window,
+                    include_scorecard=should_refresh_rollups,
+                    include_trends=should_refresh_rollups,
+                    include_dashboard=True,
+                )
+                read_model_status["updated"] = sorted(read_models.keys())
+            except Exception:
+                logger.exception("failed to materialize live read models")
+                read_model_status["status"] = "error"
+            else:
+                read_model_status["status"] = "ok"
         status = {
             "system_name": self.cfg.runtime.system_name,
             "agency_key": self.cfg.runtime.agency_key,
@@ -77,6 +103,7 @@ class TransitIngestService:
             "updated_at": isoformat_ms(),
             "feed_status": payload.get("feed_status") or {},
             "errors": list(payload.get("errors") or []),
+            "read_models": read_model_status,
         }
         manifest = _load_current_manifest(self.cfg.runtime.static_feed)
         if manifest:
@@ -110,6 +137,27 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--interval", type=float, default=float(os.getenv("TRANSIT_INGEST_INTERVAL_SECONDS", "5")))
     parser.add_argument("--history-retention", type=int, default=int(os.getenv("TRANSIT_HISTORY_RETENTION", "720")))
     parser.add_argument("--history-interval", type=float, default=float(os.getenv("TRANSIT_HISTORY_INTERVAL_SECONDS", "30")))
+    parser.add_argument(
+        "--read-models",
+        action=argparse.BooleanOptionalAction,
+        default=_bool_env("TRANSIT_READ_MODELS_ENABLED", True),
+        help="materialize live scorecard/trends/dashboard read models",
+    )
+    parser.add_argument(
+        "--read-model-scorecard-limit",
+        type=int,
+        default=int(os.getenv("TRANSIT_READ_MODEL_SCORECARD_LIMIT", "60")),
+    )
+    parser.add_argument(
+        "--read-model-trends-limit",
+        type=int,
+        default=int(os.getenv("TRANSIT_READ_MODEL_TRENDS_LIMIT", "6")),
+    )
+    parser.add_argument(
+        "--read-model-trends-window",
+        type=int,
+        default=int(os.getenv("TRANSIT_READ_MODEL_TRENDS_WINDOW", "24")),
+    )
     parser.add_argument("--agency", default=os.getenv("TRANSIT_AGENCY", adapter.key))
     parser.add_argument("--system-name", default=os.getenv("TRANSIT_SYSTEM_NAME", adapter.system_name))
     parser.add_argument("--static-feed", default=os.getenv("TRANSIT_GTFS_STATIC_PATH", default_feed_paths["static_gtfs"]))
@@ -141,6 +189,10 @@ def main() -> int:
         interval_seconds=max(1.0, float(args.interval)),
         history_retention=max(12, int(args.history_retention)),
         history_interval_seconds=max(0.0, float(args.history_interval)),
+        materialize_read_models=bool(args.read_models),
+        read_model_scorecard_limit=max(1, int(args.read_model_scorecard_limit)),
+        read_model_trends_limit=max(1, int(args.read_model_trends_limit)),
+        read_model_trends_window=max(1, int(args.read_model_trends_window)),
         runtime=TransitRuntimeConfig(
             system_name=str(args.system_name or adapter.system_name),
             agency_key=adapter.key,
@@ -172,6 +224,13 @@ def main() -> int:
 def _optional_path(value: str | None) -> Optional[str]:
     value = str(value or "").strip()
     return value or None
+
+
+def _bool_env(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None or str(raw).strip() == "":
+        return default
+    return str(raw).strip().lower() not in {"0", "false", "no", "off"}
 
 
 def _load_current_manifest(static_feed: Optional[str]) -> Dict[str, Any]:

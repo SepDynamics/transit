@@ -34,6 +34,8 @@ The public host uses conservative ingest settings:
 - `TRANSIT_HISTORY_RETENTION=120`
 - `TRANSIT_HISTORY_INTERVAL_SECONDS=60`
 - `TRANSIT_SNAPSHOT_CACHE_TTL_SECONDS=120`
+- `TRANSIT_READ_MODELS_ENABLED=1`
+- `TRANSIT_READ_MODEL_SCORECARD_LIMIT=60`
 
 That keeps a useful live scorecard window without allowing rolling history to
 consume the host.
@@ -47,6 +49,11 @@ consume the host.
 - rolling vehicle and corridor history
 - replay trace metadata when replay is enabled
 - scorecard and trend source data
+- materialized live read models:
+  - `transit:scorecard:live:last`
+  - `transit:trends:live:last`
+  - `transit:dashboard:live:last`
+  - `transit:status:network:last`
 
 The live compose override runs Valkey with AOF disabled and RDB snapshots:
 
@@ -101,8 +108,11 @@ that need exact classifier output.
 - `/api/transit/map`
 - `/api/transit/scorecard`
 
-The API reads from Valkey rather than raw archive files. On the live host,
-expensive scorecard reads are capped and cached:
+The API reads from Valkey rather than raw archive files. For normal live
+frontend paths, it serves the materialized read models first and only falls
+back to cold rollups when a request asks for a different scope, trace, or
+scorecard window. On the live host, expensive scorecard reads are capped and
+cached:
 
 - `TRANSIT_API_CACHE_TTL_SECONDS=15`
 - `TRANSIT_API_CACHE_MAX_ENTRIES=6`
@@ -127,9 +137,11 @@ container. It provides:
 - vehicle and corridor drilldowns
 - trend and scorecard panels
 
-The console now uses a consolidated dashboard endpoint for the main polling
-path. Slower scorecard, map, source, and history polls are kept separate so the
-main dashboard can stay responsive without overloading the API.
+The console uses a consolidated dashboard endpoint for the main polling path.
+Slower scorecard, map, source, and history polls are kept separate so the main
+dashboard can stay responsive without overloading the API. The MapLibre bundle
+is lazy-loaded from the map panel instead of being pulled into the first app
+chunk.
 
 ### Replay And Calibration
 

@@ -27,6 +27,8 @@ The live override intentionally reduces pressure on the host:
 - Valkey AOF disabled; RDB snapshot every 300 seconds after a write.
 - API generic cache capped at six entries.
 - API scorecard reads capped to 60 samples and cached for 60 seconds.
+- Ingest materializes live read models for the 60-sample scorecard, trends,
+  dashboard, and public network status keys.
 - API concurrency capped at four active requests with an eight-request queue.
 - Ingest runs every 20 seconds.
 - History writes run every 60 seconds.
@@ -58,6 +60,7 @@ chown -R 999:999 data/feeds logs/transit
 ## Verify Public Health
 
 ```bash
+make transit-live-health
 curl -fsSI https://sepdynamics.co
 curl -fsS https://sepdynamics.co/api/status/network
 curl -fsS https://sepdynamics.co/api/status/routes
@@ -65,6 +68,7 @@ curl -fsS https://sepdynamics.co/api/status/routes
 
 Expected:
 
+- `make transit-live-health` reports no failed checks
 - site returns `200`
 - status endpoints return JSON
 - `active_route_count` and route rows are non-zero during service hours
@@ -91,6 +95,31 @@ History key size check:
 ```bash
 docker exec transit-sentinel-valkey redis-cli --bigkeys -i 0.01
 ```
+
+Read-model check:
+
+```bash
+docker exec transit-sentinel-valkey redis-cli MGET \
+  transit:scorecard:live:last \
+  transit:trends:live:last \
+  transit:dashboard:live:last \
+  transit:status:network:last
+```
+
+## Ops Auth
+
+`/api/status/*` stays public. `/api/transit/*` is the operations surface and
+should require bearer auth before the console is shared outside trusted users.
+Set both values in the host shell or deployment environment before rebuilding:
+
+```bash
+export TRANSIT_API_REQUIRE_AUTH=1
+export TRANSIT_API_TOKENS='readonly-token:viewer,operator-token:operator,admin-token:admin'
+export TRANSIT_FRONTEND_API_BEARER_TOKEN='readonly-token'
+```
+
+The frontend container injects `TRANSIT_FRONTEND_API_BEARER_TOKEN` into the
+runtime config as `API_BEARER_TOKEN`. Do not commit real tokens.
 
 ## Caddy
 
@@ -126,23 +155,11 @@ If Valkey history has grown too large, prune rolling histories to the live
 retention target:
 
 ```bash
-docker exec -i transit-sentinel-api python3 - <<'PY'
-import os
-import redis
-
-retention = 120
-r = redis.from_url(os.getenv("VALKEY_URL", "redis://valkey:6379/0"), decode_responses=True)
-pipe = r.pipeline()
-keys = []
-for key in r.scan_iter(match="transit:*:history:*", count=500):
-    keys.append(key)
-    pipe.zremrangebyrank(key, 0, -retention - 1)
-    if len(keys) % 250 == 0:
-        pipe.execute()
-pipe.execute()
-print({"history_keys": len(keys), "retention": retention})
-PY
+docker exec transit-sentinel-api python3 /app/scripts/transit/prune_history.py --retention 120
 ```
+
+For a weekly guardrail, schedule the same command through cron or a systemd
+timer. Run it once with `--dry-run` first after any retention change.
 
 If the host OOMs again, check the previous boot before restarting blindly:
 

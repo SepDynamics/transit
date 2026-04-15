@@ -19,6 +19,8 @@ case-pack calibration, notification dispatch, and benchmark artifact generation.
   `/health`.
 - Frontend: `apps/frontend/` serves the public status page and operations
   console through nginx in Docker.
+- Live operations: `scripts/transit/live_health.py` reports host/container/API
+  health, and `scripts/transit/prune_history.py` trims rolling Valkey history.
 - Proof and calibration: `data/case-packs/`, `scripts/transit/replay.py`,
   `scripts/transit/grade_calibration.py`, and
   `scripts/transit/benchmark_artifacts.py`.
@@ -128,6 +130,18 @@ Run notifications against a local API:
 
 ```bash
 make transit-notify ARGS="--api http://localhost:8000"
+```
+
+Check the live host:
+
+```bash
+make transit-live-health
+```
+
+Trim rolling history keys:
+
+```bash
+make transit-prune-history ARGS="--redis redis://localhost:6379/0 --retention 120"
 ```
 
 Generate benchmark artifacts:
