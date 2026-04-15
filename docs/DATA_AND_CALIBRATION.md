@@ -1,13 +1,13 @@
 # Data And Calibration
 
-Transit Sentinel should stay grounded in public data that can be collected,
-replayed, and regression-tested from this repo.
+Transit Sentinel should stay grounded in MBTA public data that can be
+collected, replayed, and regression-tested from this repo.
 
-## Supported Public-Data Lanes
+## Supported Public Data
 
 ### MBTA
 
-MBTA is the primary lane.
+MBTA is the supported live lane.
 
 Configured inputs:
 
@@ -16,26 +16,8 @@ Configured inputs:
 - trip updates: `https://cdn.mbta.com/realtime/TripUpdates_enhanced.json`
 - alerts: `https://cdn.mbta.com/realtime/Alerts_enhanced.json`
 
-MBTA is the best lane for continuous live operation, case-pack expansion,
+MBTA is the only lane for continuous live operation, case-pack expansion,
 replay imports, scorecard validation, and public status behavior.
-
-### LA Metro Rail And Bus
-
-LA Metro rail and bus lanes exist for:
-
-- static GTFS
-- websocket vehicle positions
-- websocket trip updates
-- partial canceled-service context when available
-
-These lanes are useful for archive, replay, map, and scorecard testing. Alert
-coverage is weaker than MBTA, so LA Metro should not be treated as equivalent
-for rider-alert proof until that gap is closed.
-
-### Not Currently Supported
-
-There is no Caltrans adapter in the repo today. Any new agency lane should
-start from a concrete feed interface, implemented adapter, and case-pack test.
 
 ## Archive And Replay Commands
 
@@ -45,41 +27,43 @@ Capture MBTA once:
 make transit-mbta-archive ARGS="--once"
 ```
 
-Capture LA Metro realtime lanes:
-
-```bash
-make transit-lametro-rail-archive
-make transit-lametro-bus-archive
-```
-
-Ingest the current working set:
+Ingest the current MBTA working set:
 
 ```bash
 make transit-ingest ARGS="--once --redis redis://localhost:6379/0"
 ```
 
-Import an archive window as replay:
+Import an MBTA archive window as replay:
 
 ```bash
 make transit-replay ARGS="--redis redis://localhost:6379/0 --archive-root data/feeds/mbta --trace-id mbta-proof --max-snapshots 20"
 ```
 
-Seed a deterministic fallback state:
+Seed a deterministic fallback state from MBTA case packs:
 
 ```bash
-make transit-demo-seed ARGS="--redis redis://localhost:6379/0 --clear-store"
+make transit-demo-seed ARGS="--redis redis://localhost:6379/0 --clear-store --replay-case-pack-catalog data/case-packs/mbta"
 ```
 
 ## Case Packs
 
-Committed proof packs live under `data/case-packs/`.
+Committed proof packs live under `data/case-packs/mbta/`.
 
 They should include both:
 
-- positive incidents that Sentinel should detect
-- quiet controls that should remain quiet
+- positive MBTA incidents that Sentinel should detect
+- MBTA quiet controls that should remain quiet
 
-Run the committed suite:
+Run the committed MBTA suite:
+
+```bash
+PYTHONPATH=. python3 scripts/transit/grade_calibration.py \
+  --archive-root data/case-packs/mbta \
+  --labels data/case-packs/mbta \
+  --strict
+```
+
+Run the same suite through Make:
 
 ```bash
 make check-transit-case-packs
@@ -88,7 +72,7 @@ make check-transit-case-packs
 Run a specific subtree:
 
 ```bash
-make transit-calibration-report ARGS="--archive-root data/case-packs/mbta --labels data/case-packs/mbta"
+make transit-calibration-report ARGS="--archive-root data/case-packs/mbta/daytime_red_line_delay_spike --labels data/case-packs/mbta/daytime_red_line_delay_spike/labels"
 ```
 
 ## Label Shape
@@ -141,6 +125,10 @@ A scoring change is useful when:
 - quiet control packs stay quiet
 - API and frontend behavior remain consistent between live and replay scopes
 
+Route-level zero delay should be interpreted as no measured delay burden in the
+current sample, not as proof that every route is healthy. Alerts, bunching,
+headway compression, and telemetry quality can still justify a route ranking.
+
 ## Reporting And Artifacts
 
 Generate a corridor report:
@@ -149,10 +137,10 @@ Generate a corridor report:
 make transit-history-report ARGS="--root-dir data/feeds/mbta --max-snapshots 20"
 ```
 
-Generate benchmark artifacts:
+Generate MBTA benchmark artifacts:
 
 ```bash
-make transit-benchmark-artifacts ARGS="--archive-root data/case-packs --labels data/case-packs --artifact-name cross-city-suite"
+make transit-benchmark-artifacts ARGS="--archive-root data/case-packs/mbta --labels data/case-packs/mbta --artifact-name mbta-suite"
 ```
 
 Keep generated benchmark outputs under `artifacts/benchmarks/<artifact-name>/`.

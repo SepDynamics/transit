@@ -10,5 +10,6 @@ Run the full committed MBTA suite across both packs:
 ```bash
 PYTHONPATH=. python3 scripts/transit/grade_calibration.py \
   --archive-root data/case-packs/mbta \
-  --labels data/case-packs/mbta
+  --labels data/case-packs/mbta \
+  --strict
 ```

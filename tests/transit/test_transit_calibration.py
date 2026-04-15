@@ -301,35 +301,17 @@ def test_committed_mbta_combined_case_pack_suite_passes():
     assert "mbta-red-line-midday-delay-spike" in markdown
 
 
-def test_committed_la_case_pack_suite_passes():
-    repo_root = Path(__file__).resolve().parents[2]
-    la_case_pack_root = repo_root / "data" / "case-packs" / "la"
-
-    report = build_transit_calibration_suite_report(la_case_pack_root, la_case_pack_root)
-    markdown = render_transit_calibration_suite_markdown(report)
-
-    assert report["case_pack_count"] == 3
-    assert report["label_set_count"] == 3
-    assert report["label_count"] == 4
-    assert report["city_keys"] == ["los-angeles"]
-    assert report["sentinel"]["matched_incident_count"] == 1
-    assert report["sentinel"]["action_match_count"] == 1
-    assert report["comparison"]["passing_case_pack_count"] == 3
-    assert report["comparison"]["value_case_supported"] is True
-    assert "la-daytime-b-line-bunching" in markdown
-
-
-def test_committed_cross_city_case_pack_suite_passes():
+def test_committed_case_pack_catalog_is_mbta_only_and_passes():
     repo_root = Path(__file__).resolve().parents[2]
     case_pack_root = repo_root / "data" / "case-packs"
 
     report = build_transit_calibration_suite_report(case_pack_root, case_pack_root)
 
-    assert report["case_pack_count"] == 5
-    assert report["label_set_count"] == 7
-    assert report["label_count"] == 12
-    assert report["city_keys"] == ["boston", "los-angeles"]
-    assert report["comparison"]["passing_case_pack_count"] == 5
+    assert report["case_pack_count"] == 2
+    assert report["label_set_count"] == 4
+    assert report["label_count"] == 8
+    assert report["city_keys"] == ["boston"]
+    assert report["comparison"]["passing_case_pack_count"] == 2
     assert report["comparison"]["value_case_supported"] is True
 
 

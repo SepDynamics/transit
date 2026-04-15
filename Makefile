@@ -1,4 +1,4 @@
-.PHONY: install frontend-install frontend-typecheck frontend-build build-manifold-engine test test-all test-transit check check-all check-transit check-transit-case-packs clean transit-archive transit-mbta-archive transit-lametro-rail-archive transit-lametro-bus-archive transit-ingest transit-replay transit-api transit-live-health transit-prune-history transit-history-report transit-calibration-report transit-calibration-summary transit-benchmark-artifacts transit-demo-seed transit-notify transit-proof-window
+.PHONY: install frontend-install frontend-typecheck frontend-build build-manifold-engine test test-all test-transit check check-all check-transit check-transit-case-packs clean transit-archive transit-mbta-archive transit-ingest transit-replay transit-api transit-live-health transit-prune-history transit-history-report transit-calibration-report transit-calibration-summary transit-benchmark-artifacts transit-demo-seed transit-notify transit-proof-window
 
 PYTHON ?= python3
 PIP ?= $(PYTHON) -m pip
@@ -40,19 +40,13 @@ check-all: test-all frontend-typecheck frontend-build
 check-transit: test-transit check-transit-case-packs frontend-typecheck frontend-build
 
 check-transit-case-packs:
-	@PYTHONPATH=. $(PYTHON) scripts/transit/grade_calibration.py --archive-root data/case-packs --labels data/case-packs --strict
+	@PYTHONPATH=. $(PYTHON) scripts/transit/grade_calibration.py --archive-root data/case-packs/mbta --labels data/case-packs/mbta --strict
 
 transit-archive:
 	@PYTHONPATH=. $(PYTHON) scripts/transit/archive.py $(ARGS)
 
 transit-mbta-archive:
 	@PYTHONPATH=. $(PYTHON) scripts/transit/archive.py --agency mbta $(ARGS)
-
-transit-lametro-rail-archive:
-	@PYTHONPATH=. $(PYTHON) scripts/transit/archive_ws.py --agency lametro-rail $(ARGS)
-
-transit-lametro-bus-archive:
-	@PYTHONPATH=. $(PYTHON) scripts/transit/archive_ws.py --agency lametro-bus $(ARGS)
 
 transit-ingest:
 	@PYTHONPATH=. $(PYTHON) scripts/transit/ingest.py $(ARGS)

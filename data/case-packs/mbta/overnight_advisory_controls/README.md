@@ -42,5 +42,6 @@ delay burden and little or no scheduled service pressure.
 ```bash
 PYTHONPATH=. python3 scripts/transit/grade_calibration.py \
   --archive-root data/case-packs/mbta/overnight_advisory_controls \
-  --labels data/case-packs/mbta/overnight_advisory_controls/labels
+  --labels data/case-packs/mbta/overnight_advisory_controls/labels \
+  --strict
 ```

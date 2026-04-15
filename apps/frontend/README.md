@@ -1,11 +1,11 @@
 # Transit Sentinel Frontend
 
-React and Vite frontend for the Transit Sentinel API.
+React and Vite frontend for the Boston-focused Transit Sentinel API.
 
 ## Surfaces
 
-- public status page backed by `/api/status/*`
-- operations console backed by `/api/transit/dashboard`
+- public MBTA status page backed by `/api/status/*`
+- protected operations console backed by `/api/transit/dashboard`
 - lazy-loaded map view backed by `/api/transit/map`
 - corridor and vehicle drilldowns backed by `/api/transit/history`
 - scorecards backed by `/api/transit/scorecard`
@@ -51,9 +51,9 @@ The app reads runtime config from `public/transit-sentinel-config.js` and
 defaults to same-origin API requests unless `API_URL` or `VITE_API_HOST` is
 set.
 
-Set `API_BEARER_TOKEN` in the frontend container runtime config when the ops
-API requires bearer auth. Public `/api/status/*` requests do not need a token.
-Set `OPS_CONSOLE_ENABLED=0` for public status-only deployments where the ops
-console should not be exposed.
+Set `API_BEARER_TOKEN` in the frontend container runtime config only for
+trusted deployments where the ops API requires bearer auth. Public
+`/api/status/*` requests do not need a token. The live public deployment uses
+`OPS_CONSOLE_ENABLED=0` and no browser-visible bearer token.
 
 The bundled API schema lives at `public/static/transit.openapi.yaml`.

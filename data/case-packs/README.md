@@ -1,15 +1,15 @@
 # Transit Case Packs
 
-Committed transit proof packs are organized by city and event context.
+Committed documentation covers the MBTA proof packs used for Boston-focused
+calibration.
 
 - [mbta](/sep/transit-sentinel/data/case-packs/mbta/README.md)
-- [la](/sep/transit-sentinel/data/case-packs/la/README.md)
 
-Run the full committed cross-city suite:
+Run the committed MBTA suite:
 
 ```bash
 PYTHONPATH=. python3 scripts/transit/grade_calibration.py \
-  --archive-root data/case-packs \
-  --labels data/case-packs \
+  --archive-root data/case-packs/mbta \
+  --labels data/case-packs/mbta \
   --strict
 ```

@@ -41,6 +41,10 @@ If memory pressure returns, check Valkey history size before increasing host
 size. The intended first response is pruning or tightening retention, not
 letting history grow unbounded.
 
+Route-level zero delay is rendered as no measured delay signal. A ranked route
+can still be disruption-worthy when alerts, headway compression, vehicle
+bunching, or telemetry quality are the active evidence.
+
 ## Start Or Update The Stack
 
 From the host checkout:
@@ -148,6 +152,17 @@ TRANSIT_FRONTEND_API_BEARER_TOKEN=
 Do not inject an ops bearer token into the public frontend. Browser-visible
 tokens are not an auth boundary. Use a private client, a protected reverse proxy
 route, or a future login flow for operator console access.
+
+## Frontend Runtime
+
+The live public frontend is the MBTA status page backed by `/api/status/*`.
+The operations console is present in the frontend build but hidden on the public
+host with `TRANSIT_OPS_CONSOLE_ENABLED=0`.
+
+The protected console includes the priority queue, selected-corridor evidence
+drawer, lazy-loaded map, scorecard, trends, and vehicle/corridor history. Keep
+the public host status-only unless a protected console deployment is explicitly
+added.
 
 ## Caddy
 

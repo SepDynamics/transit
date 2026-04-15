@@ -43,5 +43,6 @@ empty because the positive proof comes from the real trip-update delay burden.
 ```bash
 PYTHONPATH=. python3 scripts/transit/grade_calibration.py \
   --archive-root data/case-packs/mbta/daytime_red_line_delay_spike \
-  --labels data/case-packs/mbta/daytime_red_line_delay_spike/labels
+  --labels data/case-packs/mbta/daytime_red_line_delay_spike/labels \
+  --strict
 ```

@@ -1,44 +1,44 @@
 # Transit Sentinel
 
-Transit Sentinel is a live public-transit operations engine. It archives public
-GTFS and GTFS-RT feeds, normalizes them into rolling corridor and vehicle state,
-scores service instability, and serves the result through an API, public status
-surface, and React operations console.
+Transit Sentinel is a Boston-focused public-transit operations engine. It
+archives MBTA GTFS and GTFS Realtime feeds, normalizes them into rolling
+corridor and vehicle state, scores service instability, and serves the result
+through an API, public status page, and protected operations console.
 
-The current public deployment is the MBTA live lane behind `sepdynamics.co`.
-The repo also contains LA Metro rail and bus collection paths, replay tooling,
-case-pack calibration, notification dispatch, and benchmark artifact generation.
+The current public deployment is the MBTA live stack behind `sepdynamics.co`.
+This repository should describe and prove the Boston path only.
 
 ## Current Stack
 
-- Feed archive: `scripts/transit/archive.py` for HTTP feeds and
-  `scripts/transit/archive_ws.py` for websocket feeds.
-- Ingest and store: `scripts/transit/ingest.py` writes live state and rolling
-  history into Valkey.
-- API: `scripts/transit/api.py` serves `/api/transit/*`, `/api/status/*`, and
-  `/health`.
-- Frontend: `apps/frontend/` serves the public status page and operations
-  console through nginx in Docker.
-- Live operations: `scripts/transit/live_health.py` reports host/container/API
-  health, and `scripts/transit/prune_history.py` trims rolling Valkey history.
-- Proof and calibration: `data/case-packs/`, `scripts/transit/replay.py`,
-  `scripts/transit/grade_calibration.py`, and
+- Feed archive: `scripts/transit/archive.py` polls MBTA static GTFS, vehicle
+  positions, trip updates, and alerts.
+- Ingest and store: `scripts/transit/ingest.py` writes live state, rolling
+  history, and materialized read models into Valkey.
+- API: `scripts/transit/api.py` serves `/api/status/*`, protected
+  `/api/transit/*`, and `/health`.
+- Frontend: `apps/frontend/` serves the public MBTA status page and the
+  protected operations console through nginx in Docker.
+- Live operations: `scripts/transit/live_health.py` reports
+  host/container/API health, and `scripts/transit/prune_history.py` trims
+  rolling Valkey history.
+- Proof and calibration: MBTA case packs under `data/case-packs/mbta/`,
+  `scripts/transit/replay.py`, `scripts/transit/grade_calibration.py`, and
   `scripts/transit/benchmark_artifacts.py`.
 
 ## Documentation Map
 
-- [Architecture](/sep/transit-sentinel/docs/ARCHITECTURE.md): how archive,
+- [Architecture](/sep/transit-sentinel/docs/ARCHITECTURE.md): how MBTA archive,
   ingest, Valkey, scoring, API, and frontend fit together.
 - [Live Deployment](/sep/transit-sentinel/docs/LIVE_DEPLOYMENT.md): how the
   hosted MBTA stack is configured, verified, and recovered.
 - [Data And Calibration](/sep/transit-sentinel/docs/DATA_AND_CALIBRATION.md):
-  supported public-data lanes, case packs, replay, and grading workflow.
+  MBTA feeds, case packs, replay, and grading workflow.
 - [Roadmap](/sep/transit-sentinel/docs/ROADMAP.md): current state, boundaries,
-  and the next sensible work.
+  and the next sensible Boston-focused work.
 - [Repo Scope](/sep/transit-sentinel/docs/REPO_SCOPE.md): what belongs in this
   repository.
 - [Systemd Backend Runtime](/sep/transit-sentinel/ops/systemd/README.md):
-  optional host-supervised backend process path.
+  optional host-supervised MBTA backend process path.
 
 ## Local Development
 
@@ -100,10 +100,19 @@ Run all tests and frontend checks:
 make check-all
 ```
 
-Run committed case packs:
+Run committed MBTA case packs:
 
 ```bash
 make check-transit-case-packs
+```
+
+Run the MBTA calibration gate directly:
+
+```bash
+PYTHONPATH=. python3 scripts/transit/grade_calibration.py \
+  --archive-root data/case-packs/mbta \
+  --labels data/case-packs/mbta \
+  --strict
 ```
 
 Build frontend production assets:
@@ -120,10 +129,11 @@ Import archived MBTA snapshots as a replay trace:
 make transit-replay ARGS="--redis redis://localhost:6379/0 --archive-root data/feeds/mbta --trace-id mbta-proof --max-snapshots 20"
 ```
 
-Seed a deterministic fallback state from archive data or committed case packs:
+Seed a deterministic fallback state from archived MBTA data or committed MBTA
+case packs:
 
 ```bash
-make transit-demo-seed ARGS="--redis redis://localhost:6379/0 --clear-store"
+make transit-demo-seed ARGS="--redis redis://localhost:6379/0 --clear-store --replay-case-pack-catalog data/case-packs/mbta"
 ```
 
 Run notifications against a local API:
@@ -144,15 +154,15 @@ Trim rolling history keys:
 make transit-prune-history ARGS="--redis redis://localhost:6379/0 --retention 120"
 ```
 
-Generate benchmark artifacts:
+Generate MBTA benchmark artifacts:
 
 ```bash
-make transit-benchmark-artifacts ARGS="--archive-root data/case-packs --labels data/case-packs --artifact-name cross-city-suite"
+make transit-benchmark-artifacts ARGS="--archive-root data/case-packs/mbta --labels data/case-packs/mbta --artifact-name mbta-suite"
 ```
 
 ## Product Boundary
 
-This repo is strongest today as a public-data service-status layer, live
-operations console, and replayable proof system. It is not a dispatch
+This repo is strongest today as a Boston public-data service-status layer, live
+operations console, and replayable MBTA proof system. It is not a dispatch
 replacement: public feeds do not include internal constraints such as crew,
 signals, supervisor assignments, or internal incident response state.

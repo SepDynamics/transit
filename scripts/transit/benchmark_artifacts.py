@@ -141,8 +141,8 @@ class TransitBenchmarkArtifactService:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Generate benchmark artifacts under artifacts/benchmarks")
-    parser.add_argument("--archive-root", default="data/case-packs")
-    parser.add_argument("--labels", default="data/case-packs")
+    parser.add_argument("--archive-root", default="data/case-packs/mbta")
+    parser.add_argument("--labels", default="data/case-packs/mbta")
     parser.add_argument("--output-root", default="artifacts/benchmarks")
     parser.add_argument("--artifact-name", default="")
     parser.add_argument("--max-snapshots", type=int, default=None)
@@ -196,8 +196,10 @@ def default_artifact_name(archive_root: Path, labels_root: Path) -> str:
         candidate = str(metadata.get("case_pack_id") or case_pack_root.name).strip()
         if candidate:
             return slugify(candidate) or "transit-benchmark"
-    if labels_root.name == "case-packs":
-        return "cross-city-suite"
+    if labels_root.name == "case-packs" or (
+        labels_root.name == "mbta" and labels_root.parent.name == "case-packs"
+    ):
+        return "mbta-suite"
     return slugify(labels_root.name or archive_root.name) or "transit-benchmark"
 
 

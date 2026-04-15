@@ -307,7 +307,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--replay-archive-root", action="append", default=[])
     parser.add_argument(
         "--replay-case-pack-catalog",
-        default=os.getenv("TRANSIT_DEMO_CASE_PACK_ROOT", "data/case-packs"),
+        default=os.getenv("TRANSIT_DEMO_CASE_PACK_ROOT", "data/case-packs/mbta"),
         help="Root used to auto-discover replay case packs when --replay-case-pack-root is omitted",
     )
     parser.add_argument(
@@ -430,10 +430,6 @@ def agency_key_for_snapshot(snapshot_dir: Path, *, manifest: Optional[Dict[str, 
     agency = str(payload.get("agency") or "").strip().lower()
     if agency == "mbta":
         return "mbta"
-    if agency in {"la metro rail", "los angeles metro rail"}:
-        return "lametro-rail"
-    if agency in {"la metro bus", "los angeles metro bus"}:
-        return "lametro-bus"
     case_pack_root = case_pack_root_for_snapshot(snapshot_dir)
     if case_pack_root:
         metadata = load_case_pack_metadata(case_pack_root)
@@ -486,7 +482,7 @@ def optional_path(value: str | None) -> Optional[Path]:
 
 def discover_demo_archive_roots() -> List[Path]:
     roots: List[Path] = []
-    for agency_key in ["mbta", "lametro-rail", "lametro-bus"]:
+    for agency_key in ["mbta"]:
         adapter = get_transit_agency_adapter(agency_key)
         archive_root = adapter.archive_root_path().resolve()
         if latest_snapshot_dir_or_none(archive_root):
@@ -525,7 +521,7 @@ def archive_agency_key(archive_root: Path, manifest: Optional[Dict[str, Any]] = 
     explicit = str(payload.get("agency_key") or "").strip().lower()
     if explicit:
         return explicit
-    for agency_key in ["mbta", "lametro-rail", "lametro-bus"]:
+    for agency_key in ["mbta"]:
         adapter = get_transit_agency_adapter(agency_key)
         if Path(archive_root).resolve() == adapter.archive_root_path().resolve():
             return adapter.key

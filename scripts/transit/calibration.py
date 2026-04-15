@@ -740,8 +740,4 @@ def _manifest_agency_key(manifest: Mapping[str, Any]) -> Optional[str]:
     agency = str(manifest.get("agency") or "").strip().lower()
     if agency == "mbta":
         return "mbta"
-    if agency in {"la metro rail", "los angeles metro rail"}:
-        return "lametro-rail"
-    if agency in {"la metro bus", "los angeles metro bus"}:
-        return "lametro-bus"
     return None
