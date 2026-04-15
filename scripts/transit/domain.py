@@ -2012,8 +2012,11 @@ def _incident_summary(record: TransitRegimeRecord, metrics: Dict[str, Any]) -> s
         "stop_dwell_instability": f"{record.label} is losing time at stops.",
         "feed_incoherent": f"{record.label} has degraded telemetry.",
     }.get(record.regime, f"{record.label} requires operational review.")
+    median_delay = int(metrics.get("median_delay_seconds") or 0)
     evidence_parts = [
-        f"median delay {int(metrics['median_delay_seconds'])}s",
+        f"median delay {median_delay}s"
+        if median_delay
+        else "no measured delay burden",
         f"{int(metrics['vehicle_count'])} vehicles",
     ]
     if int(metrics.get("trip_update_count") or 0) > 0:

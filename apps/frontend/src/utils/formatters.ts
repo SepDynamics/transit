@@ -32,6 +32,14 @@ export const formatDelay = (value?: number | null): string => {
   return seconds ? `${sign}${minutes}m ${seconds}s` : `${sign}${minutes}m`;
 };
 
+export const hasDelaySignal = (value?: number | null): boolean =>
+  typeof value === "number" && Number.isFinite(value) && Math.abs(Math.round(value)) > 0;
+
+export const formatDelaySignal = (
+  value?: number | null,
+  emptyLabel = "No delay signal",
+): string => (hasDelaySignal(value) ? formatDelay(value) : emptyLabel);
+
 export const formatHeadway = (value?: number | null): string => {
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return "n/a";
   const minutes = value / 60;

@@ -1,7 +1,7 @@
 import type { TrendResponse } from "../../../types/transit";
 import {
   actionTone,
-  formatDelay,
+  formatDelaySignal,
   formatActionLabel,
   formatActivityStatusLabel,
   formatRegimeLabel,
@@ -59,7 +59,7 @@ export default function TrendPanel({
                 </div>
                 <div>
                   <span>Median delay</span>
-                  <strong>{formatDelay(corridor.latest_delay_seconds)}</strong>
+                  <strong>{formatDelaySignal(corridor.latest_delay_seconds)}</strong>
                 </div>
                 <div>
                   <span>Checks</span>

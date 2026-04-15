@@ -1,7 +1,7 @@
 import type { ScorecardResponse } from "../../../types/transit";
 import {
   actionTone,
-  formatDelay,
+  formatDelaySignal,
   formatPercent,
   formatActionLabel,
   formatRegimeLabel,
@@ -51,7 +51,7 @@ export default function ScorecardPanel({
           </div>
           <div className="detail-card">
             <span>Average delay</span>
-            <strong>{formatDelay(scorecardResponse?.network.avg_delay_seconds)}</strong>
+            <strong>{formatDelaySignal(scorecardResponse?.network.avg_delay_seconds)}</strong>
           </div>
           <div className="detail-card">
             <span>At-risk checks</span>
@@ -122,7 +122,7 @@ export default function ScorecardPanel({
                 </div>
                 <div>
                   <span>Avg delay</span>
-                  <strong>{formatDelay(corridor.avg_delay_seconds)}</strong>
+                  <strong>{formatDelaySignal(corridor.avg_delay_seconds)}</strong>
                 </div>
                 <div>
                   <span>At risk</span>

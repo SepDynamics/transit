@@ -27,7 +27,7 @@ interface CorridorDisplay {
 import {
   actionTone,
   compareOperationalPriority,
-  formatDelay,
+  formatDelaySignal,
   formatHazard,
   formatActionLabel,
   formatActivityStatusLabel,
@@ -140,7 +140,7 @@ export default function CorridorMemoryPanel({
           <div className="detail-card">
             <span>Median delay</span>
             <strong>
-              {formatDelay(
+              {formatDelaySignal(
                 selectedCorridorRegime?.metrics?.median_delay_seconds ??
                   selectedCorridor?.median_delay_seconds,
               )}

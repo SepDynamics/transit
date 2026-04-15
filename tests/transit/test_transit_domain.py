@@ -1,5 +1,6 @@
-from scripts.transit.domain import TransitRuntimeConfig, TransitSnapshotService
+from scripts.transit.domain import TransitRuntimeConfig, TransitSnapshotService, _incident_summary
 from scripts.transit.feeds import load_gtfs_catalog, merge_realtime_bundles, normalize_gtfs_realtime_payload
+from scripts.transit.transit_types import TransitRegimeRecord
 
 
 def test_transit_snapshot_scores_bunching_and_operator_action(tmp_path, monkeypatch):
@@ -53,6 +54,38 @@ def test_transit_snapshot_scores_bunching_and_operator_action(tmp_path, monkeypa
     assert regimes["regimes"][0]["metrics"]["compressed_headway_share"] >= 0.5
     assert regimes["regimes"][0]["metrics"]["median_delay_seconds"] >= 180
     assert regimes["regimes"][0]["priority_label"] == "High"
+
+
+def test_incident_summary_does_not_report_zero_delay_as_evidence():
+    record = TransitRegimeRecord(
+        timestamp_ms=1_710_000_160_000,
+        entity_id="route:71:0",
+        entity_type="corridor",
+        label="71 Watertown Square - Harvard Station",
+        route_id="71",
+        regime="service_degraded",
+        hazard=0.36,
+        action="warn_riders",
+        scoring_backend="heuristic_v1",
+        confidence=0.9,
+        signature="test",
+        reasons=["service_degraded", "service_alert_active"],
+        provenance={},
+        metrics={},
+    )
+    summary = _incident_summary(
+        record,
+        {
+            "median_delay_seconds": 0,
+            "vehicle_count": 3,
+            "trip_update_count": 4,
+            "high_impact_alert_count": 1,
+            "active_alert_count": 1,
+        },
+    )
+
+    assert "no measured delay burden" in summary
+    assert "median delay 0s" not in summary
 
 
 def test_transit_snapshot_derives_delay_from_scheduled_times(tmp_path, monkeypatch):

@@ -19,7 +19,14 @@ import type {
   RouteStatus,
 } from "../../types/transit";
 import { fetchJson } from "../../utils/api";
-import { formatDelay, formatPercent, relativeTime, relativeTimeFromMs } from "../../utils/formatters";
+import {
+  formatDelay,
+  formatDelaySignal,
+  formatPercent,
+  hasDelaySignal,
+  relativeTime,
+  relativeTimeFromMs,
+} from "../../utils/formatters";
 import "./StatusPage.css";
 
 const STATUS_REFRESH_MS = 30_000;
@@ -290,7 +297,7 @@ function RouteTile({ route, selected }: { route: RouteStatus; selected?: boolean
         </div>
       )}
       <div className="route-tile__meta">
-        {route.median_delay_seconds != null && (
+        {hasDelaySignal(route.median_delay_seconds) && (
           <span>Median delay: {formatDelay(route.median_delay_seconds)}</span>
         )}
         {route.active_alert_count > 0 && (
@@ -327,7 +334,7 @@ function RouteDrilldown({ route }: { route: RouteStatus }) {
         </div>
         <div>
           <span>Delay</span>
-          <strong>{formatDelay(route.median_delay_seconds)}</strong>
+          <strong>{formatDelaySignal(route.median_delay_seconds)}</strong>
         </div>
       </div>
       <p>{route.body || route.headline}</p>
@@ -561,7 +568,7 @@ export default function StatusPage() {
                     <td>
                       <PercentBar pct={corridor.healthy_pct} />
                     </td>
-                    <td>{formatDelay(corridor.avg_delay_seconds)}</td>
+                    <td>{formatDelaySignal(corridor.avg_delay_seconds)}</td>
                     <td>{corridor.incident_count ?? 0}</td>
                   </tr>
                 ))}
@@ -571,7 +578,7 @@ export default function StatusPage() {
               <div style={{ marginTop: 10, fontSize: "0.82rem", color: "var(--text-subtle)", textAlign: "right" }}>
                 Network: {formatPercent(scorecard.network.healthy_pct, 1)} stable •{" "}
                 {formatPercent(scorecard.network.unstable_pct, 1)} at risk •{" "}
-                avg delay {formatDelay(scorecard.network.avg_delay_seconds)}
+                avg delay {formatDelaySignal(scorecard.network.avg_delay_seconds)}
               </div>
             )}
           </div>

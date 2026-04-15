@@ -1,6 +1,6 @@
 import type { LineCard } from "../../../types/transit";
 import {
-  formatDelay,
+  formatDelaySignal,
   formatSignalPercent,
   formatActionLabel,
   formatActivityReasonLabel,
@@ -60,7 +60,7 @@ function CorridorCards({
             </div>
             <div>
               <span>Median delay</span>
-              <strong>{formatDelay(line.median_delay_seconds)}</strong>
+              <strong>{formatDelaySignal(line.median_delay_seconds)}</strong>
             </div>
             <div>
               <span>Vehicles bunching</span>

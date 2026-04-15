@@ -8,7 +8,7 @@ import type {
 import {
   compareOperationalPriority,
   formatActionLabel,
-  formatDelay,
+  formatDelaySignal,
   formatHazard,
   formatPercent,
   formatPriorityLabel,
@@ -219,7 +219,7 @@ export default function EvidenceDrawer({
           <div className="evidence-drawer__meta">
             <span>{priorityLabel} priority</span>
             <span>{formatRiskWithScore(risk)}</span>
-            <span>{formatDelay(delay)} median delay</span>
+            <span>Median delay: {formatDelaySignal(delay)}</span>
           </div>
         </div>
 
