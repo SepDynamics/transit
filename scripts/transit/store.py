@@ -7,6 +7,7 @@ import json
 import os
 import time
 import threading
+import math
 from collections import Counter
 from typing import Any, Dict, List, Optional
 import random
@@ -245,6 +246,8 @@ class TransitStore:
         if not write_history:
             return
 
+        history_ttl_seconds = self._history_ttl_seconds(retention)
+
         def _write_history_pipeline():
             pipe = self.client.pipeline()
             for vehicle in entities.get("vehicles") or []:
@@ -273,7 +276,12 @@ class TransitStore:
                             )
                         },
                     )
-                    self._pipe_trim_sorted_set(pipe, history_key, retention)
+                    self._pipe_trim_sorted_set(
+                        pipe,
+                        history_key,
+                        retention,
+                        ttl_seconds=history_ttl_seconds,
+                    )
 
                 regime = dict(vehicle.get("regime") or {})
                 if regime:
@@ -288,7 +296,12 @@ class TransitStore:
                             )
                         },
                     )
-                    self._pipe_trim_sorted_set(pipe, history_key, retention)
+                    self._pipe_trim_sorted_set(
+                        pipe,
+                        history_key,
+                        retention,
+                        ttl_seconds=history_ttl_seconds,
+                    )
 
             for regime in regimes.get("regimes") or []:
                 if not isinstance(regime, dict):
@@ -301,7 +314,12 @@ class TransitStore:
                     history_key,
                     {self._dumps(regime): int(regime.get("timestamp_ms") or 0)},
                 )
-                self._pipe_trim_sorted_set(pipe, history_key, retention)
+                self._pipe_trim_sorted_set(
+                    pipe,
+                    history_key,
+                    retention,
+                    ttl_seconds=history_ttl_seconds,
+                )
 
             for line in entities.get("lines") or []:
                 if not isinstance(line, dict):
@@ -352,7 +370,12 @@ class TransitStore:
                         )
                     },
                 )
-                self._pipe_trim_sorted_set(pipe, history_key, retention)
+                self._pipe_trim_sorted_set(
+                    pipe,
+                    history_key,
+                    retention,
+                    ttl_seconds=history_ttl_seconds,
+                )
 
             for incident in incidents.get("incidents") or []:
                 if not isinstance(incident, dict):
@@ -365,7 +388,12 @@ class TransitStore:
                     history_key,
                     {self._dumps(incident): int(incident.get("timestamp_ms") or 0)},
                 )
-                self._pipe_trim_sorted_set(pipe, history_key, retention)
+                self._pipe_trim_sorted_set(
+                    pipe,
+                    history_key,
+                    retention,
+                    ttl_seconds=history_ttl_seconds,
+                )
 
             pipe.execute()
 
@@ -1780,11 +1808,29 @@ class TransitStore:
         count = int(self.client.zcard(key) or 0)
         if count > retention:
             self.client.zremrangebyrank(key, 0, count - retention - 1)
+        ttl_seconds = self._history_ttl_seconds(retention)
+        if ttl_seconds > 0:
+            self.client.expire(key, ttl_seconds)
 
     @staticmethod
-    def _pipe_trim_sorted_set(pipe: Any, key: str, retention: int) -> None:
+    def _pipe_trim_sorted_set(
+        pipe: Any, key: str, retention: int, *, ttl_seconds: int = 0
+    ) -> None:
         retention = max(1, int(retention or 1))
         pipe.zremrangebyrank(key, 0, -retention - 1)
+        if ttl_seconds > 0:
+            pipe.expire(key, ttl_seconds)
+
+    @staticmethod
+    def _history_ttl_seconds(retention: int) -> int:
+        raw = os.getenv("TRANSIT_HISTORY_TTL_SECONDS")
+        if raw is not None and str(raw).strip() != "":
+            try:
+                return max(0, int(float(raw)))
+            except ValueError:
+                return 0
+        interval_seconds = max(1.0, _float_env("TRANSIT_HISTORY_INTERVAL_SECONDS", 60.0))
+        return max(60, int(math.ceil(max(1, int(retention or 1)) * interval_seconds)))
 
     @staticmethod
     def _replay_enabled() -> bool:

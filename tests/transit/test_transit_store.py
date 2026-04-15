@@ -1,3 +1,5 @@
+import redis
+
 from scripts.transit.store import TransitStore
 
 
@@ -30,6 +32,29 @@ def test_transit_store_persists_latest_payloads_and_vehicle_history(valkey_url):
     assert trends["summary"]["recent_incident_count"] == 2
     assert trends["corridors"][0]["hazard_series"] == [0.42, 0.81]
     assert trends["corridors"][0]["latest_action"] == "dispatch_relief"
+
+
+def test_transit_store_sets_native_ttl_on_history_keys(valkey_url, monkeypatch):
+    monkeypatch.setenv("TRANSIT_HISTORY_TTL_SECONDS", "120")
+    store = TransitStore(valkey_url)
+    store.write_snapshot(
+        _snapshot(timestamp_ms=1_710_000_100_000, delay_seconds=90, hazard=0.42),
+        retention=2,
+    )
+    client = redis.from_url(valkey_url, decode_responses=True)
+    try:
+        history_keys = [
+            store.observation_history_key("vehicle:1811"),
+            store.vehicle_regime_history_key("vehicle:1811"),
+            store.corridor_summary_history_key("route:Red:0"),
+            store.corridor_regime_history_key("route:Red:0"),
+            store.corridor_incident_history_key("route:Red:0"),
+        ]
+        ttls = [client.ttl(key) for key in history_keys]
+    finally:
+        client.close()
+
+    assert all(0 < ttl <= 120 for ttl in ttls)
 
 
 def test_transit_store_keeps_live_and_replay_snapshots_side_by_side(valkey_url):

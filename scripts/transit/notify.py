@@ -23,6 +23,7 @@ Environment variable equivalents (all optional):
     TRANSIT_NOTIFY_SCOPE        Feed scope to monitor (default: live)
     TRANSIT_NOTIFY_INTERVAL     Poll interval in seconds (default: 10)
     TRANSIT_NOTIFY_MIN_SEVERITY Minimum incident severity to fire (default: warning)
+    TRANSIT_NOTIFY_API_BEARER_TOKEN Bearer token for protected ops API reads
     TRANSIT_NOTIFY_PROOF_OUTPUT_ROOT  Persist proof windows for new incidents
     TRANSIT_NOTIFY_PROOF_ARCHIVE_ROOT Override archive root for proof capture
     SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASSWORD
@@ -80,6 +81,7 @@ def severity_passes(incident_severity: str, min_severity: str) -> bool:
 @dataclass
 class NotifyConfig:
     api_url: str = "http://localhost:8000"
+    api_bearer_token: Optional[str] = None
     scope: str = "live"
     interval_seconds: float = 10.0
     min_severity: str = "warning"
@@ -351,11 +353,18 @@ class NotificationDispatcher:
 # ---------------------------------------------------------------------------
 
 
-def _fetch_incidents(api_url: str, scope: str) -> List[Dict[str, Any]]:
+def _api_headers(token: str | None = None) -> Dict[str, str]:
+    headers = {"Accept": "application/json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
+
+
+def _fetch_incidents(
+    api_url: str, scope: str, *, bearer_token: str | None = None
+) -> List[Dict[str, Any]]:
     url = f"{api_url.rstrip('/')}/api/transit/incidents?scope={scope}"
-    req = urllib_request.Request(
-        url, method="GET", headers={"Accept": "application/json"}
-    )
+    req = urllib_request.Request(url, method="GET", headers=_api_headers(bearer_token))
     try:
         with urllib_request.urlopen(req, timeout=15) as resp:
             data = json.loads(resp.read().decode("utf-8"))
@@ -365,11 +374,9 @@ def _fetch_incidents(api_url: str, scope: str) -> List[Dict[str, Any]]:
         return []
 
 
-def _fetch_health(api_url: str) -> Dict[str, Any]:
+def _fetch_health(api_url: str, *, bearer_token: str | None = None) -> Dict[str, Any]:
     url = f"{api_url.rstrip('/')}/api/transit/health"
-    req = urllib_request.Request(
-        url, method="GET", headers={"Accept": "application/json"}
-    )
+    req = urllib_request.Request(url, method="GET", headers=_api_headers(bearer_token))
     try:
         with urllib_request.urlopen(req, timeout=10) as resp:
             return json.loads(resp.read().decode("utf-8"))
@@ -404,14 +411,20 @@ class NotifyPollingService:
         self._stop = True
 
     def _poll(self) -> None:
-        health = _fetch_health(self.cfg.api_url)
+        health = _fetch_health(
+            self.cfg.api_url, bearer_token=self.cfg.api_bearer_token
+        )
         agency = str(health.get("system_name") or "")
         agency_key = str(
             (health.get("ingest_status") or {}).get("agency_key")
             or (health.get("ingest_status") or {}).get("feed_status", {}).get("agency_key")
             or ""
         ).strip()
-        incidents = _fetch_incidents(self.cfg.api_url, self.cfg.scope)
+        incidents = _fetch_incidents(
+            self.cfg.api_url,
+            self.cfg.scope,
+            bearer_token=self.cfg.api_bearer_token,
+        )
         new_ids: Set[str] = set()
         for incident in incidents:
             incident_id = str(
@@ -452,6 +465,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--min-severity",
         default=os.getenv("TRANSIT_NOTIFY_MIN_SEVERITY", "warning"),
         choices=list(SEVERITY_ORDER),
+    )
+    p.add_argument(
+        "--api-bearer-token",
+        default=os.getenv("TRANSIT_NOTIFY_API_BEARER_TOKEN", ""),
+        help="Bearer token for protected /api/transit/* reads",
     )
     p.add_argument(
         "--webhook",
@@ -513,6 +531,7 @@ def main() -> int:
     ]
     cfg = NotifyConfig(
         api_url=str(args.api or "http://localhost:8000"),
+        api_bearer_token=str(args.api_bearer_token or "").strip() or None,
         scope=str(args.scope or "live"),
         interval_seconds=max(1.0, float(args.interval or 10)),
         min_severity=str(args.min_severity or "warning"),

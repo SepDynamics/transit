@@ -12,10 +12,14 @@ Current strengths:
 - live MBTA deployment at `sepdynamics.co`
 - bounded Docker runtime with Valkey, archive, ingest, API, and frontend
 - live health script and scheduled pruning guardrail
+- Docker healthchecks for Valkey, API, and frontend
 - materialized live read models for scorecard, trends, dashboard, and public
   network status
+- native Valkey TTLs on rolling history keys
+- conditional JSON `GET` support through `ETag` / `If-None-Match`
 - public MBTA status endpoints and status page
 - protected operations API boundary for `/api/transit/*`
+- opt-in notification dispatcher Compose profile
 - React operations console with priority queue, evidence drawer, lazy-loaded
   map, history, trends, and scorecard panels
 - rolling MBTA corridor and vehicle history
@@ -74,7 +78,24 @@ Exit criteria:
 - old clients requesting large scorecard limits cannot create load spikes
 - API memory stays comfortably below its container limit under burst traffic
 
-### 3. Harden The Public API Schema
+### 3. Reduce API Runtime Cost
+
+Goal: lower CPU and network cost before any larger API framework migration.
+
+Work:
+
+- keep conditional GET support wired through status and console payloads
+- add frontend-side ETag reuse where browser defaults are not enough
+- evaluate Server-Sent Events only after measuring polling pressure
+- consider FastAPI/Uvicorn only as a deliberate migration with parity tests
+
+Exit criteria:
+
+- repeated unchanged dashboard/status reads return `304` where applicable
+- polling users do not exhaust the live host request queue
+- any API rewrite preserves auth, cache, read-model, and OpenAPI behavior
+
+### 4. Harden The Public API Schema
 
 Goal: make integrations safer without freezing internal experimentation.
 
@@ -92,7 +113,7 @@ Exit criteria:
 - ops endpoints can be protected without breaking the public status page
 - frontend types and OpenAPI schemas do not drift silently
 
-### 4. Improve The Console Without Adding Marketing Weight
+### 5. Improve The Console Without Adding Marketing Weight
 
 Goal: keep the frontend technical, useful, and smaller to maintain.
 
@@ -110,7 +131,7 @@ Exit criteria:
 - initial page load is not dominated by map code
 - public status remains readable on small screens
 
-### 5. Grow MBTA Proof Carefully
+### 6. Grow MBTA Proof Carefully
 
 Goal: expand evidence only where MBTA public data can support it.
 

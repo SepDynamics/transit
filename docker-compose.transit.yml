@@ -9,6 +9,12 @@ services:
       - "127.0.0.1:6379:6379"
     volumes:
       - valkey-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   archive:
     build:
@@ -40,6 +46,7 @@ services:
       TRANSIT_INGEST_INTERVAL_SECONDS: "5"
       TRANSIT_HISTORY_RETENTION: "720"
       TRANSIT_HISTORY_INTERVAL_SECONDS: "30"
+      TRANSIT_HISTORY_TTL_SECONDS: "21600"
       TRANSIT_SNAPSHOT_CACHE_TTL_SECONDS: "10"
       TRANSIT_READ_MODELS_ENABLED: "1"
       TRANSIT_READ_MODEL_SCORECARD_LIMIT: "60"
@@ -51,8 +58,10 @@ services:
       - ./data:/app/data
       - ./logs/transit:/app/logs
     depends_on:
-      - valkey
-      - archive
+      valkey:
+        condition: service_healthy
+      archive:
+        condition: service_started
     command: ["python3", "/app/scripts/transit/ingest.py"]
 
   api:
@@ -78,11 +87,19 @@ services:
       - ./src:/app/src:ro
       - ./logs/transit:/app/logs
     depends_on:
-      - valkey
-      - ingest
+      valkey:
+        condition: service_healthy
+      ingest:
+        condition: service_started
     ports:
       - "8000:8000"
     command: ["python3", "/app/scripts/transit/api.py"]
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import json, urllib.request; data=json.load(urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)); raise SystemExit(0 if data.get('service') == 'Transit Sentinel API' and data.get('status') not in {'error','failed'} else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   api-demo:
     build:
@@ -107,11 +124,47 @@ services:
       - ./src:/app/src:ro
       - ./logs/transit:/app/logs
     depends_on:
-      - valkey
+      valkey:
+        condition: service_healthy
     ports:
       - "8000:8000"
     command: ["python3", "/app/scripts/transit/api.py"]
     profiles: ["demo"]
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import json, urllib.request; data=json.load(urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)); raise SystemExit(0 if data.get('service') == 'Transit Sentinel API' and data.get('status') not in {'error','failed'} else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  notify:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: transit-sentinel-notify
+    restart: unless-stopped
+    mem_limit: 256m
+    environment:
+      TRANSIT_API_URL: http://api:8000
+      TRANSIT_NOTIFY_API_BEARER_TOKEN: "${TRANSIT_NOTIFY_API_BEARER_TOKEN:-}"
+      TRANSIT_NOTIFY_WEBHOOK_URL: "${TRANSIT_NOTIFY_WEBHOOK_URL:-}"
+      TRANSIT_NOTIFY_SCOPE: "${TRANSIT_NOTIFY_SCOPE:-live}"
+      TRANSIT_NOTIFY_INTERVAL: "${TRANSIT_NOTIFY_INTERVAL:-30}"
+      TRANSIT_NOTIFY_MIN_SEVERITY: "${TRANSIT_NOTIFY_MIN_SEVERITY:-warning}"
+      TRANSIT_NOTIFY_LOG_FILE: "${TRANSIT_NOTIFY_LOG_FILE:-/app/logs/notifications.jsonl}"
+      TRANSIT_NOTIFY_PROOF_OUTPUT_ROOT: "${TRANSIT_NOTIFY_PROOF_OUTPUT_ROOT:-}"
+      TRANSIT_NOTIFY_PROOF_ARCHIVE_ROOT: "${TRANSIT_NOTIFY_PROOF_ARCHIVE_ROOT:-}"
+      PYTHONPATH: /app
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - ./src:/app/src:ro
+      - ./data:/app/data:ro
+      - ./logs/transit:/app/logs
+    depends_on:
+      api:
+        condition: service_healthy
+    command: ["python3", "/app/scripts/transit/notify.py"]
+    profiles: ["notify"]
 
   frontend:
     build:
@@ -126,9 +179,16 @@ services:
       SERVER_NAME: "_"
       BACKEND_UPSTREAM: "http://api:8000"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     ports:
       - "8080:80"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   frontend-demo:
     build:
@@ -143,10 +203,17 @@ services:
       SERVER_NAME: "_"
       BACKEND_UPSTREAM: "http://api-demo:8000"
     depends_on:
-      - api-demo
+      api-demo:
+        condition: service_healthy
     ports:
       - "8080:80"
     profiles: ["demo"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 volumes:
   valkey-data:

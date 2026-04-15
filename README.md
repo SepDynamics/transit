@@ -142,6 +142,14 @@ Run notifications against a local API:
 make transit-notify ARGS="--api http://localhost:8000"
 ```
 
+Run the opt-in Docker notification sidecar:
+
+```bash
+TRANSIT_NOTIFY_API_BEARER_TOKEN=readonly-token \
+TRANSIT_NOTIFY_WEBHOOK_URL=https://hooks.example.com/transit \
+docker compose -f docker-compose.transit.yml --profile notify up -d notify
+```
+
 Check the live host:
 
 ```bash

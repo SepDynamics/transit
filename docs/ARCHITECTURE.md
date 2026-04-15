@@ -62,6 +62,12 @@ redis-server --appendonly no --save 300 1
 
 Valkey has a container memory limit of `900m` in the compose stack.
 
+Rolling history keys are bounded twice: ingest trims sorted sets to
+`TRANSIT_HISTORY_RETENTION`, and each history key receives a native Valkey
+expiration. On the live host `TRANSIT_HISTORY_TTL_SECONDS=7200`, matching the
+120 samples written every 60 seconds. The weekly prune job remains a guardrail,
+not the primary memory-control mechanism.
+
 ### Scoring
 
 The scoring layer emits internal regimes such as:
@@ -127,6 +133,18 @@ cached:
 
 Full entities, history, map, and large scorecard payloads are intentionally not
 kept in the generic API cache on the small live host.
+
+JSON `GET` responses include `ETag` and support `If-None-Match`. Repeat browser
+or proxy requests can receive `304 Not Modified` instead of retransmitting large
+dashboard, map, or status payloads.
+
+### Notifications
+
+`scripts/transit/notify.py` is available as the `notify` Compose profile. It
+polls the protected operations API from inside the Docker network, sends a
+bearer token when `TRANSIT_NOTIFY_API_BEARER_TOKEN` is configured, and can write
+webhook, SMTP, log-file, or proof-window outputs. It is opt-in so the live host
+does not add internal API polling unless a notification target is configured.
 
 ### Frontend
 

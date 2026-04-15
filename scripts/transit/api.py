@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
 import os
@@ -924,30 +925,35 @@ class TransitAPIHandler(BaseHTTPRequestHandler):
         return getattr(self.server, "transit_service")
 
     def _send_json(self, payload: Dict[str, Any], status: int = 200) -> None:
-        body = json.dumps(payload).encode("utf-8")
+        body = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode(
+            "utf-8"
+        )
+        etag = f'"{hashlib.sha256(body).hexdigest()}"'
+        conditional_get = (
+            status == 200
+            and self.command == "GET"
+            and str(os.getenv("TRANSIT_API_ETAG_ENABLED", "1")).strip().lower()
+            not in {"0", "false", "no", "off"}
+        )
+        if conditional_get and self._etag_matches(etag):
+            self.send_response(304)
+            self._send_cors_headers()
+            self.send_header("ETag", etag)
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
         self.send_response(status)
+        self._send_cors_headers()
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
-        self.send_header(
-            "Access-Control-Allow-Origin",
-            os.getenv("TRANSIT_API_ALLOW_ORIGIN", "*"),
-        )
-        self.send_header(
-            "Access-Control-Allow-Headers",
-            os.getenv(
-                "TRANSIT_API_ALLOW_HEADERS",
-                "Authorization, Content-Type",
-            ),
-        )
-        self.send_header(
-            "Access-Control-Allow-Methods",
-            os.getenv("TRANSIT_API_ALLOW_METHODS", "GET, POST, OPTIONS"),
-        )
+        if conditional_get:
+            self.send_header("ETag", etag)
+            self.send_header("Cache-Control", "no-cache")
         self.end_headers()
         self.wfile.write(body)
 
-    def do_OPTIONS(self) -> None:  # pragma: no cover - browser interoperability
-        self.send_response(204)
+    def _send_cors_headers(self) -> None:
         self.send_header(
             "Access-Control-Allow-Origin",
             os.getenv("TRANSIT_API_ALLOW_ORIGIN", "*"),
@@ -956,13 +962,29 @@ class TransitAPIHandler(BaseHTTPRequestHandler):
             "Access-Control-Allow-Headers",
             os.getenv(
                 "TRANSIT_API_ALLOW_HEADERS",
-                "Authorization, Content-Type",
+                "Authorization, Content-Type, If-None-Match, Cache-Control",
             ),
         )
         self.send_header(
             "Access-Control-Allow-Methods",
             os.getenv("TRANSIT_API_ALLOW_METHODS", "GET, POST, OPTIONS"),
         )
+        self.send_header(
+            "Access-Control-Expose-Headers",
+            os.getenv("TRANSIT_API_EXPOSE_HEADERS", "ETag"),
+        )
+
+    def _etag_matches(self, etag: str) -> bool:
+        raw = self.headers.get("If-None-Match") or self.headers.get("if-none-match")
+        if not raw:
+            return False
+        return "*" in {part.strip() for part in raw.split(",")} or etag in {
+            part.strip() for part in raw.split(",")
+        }
+
+    def do_OPTIONS(self) -> None:  # pragma: no cover - browser interoperability
+        self.send_response(204)
+        self._send_cors_headers()
         self.end_headers()
 
     def _get_bearer_token(self) -> str | None:

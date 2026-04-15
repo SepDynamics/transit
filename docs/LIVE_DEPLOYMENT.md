@@ -31,11 +31,14 @@ The live override intentionally reduces pressure on the host:
 - Ingest materializes live read models for the 60-sample scorecard, trends,
   dashboard, and public network status keys.
 - API concurrency capped at four active requests with an eight-request queue.
+- API JSON `GET` responses emit `ETag` and honor `If-None-Match`.
 - Ingest runs every 20 seconds.
 - History writes run every 60 seconds.
 - Rolling history retention is 120 samples per key.
+- Rolling history keys expire natively in Valkey after 7200 seconds.
 - Container memory limits are set for Valkey, API, ingest, archive, and
   frontend.
+- Valkey, API, and frontend containers have Docker healthchecks.
 
 If memory pressure returns, check Valkey history size before increasing host
 size. The intended first response is pruning or tightening retention, not
@@ -134,6 +137,31 @@ Cron guardrails used on the hosted droplet:
 Set `TRANSIT_LIVE_HEALTH_ALERT_WEBHOOK_URL` in `~/transit/.env` if an external
 webhook should receive alerts. Do not commit that value.
 
+## Notifications
+
+The notification dispatcher is integrated as an opt-in Compose profile. Enable
+it only after configuring at least one target and a bearer token that can read
+`/api/transit/*`.
+
+Host-local `.env` example:
+
+```bash
+TRANSIT_NOTIFY_API_BEARER_TOKEN=readonly-token
+TRANSIT_NOTIFY_WEBHOOK_URL=https://hooks.example.com/transit
+TRANSIT_NOTIFY_INTERVAL=30
+TRANSIT_NOTIFY_MIN_SEVERITY=warning
+```
+
+Start it with the live stack:
+
+```bash
+docker compose -f docker-compose.transit.yml -f docker-compose.live-host.yml --profile notify up -d notify
+```
+
+The service writes notification events to `logs/transit/notifications.jsonl` by
+default. Keep the profile disabled when no notification target is configured so
+the live host does not add unnecessary internal polling.
+
 ## Ops Auth
 
 `/api/status/*` stays public. `/api/transit/*` is the operations surface and
@@ -203,6 +231,10 @@ docker exec transit-sentinel-api python3 /app/scripts/transit/prune_history.py -
 
 For a weekly guardrail, schedule the same command through cron or a systemd
 timer. Run it once with `--dry-run` first after any retention change.
+
+Native Valkey expirations on history keys are the primary memory-control path.
+The prune job is still useful for cleanup after configuration changes or older
+data written before TTLs existed.
 
 If the host OOMs again, check the previous boot before restarting blindly:
 

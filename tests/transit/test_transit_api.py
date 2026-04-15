@@ -1,6 +1,6 @@
 import json
 from urllib.error import HTTPError
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 from scripts.transit.api import TransitAPIService, start_transit_http_server
 
@@ -371,6 +371,30 @@ def test_transit_api_health_endpoint_serves_json():
     assert payload["status"] == "ok"
     assert payload["line_count"] == 2
     assert payload["scheduled_later_line_count"] == 1
+
+
+def test_transit_api_conditional_get_returns_not_modified():
+    server = start_transit_http_server(_FakeTransitService(), host="127.0.0.1", port=0)
+    url = f"http://127.0.0.1:{server.server_port}/api/transit/health?scope=live"
+    try:
+        with urlopen(url) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+            etag = response.headers["ETag"]
+
+        try:
+            urlopen(Request(url, headers={"If-None-Match": etag}))
+        except HTTPError as exc:
+            assert exc.code == 304
+            assert exc.headers["ETag"] == etag
+            assert exc.read() == b""
+        else:  # pragma: no cover - defensive check
+            raise AssertionError("expected 304 for matching ETag")
+    finally:
+        server.shutdown()
+        server.server_close()
+
+    assert payload["status"] == "ok"
+    assert etag
 
 
 def test_transit_api_trends_endpoint_serves_json():
