@@ -4,6 +4,7 @@ services:
     container_name: transit-sentinel-valkey
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
+    mem_limit: 900m
     ports:
       - "127.0.0.1:6379:6379"
     volumes:
@@ -15,6 +16,7 @@ services:
       dockerfile: Dockerfile.backend
     container_name: transit-sentinel-archive
     restart: unless-stopped
+    mem_limit: 384m
     environment:
       PYTHONPATH: /app
       TRANSIT_ARCHIVE_INTERVAL_SECONDS: "30"
@@ -31,6 +33,7 @@ services:
       dockerfile: Dockerfile.backend
     container_name: transit-sentinel-ingest
     restart: unless-stopped
+    mem_limit: 768m
     environment:
       VALKEY_URL: redis://valkey:6379/0
       PYTHONPATH: /app
@@ -54,12 +57,15 @@ services:
       dockerfile: Dockerfile.backend
     container_name: transit-sentinel-api
     restart: unless-stopped
+    mem_limit: 900m
     environment:
       VALKEY_URL: redis://valkey:6379/0
       TRANSIT_API_PORT: "8000"
       TRANSIT_SYSTEM_NAME: "MBTA"
       TRANSIT_API_CACHE_TTL_SECONDS: "5"
       TRANSIT_STORE_READ_CACHE_TTL_SECONDS: "5"
+      TRANSIT_API_CACHE_MAX_ENTRIES: "24"
+      TRANSIT_API_MAX_CONCURRENT_REQUESTS: "8"
       PYTHONPATH: /app
     volumes:
       - ./scripts:/app/scripts:ro
@@ -78,12 +84,15 @@ services:
       dockerfile: Dockerfile.backend
     container_name: transit-sentinel-api-demo
     restart: unless-stopped
+    mem_limit: 900m
     environment:
       VALKEY_URL: redis://valkey:6379/0
       TRANSIT_API_PORT: "8000"
       TRANSIT_SYSTEM_NAME: "Transit Sentinel Demo"
       TRANSIT_API_CACHE_TTL_SECONDS: "5"
       TRANSIT_STORE_READ_CACHE_TTL_SECONDS: "5"
+      TRANSIT_API_CACHE_MAX_ENTRIES: "24"
+      TRANSIT_API_MAX_CONCURRENT_REQUESTS: "8"
       PYTHONPATH: /app
     volumes:
       - ./scripts:/app/scripts:ro
@@ -101,9 +110,9 @@ services:
       context: ./apps/frontend
     container_name: transit-sentinel-frontend
     restart: unless-stopped
+    mem_limit: 192m
     environment:
       API_URL: ""
-      DEMO_URL: "https://calendly.com/sepdynamics/15min"
       SERVER_NAME: "_"
       BACKEND_UPSTREAM: "http://api:8000"
     depends_on:
@@ -116,9 +125,9 @@ services:
       context: ./apps/frontend
     container_name: transit-sentinel-frontend-demo
     restart: unless-stopped
+    mem_limit: 192m
     environment:
       API_URL: ""
-      DEMO_URL: "https://calendly.com/sepdynamics/15min"
       SERVER_NAME: "_"
       BACKEND_UPSTREAM: "http://api-demo:8000"
     depends_on:

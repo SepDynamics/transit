@@ -11,6 +11,7 @@ import signal
 import sys
 import threading
 import time
+from collections import OrderedDict
 from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Callable, Dict
@@ -55,7 +56,10 @@ class TransitAPIService:
         self.system_name = system_name
         self.store = store or TransitStore(redis_url)
         self._cache_ttl = _float_env("TRANSIT_API_CACHE_TTL_SECONDS", 5.0)
-        self._cache: Dict[tuple[Any, ...], tuple[float, Dict[str, Any]]] = {}
+        self._cache_max_entries = _int_env("TRANSIT_API_CACHE_MAX_ENTRIES", 32)
+        self._cache: OrderedDict[
+            tuple[Any, ...], tuple[float, Dict[str, Any]]
+        ] = OrderedDict()
         self._cache_lock = threading.RLock()
 
     def _cached_payload(
@@ -66,11 +70,15 @@ class TransitAPIService:
             with self._cache_lock:
                 cached = self._cache.get(key)
                 if cached and cached[0] >= now:
+                    self._cache.move_to_end(key)
                     return cached[1]
         payload = builder()
-        if self._cache_ttl > 0:
+        if self._cache_ttl > 0 and self._cache_max_entries > 0:
             with self._cache_lock:
                 self._cache[key] = (now + self._cache_ttl, payload)
+                self._cache.move_to_end(key)
+                while len(self._cache) > self._cache_max_entries:
+                    self._cache.popitem(last=False)
         return payload
 
     def service_health(self) -> Dict[str, Any]:
@@ -226,7 +234,9 @@ class TransitAPIService:
                 "scope": scope,
                 "trace_id": health.get("trace_id") or trace_id,
                 "health": health,
-                "entities": self.transit_entities(scope=scope, trace_id=trace_id),
+                "entities": _dashboard_entities_payload(
+                    self.transit_entities(scope=scope, trace_id=trace_id)
+                ),
                 "regimes": self.transit_regimes(scope=scope, trace_id=trace_id),
                 "incidents": self.transit_incidents(scope=scope, trace_id=trace_id),
                 "trends": self.transit_trends(scope=scope, trace_id=trace_id),
@@ -684,6 +694,111 @@ def _unique_corridor_rows(entities: Dict[str, Any]) -> list[Dict[str, Any]]:
     return rows
 
 
+def _dashboard_entities_payload(entities: Dict[str, Any]) -> Dict[str, Any]:
+    """Return the fields the browser console needs without map geometry bulk."""
+    return {
+        "generated_at": entities.get("generated_at"),
+        "agency_key": entities.get("agency_key"),
+        "lines": [
+            _dashboard_corridor_payload(row)
+            for row in (entities.get("lines") or [])
+            if isinstance(row, dict)
+        ],
+        "scheduled_later_lines": [
+            _dashboard_corridor_payload(row)
+            for row in (entities.get("scheduled_later_lines") or [])
+            if isinstance(row, dict)
+        ],
+        "inactive_lines": [
+            _dashboard_corridor_payload(row)
+            for row in (entities.get("inactive_lines") or [])
+            if isinstance(row, dict)
+        ],
+        "vehicles": [
+            _dashboard_vehicle_payload(row)
+            for row in (entities.get("vehicles") or [])
+            if isinstance(row, dict)
+        ],
+    }
+
+
+def _dashboard_corridor_payload(row: Dict[str, Any]) -> Dict[str, Any]:
+    keys = (
+        "entity_id",
+        "agency_key",
+        "corridor_id",
+        "route_id",
+        "direction_id",
+        "label",
+        "vehicle_count",
+        "median_delay_seconds",
+        "scheduled_headway_seconds",
+        "compressed_headway_share",
+        "avg_delay_seconds",
+        "top_action",
+        "top_action_label",
+        "avg_hazard",
+        "active_alert_count",
+        "current_regime",
+        "current_regime_label",
+        "priority_score",
+        "priority_label",
+        "activity_status",
+        "activity_status_label",
+        "activity_reason",
+        "activity_reason_label",
+        "route_mode",
+        "source",
+        "collection_source",
+        "trace_id",
+        "timestamp_ms",
+    )
+    return {key: row.get(key) for key in keys if key in row}
+
+
+def _dashboard_vehicle_payload(row: Dict[str, Any]) -> Dict[str, Any]:
+    keys = (
+        "entity_id",
+        "label",
+        "vehicle_id",
+        "corridor_entity_id",
+        "agency_key",
+        "corridor_id",
+        "route_id",
+        "route_label",
+        "trip_id",
+        "direction_id",
+        "stop_id",
+        "status",
+        "delay_seconds",
+        "occupancy_status",
+        "source",
+        "collection_source",
+    )
+    payload = {key: row.get(key) for key in keys if key in row}
+    regime = row.get("regime")
+    if isinstance(regime, dict):
+        payload["regime"] = {
+            key: regime.get(key)
+            for key in (
+                "entity_id",
+                "label",
+                "route_id",
+                "regime",
+                "regime_label",
+                "hazard",
+                "action",
+                "action_label",
+                "confidence",
+                "priority_score",
+                "priority_label",
+                "timestamp_ms",
+            )
+            if key in regime
+        }
+    return payload
+
+
 def _is_supported_corridor_geometry(geometry: Any) -> bool:
     if not isinstance(geometry, dict):
         return False
@@ -726,6 +841,16 @@ def _float_env(name: str, default: float) -> float:
         return default
     try:
         return float(raw)
+    except ValueError:
+        return default
+
+
+def _int_env(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None or str(raw).strip() == "":
+        return default
+    try:
+        return int(raw)
     except ValueError:
         return default
 
@@ -976,10 +1101,41 @@ def start_transit_http_server(
     class _Server(ThreadingHTTPServer):  # pragma: no cover
         daemon_threads = True
         allow_reuse_address = True
+        request_queue_size = _int_env("TRANSIT_API_REQUEST_QUEUE_SIZE", 32)
 
         def __init__(self, address):
             super().__init__(address, TransitAPIHandler)
             self.transit_service = service
+            self.request_gate = threading.BoundedSemaphore(
+                max(1, _int_env("TRANSIT_API_MAX_CONCURRENT_REQUESTS", 8))
+            )
+
+        def process_request(self, request: Any, client_address: Any) -> None:
+            if not self.request_gate.acquire(blocking=False):
+                try:
+                    body = b'{"error":"server_busy"}'
+                    request.sendall(
+                        b"HTTP/1.1 503 Service Unavailable\r\n"
+                        b"Content-Type: application/json\r\n"
+                        b"Connection: close\r\n"
+                        + f"Content-Length: {len(body)}\r\n\r\n".encode("ascii")
+                        + body
+                    )
+                except OSError:
+                    pass
+                request.close()
+                return
+            try:
+                super().process_request(request, client_address)
+            except Exception:
+                self.request_gate.release()
+                raise
+
+        def process_request_thread(self, request: Any, client_address: Any) -> None:
+            try:
+                super().process_request_thread(request, client_address)
+            finally:
+                self.request_gate.release()
 
     server = _Server((host, port))
 

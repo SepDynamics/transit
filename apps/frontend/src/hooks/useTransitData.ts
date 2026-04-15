@@ -145,8 +145,17 @@ export function useTransitData(): TransitDataState {
           `/api/transit/dashboard?${query}`,
         );
         if (!active) return;
+        const entityPayload = dashboardPayload.entities;
+        const activeLines = entityPayload.active_lines ?? entityPayload.lines ?? [];
         setTransitHealth(dashboardPayload.health);
-        setEntities(dashboardPayload.entities);
+        setEntities({
+          ...entityPayload,
+          lines: entityPayload.lines ?? activeLines,
+          active_lines: activeLines,
+          scheduled_later_lines: entityPayload.scheduled_later_lines ?? [],
+          inactive_lines: entityPayload.inactive_lines ?? [],
+          vehicles: entityPayload.vehicles ?? [],
+        });
         setRegimeResponse(dashboardPayload.regimes);
         setIncidentResponse(dashboardPayload.incidents);
         setTrendResponse(dashboardPayload.trends);
