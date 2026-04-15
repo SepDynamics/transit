@@ -145,7 +145,7 @@ function buildDataBounds(
 
 interface TransitMapProps {
   mapData: TransitMapResponse | null;
-  /** Boston or LA default center */
+  /** Default center for the active live feed */
   defaultCenter?: [number, number];
   defaultZoom?: number;
   className?: string;
@@ -154,7 +154,7 @@ interface TransitMapProps {
 
 export default function TransitMap({
   mapData,
-  defaultCenter = [-71.0589, 42.3601], // Boston (MBTA)
+  defaultCenter = [-71.0589, 42.3601],
   defaultZoom = 11,
   className,
   style,

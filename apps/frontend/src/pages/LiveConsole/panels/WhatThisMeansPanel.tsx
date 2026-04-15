@@ -27,18 +27,18 @@ export default function WhatThisMeansPanel({
     <section className="section panel meaning-panel" aria-labelledby="meaning-title">
       <div className="section__header">
         <div>
-          <span className="section-eyebrow">What this means</span>
+          <span className="section-eyebrow">Operational readout</span>
           <h2 id="meaning-title" className="section__title">
-            The story a non-technical stakeholder should hear first.
+            The current state emitted by the scoring layer.
           </h2>
           <p className="section__hint">
-            Start with the decision, then show the evidence behind it.
+            Start with the top route, then inspect the supporting signals.
           </p>
         </div>
       </div>
       <div className="meaning-grid">
         <article className="meaning-card">
-          <span>Lead with this</span>
+          <span>Top queue item</span>
           <strong>
             {worstCorridor?.label
               ? `${worstCorridor.label} is the first route to check.`
@@ -57,7 +57,7 @@ export default function WhatThisMeansPanel({
           </p>
         </article>
         <article className="meaning-card">
-          <span>Why it matters</span>
+          <span>Open signals</span>
           <strong>{incidentCount} problem signal{incidentCount === 1 ? "" : "s"}</strong>
           <p>
             Each signal is a reason to look closer, not a raw alert someone must
@@ -65,7 +65,7 @@ export default function WhatThisMeansPanel({
           </p>
         </article>
         <article className="meaning-card">
-          <span>How broad the watch is</span>
+          <span>Coverage</span>
           <strong>
             {activeRoutes} routes, {vehicleCount} vehicles
           </strong>
@@ -74,14 +74,14 @@ export default function WhatThisMeansPanel({
           </p>
         </article>
         <article className="meaning-card">
-          <span>How to judge a pilot</span>
+          <span>Rolling baseline</span>
           <strong>
             {formatDelay(scorecardResponse?.network.avg_delay_seconds)} average saved
             delay
           </strong>
           <p>
-            Pair the saved checks with a bus lane, signal change, or curb rule to
-            compare before and after.
+            Saved checks create a baseline for any downstream analysis or
+            integration.
           </p>
         </article>
       </div>

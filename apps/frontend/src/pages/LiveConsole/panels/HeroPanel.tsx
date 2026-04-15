@@ -10,17 +10,17 @@ export default function HeroPanel({ serviceState, transitHealth }: HeroPanelProp
   return (
     <section className="hero panel">
       <div className="hero__copy">
-        <div className="hero__eyebrow">Transit Sentinel for Boston</div>
-        <h1 className="hero__title">Show leaders which bus routes need help first.</h1>
+        <div className="hero__eyebrow">Transit Sentinel operations engine</div>
+        <h1 className="hero__title">Turn live transit feeds into ranked decisions.</h1>
         <p className="hero__summary">
-          Boston already wants shorter commutes and more reliable transit. This
-          turns public MBTA data into plain answers: where buses are getting
-          stuck, which fix to try, and how to prove it worked.
+          A live data plane for ingesting GTFS and GTFS-realtime feeds,
+          scoring route health, preserving the operating record, and serving
+          decision-ready APIs.
         </p>
         <div className="hero__chips">
-          <span className="chip">Boston priority corridors</span>
-          <span className="chip">Before and after proof</span>
-          <span className="chip">No new hardware</span>
+          <span className="chip">GTFS / GTFS-RT ingest</span>
+          <span className="chip">Route risk scoring</span>
+          <span className="chip">Bounded live API</span>
         </div>
       </div>
       <div className="hero__rail">

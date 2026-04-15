@@ -1,17 +1,15 @@
 import type { LineCard } from "../../types/transit";
 import { useTransitData } from "../../hooks/useTransitData";
 import { compareOperationalPriority } from "../../utils/formatters";
-import BostonStakeholderPanel from "./panels/BostonStakeholderPanel";
 import CorridorMemoryPanel from "./panels/CorridorMemoryPanel";
 import CorridorOverview from "./panels/CorridorOverview";
 import HeroPanel from "./panels/HeroPanel";
 import LiveFooterPanel from "./panels/LiveFooterPanel";
 import MapSection from "./panels/MapSection";
 import OverviewMetrics from "./panels/OverviewMetrics";
-import PilotProposalPanel from "./panels/PilotProposalPanel";
 import PriorityCorridorsPanel from "./panels/PriorityCorridorsPanel";
-import RoadmapPanel from "./panels/RoadmapPanel";
 import ScorecardPanel from "./panels/ScorecardPanel";
+import TechnicalStackPanel from "./panels/TechnicalStackPanel";
 import ToolbarPanel from "./panels/ToolbarPanel";
 import TrendPanel from "./panels/TrendPanel";
 import ValueAddPanel from "./panels/ValueAddPanel";
@@ -106,7 +104,7 @@ export default function LiveConsole() {
           scorecardResponse={scorecardResponse}
         />
 
-        <BostonStakeholderPanel
+        <TechnicalStackPanel
           transitHealth={transitHealth}
           sourceResponse={sourceResponse}
           scorecardResponse={scorecardResponse}
@@ -161,13 +159,6 @@ export default function LiveConsole() {
           selectedCorridorId={selectedCorridorId}
           onSelectCorridor={(id) => selectCorridor(id)}
         />
-
-        <PilotProposalPanel
-          sourceResponse={sourceResponse}
-          scorecardResponse={scorecardResponse}
-        />
-
-        <RoadmapPanel />
 
         <CorridorMemoryPanel
           selectedCorridor={selectedCorridor}

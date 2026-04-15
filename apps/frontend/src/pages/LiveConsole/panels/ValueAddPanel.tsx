@@ -50,18 +50,18 @@ export default function ValueAddPanel({
   return (
     <section className="value-add" aria-labelledby="value-add-title">
       <div className="value-add__intro">
-        <span className="value-add__eyebrow">What it does</span>
-        <h2 id="value-add-title">From public data to a clear next move.</h2>
+        <span className="value-add__eyebrow">Data pipeline</span>
+        <h2 id="value-add-title">From feed events to API-ready operations state.</h2>
         <p>
-          Instead of asking people to read raw feeds, Transit Sentinel explains
-          the issue, ranks the response, and saves the evidence.
+          The console follows the runtime path: ingest, normalize, score, and
+          persist the record that downstream views and integrations consume.
         </p>
       </div>
       <ol className="value-flow" aria-label="Transit Sentinel value path">
         <li className="value-flow__step">
           <span className="value-flow__number">1</span>
           <div>
-            <strong>Reads the public feed</strong>
+            <strong>Ingests feed lanes</strong>
             <span>
               {feedLaneLabel}, {vehicleCount} vehicles, {tripUpdateCount} trip updates,
               {" "}
@@ -72,9 +72,9 @@ export default function ValueAddPanel({
         <li className="value-flow__step">
           <span className="value-flow__number">2</span>
           <div>
-            <strong>Finds route trouble</strong>
+            <strong>Normalizes routes</strong>
             <span>
-              {scoredCorridors} routes checked. Network risk is{" "}
+              {scoredCorridors} corridors scored. Network risk is{" "}
               {formatRiskWithScore(transitHealth?.avg_hazard)}
             </span>
           </div>
@@ -82,7 +82,7 @@ export default function ValueAddPanel({
         <li className="value-flow__step">
           <span className="value-flow__number">3</span>
           <div>
-            <strong>Ranks the response</strong>
+            <strong>Classifies regimes</strong>
             <span>
               Top concern: {topConcern}.{" "}
               {formatPriorityLabel(
@@ -99,7 +99,7 @@ export default function ValueAddPanel({
         <li className="value-flow__step">
           <span className="value-flow__number">4</span>
           <div>
-            <strong>Keeps the receipt</strong>
+            <strong>Persists the record</strong>
             <span>
               {replayCount} replay trace{replayCount === 1 ? "" : "s"},{" "}
               {scorecardSnapshots} saved check{scorecardSnapshots === 1 ? "" : "s"}

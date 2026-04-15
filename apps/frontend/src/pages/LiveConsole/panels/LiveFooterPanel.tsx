@@ -13,9 +13,9 @@ export default function LiveFooterPanel({ transitHealth }: LiveFooterPanelProps)
   return (
     <footer className="live-footer panel" aria-label="Live data footer">
       <div>
-        Watching public MBTA feed <span aria-hidden="true">•</span> Updated every
-        30 seconds <span aria-hidden="true">•</span> Matches MBTA Performance
-        Metrics
+        Watching live transit feeds <span aria-hidden="true">•</span> API guarded
+        by cache, rate, and memory limits <span aria-hidden="true">•</span> Rolling
+        history retained
       </div>
       <strong>
         {vehicleCount} vehicles <span aria-hidden="true">•</span> {routeCount} routes{" "}
