@@ -85,7 +85,7 @@ Goal: lower CPU and network cost before any larger API framework migration.
 Work:
 
 - keep conditional GET support wired through status and console payloads
-- add frontend-side ETag reuse where browser defaults are not enough
+- measure frontend-side ETag reuse under live traffic and tune only if needed
 - evaluate Server-Sent Events only after measuring polling pressure
 - consider FastAPI/Uvicorn only as a deliberate migration with parity tests
 

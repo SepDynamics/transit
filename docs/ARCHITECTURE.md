@@ -134,9 +134,10 @@ cached:
 Full entities, history, map, and large scorecard payloads are intentionally not
 kept in the generic API cache on the small live host.
 
-JSON `GET` responses include `ETag` and support `If-None-Match`. Repeat browser
-or proxy requests can receive `304 Not Modified` instead of retransmitting large
-dashboard, map, or status payloads.
+JSON `GET` responses include `ETag` and support `If-None-Match`. The frontend
+reuses those validators on status and console polling reads, so unchanged
+dashboard, map, history, scorecard, and status payloads can return
+`304 Not Modified` instead of retransmitting large JSON bodies.
 
 ### Notifications
 
@@ -165,7 +166,9 @@ dashboard endpoint for the main polling path. Slower scorecard, map, source,
 and history polls are kept separate so the main dashboard can stay responsive
 without overloading the API. Map and history polls run every 30 seconds, while
 the dashboard poll remains 10 seconds. The MapLibre bundle is lazy-loaded from
-the map panel instead of being pulled into the first app chunk.
+the map panel instead of being pulled into the first app chunk. Polling GETs use
+the shared conditional JSON client so unchanged responses reuse the last parsed
+payload.
 
 ### Replay And Calibration
 

@@ -31,7 +31,8 @@ The live override intentionally reduces pressure on the host:
 - Ingest materializes live read models for the 60-sample scorecard, trends,
   dashboard, and public network status keys.
 - API concurrency capped at four active requests with an eight-request queue.
-- API JSON `GET` responses emit `ETag` and honor `If-None-Match`.
+- API JSON `GET` responses emit `ETag` and honor `If-None-Match`; the frontend
+  polling client sends validators and reuses cached payloads on `304`.
 - Ingest runs every 20 seconds.
 - History writes run every 60 seconds.
 - Rolling history retention is 120 samples per key.

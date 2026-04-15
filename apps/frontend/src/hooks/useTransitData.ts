@@ -17,7 +17,7 @@ import type {
   TrendResponse,
   VehicleHistoryResponse,
 } from "../types/transit";
-import { buildTransitQuery, fetchJson } from "../utils/api";
+import { buildTransitQuery, fetchCachedJson } from "../utils/api";
 import type { ServiceState } from "../utils/formatters";
 
 const replayTraces = (payload: SourceResponse): TransitReplayTrace[] =>
@@ -114,7 +114,7 @@ export function useTransitData(): TransitDataState {
     let active = true;
     const loadSources = async () => {
       try {
-        const payload = await fetchJson<SourceResponse>("/api/transit/sources");
+        const payload = await fetchCachedJson<SourceResponse>("/api/transit/sources");
         if (!active) return;
         setSourceResponse(payload);
       } catch {
@@ -149,7 +149,7 @@ export function useTransitData(): TransitDataState {
     const loadDashboard = async () => {
       const query = buildTransitQuery(scope, selectedTraceId || undefined);
       try {
-        const dashboardPayload = await fetchJson<DashboardResponse>(
+        const dashboardPayload = await fetchCachedJson<DashboardResponse>(
           `/api/transit/dashboard?${query}`,
         );
         if (!active) return;
@@ -191,7 +191,7 @@ export function useTransitData(): TransitDataState {
     const loadScorecard = async () => {
       const query = buildTransitQuery(scope, selectedTraceId || undefined);
       try {
-        const payload = await fetchJson<ScorecardResponse>(
+        const payload = await fetchCachedJson<ScorecardResponse>(
           `/api/transit/scorecard?${query}&limit=${SCORECARD_LIMIT}`,
         );
         if (!active) return;
@@ -214,7 +214,7 @@ export function useTransitData(): TransitDataState {
     const loadMap = async () => {
       const query = buildTransitQuery(scope, selectedTraceId || undefined);
       try {
-        const payload = await fetchJson<TransitMapResponse>(`/api/transit/map?${query}`);
+        const payload = await fetchCachedJson<TransitMapResponse>(`/api/transit/map?${query}`);
         if (!active) return;
         setMapData(payload);
       } catch {
@@ -269,7 +269,7 @@ export function useTransitData(): TransitDataState {
     const loadVehicleHistory = async () => {
       const query = buildTransitQuery(scope, selectedTraceId || undefined);
       try {
-        const payload = await fetchJson<VehicleHistoryResponse>(
+        const payload = await fetchCachedJson<VehicleHistoryResponse>(
           `/api/transit/history?${query}&entity_id=${encodeURIComponent(selectedEntityId)}&limit=${HISTORY_LIMIT}`,
         );
         if (!active) return;
@@ -296,7 +296,7 @@ export function useTransitData(): TransitDataState {
     const loadCorridorHistory = async () => {
       const query = buildTransitQuery(scope, selectedTraceId || undefined);
       try {
-        const payload = await fetchJson<CorridorHistoryResponse>(
+        const payload = await fetchCachedJson<CorridorHistoryResponse>(
           `/api/transit/history?${query}&entity_id=${encodeURIComponent(selectedCorridorId)}&limit=${HISTORY_LIMIT}`,
         );
         if (!active) return;

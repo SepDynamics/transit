@@ -48,6 +48,7 @@ export const OPS_CONSOLE_ENABLED = boolConfig(
 );
 
 const normalisedBase = API_BASE ? API_BASE.replace(/\/$/, "") : "";
+const conditionalJsonCache = new Map<string, { etag: string; payload: unknown }>();
 
 export const buildApiUrl = (path: string): string =>
   /^https?:\/\//i.test(path) ? path : `${normalisedBase}${path}`;
@@ -77,6 +78,37 @@ export async function fetchJson<T>(path: string, init?: RequestInit): Promise<T>
     throw new Error(path.replace(/^\//, ""));
   }
   return (await response.json()) as T;
+}
+
+export async function fetchCachedJson<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
+  const url = buildApiUrl(path);
+  const headers = new Headers();
+  if (init?.headers) {
+    new Headers(init.headers).forEach((value, key) => headers.set(key, value));
+  }
+  if (API_BEARER_TOKEN) {
+    headers.set("Authorization", `Bearer ${API_BEARER_TOKEN}`);
+  }
+  const cached = conditionalJsonCache.get(url);
+  if (cached?.etag) {
+    headers.set("If-None-Match", cached.etag);
+  }
+  const response = await fetch(url, { ...init, headers, cache: "no-cache" });
+  if (response.status === 304 && cached) {
+    return cached.payload as T;
+  }
+  if (!response.ok) {
+    throw new Error(path.replace(/^\//, ""));
+  }
+  const payload = (await response.json()) as T;
+  const etag = response.headers.get("ETag");
+  if (etag) {
+    conditionalJsonCache.set(url, { etag, payload });
+  }
+  return payload;
 }
 
 export async function postJson<T>(path: string, body: unknown): Promise<T> {

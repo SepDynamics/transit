@@ -18,7 +18,7 @@ import type {
   PublicStatusScorecardResponse,
   RouteStatus,
 } from "../../types/transit";
-import { fetchJson } from "../../utils/api";
+import { fetchCachedJson } from "../../utils/api";
 import {
   formatDelay,
   formatDelaySignal,
@@ -195,10 +195,10 @@ function useStatusData() {
       try {
         const [networkPayload, routesPayload, alertsPayload, scorecardPayload] =
           await Promise.all([
-            fetchJson<PublicStatusNetworkResponse>("/api/status/network", { signal: controller.signal }),
-            fetchJson<PublicStatusRoutesResponse>("/api/status/routes", { signal: controller.signal }),
-            fetchJson<PublicStatusAlertsResponse>("/api/status/alerts", { signal: controller.signal }),
-            fetchJson<PublicStatusScorecardResponse>(`/api/status/scorecard?limit=${STATUS_SCORECARD_LIMIT}`, { signal: controller.signal }),
+            fetchCachedJson<PublicStatusNetworkResponse>("/api/status/network", { signal: controller.signal }),
+            fetchCachedJson<PublicStatusRoutesResponse>("/api/status/routes", { signal: controller.signal }),
+            fetchCachedJson<PublicStatusAlertsResponse>("/api/status/alerts", { signal: controller.signal }),
+            fetchCachedJson<PublicStatusScorecardResponse>(`/api/status/scorecard?limit=${STATUS_SCORECARD_LIMIT}`, { signal: controller.signal }),
           ]);
         if (!active) return;
         setData({
