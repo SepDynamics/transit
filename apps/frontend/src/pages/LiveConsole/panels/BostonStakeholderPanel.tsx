@@ -95,6 +95,28 @@ export default function BostonStakeholderPanel({
         </div>
       </div>
 
+      <div className="current-proof">
+        <span>Current Boston signals</span>
+        <p>
+          <a
+            href="https://www.itskrs.its.dot.gov/SRC-2025"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Jan. 2025 MBTA/Boston TSP partnership
+          </a>{" "}
+          after the Brighton Avenue test, plus{" "}
+          <a
+            href="https://www.boston.gov/departments/emerging-technology/boston-curb-lab-using-ai-and-open-data-improve-curb-management"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Feb. 2026 Curb Lab pilots
+          </a>{" "}
+          for curb data, real-time integrations, and street decision support.
+        </p>
+      </div>
+
       <div className="stakeholder-grid">
         <article className="stakeholder-card stakeholder-card--lead">
           <span>Plain-English answer</span>

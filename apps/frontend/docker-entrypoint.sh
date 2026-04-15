@@ -5,7 +5,8 @@ cat > /usr/share/nginx/html/transit-sentinel-config.js <<'CONFIGEOF'
 (function(){
   window.__TRANSIT_SENTINEL_CONFIG__ = Object.assign({}, window.__TRANSIT_SENTINEL_CONFIG__ || {}, {
     API_URL: "__API_URL__",
-    API_BEARER_TOKEN: "__API_BEARER_TOKEN__"
+    API_BEARER_TOKEN: "__API_BEARER_TOKEN__",
+    DEMO_URL: "__DEMO_URL__"
   });
 })();
 CONFIGEOF
@@ -13,6 +14,7 @@ CONFIGEOF
 sed -i \
   -e "s#__API_URL__#${API_URL:-}#g" \
   -e "s#__API_BEARER_TOKEN__#${API_BEARER_TOKEN:-}#g" \
+  -e "s#__DEMO_URL__#${DEMO_URL:-https://calendly.com/sepdynamics/15min}#g" \
   /usr/share/nginx/html/transit-sentinel-config.js
 
 TEMPLATES_DIR="/opt/nginx/templates"

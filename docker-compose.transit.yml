@@ -103,6 +103,7 @@ services:
     restart: unless-stopped
     environment:
       API_URL: ""
+      DEMO_URL: "https://calendly.com/sepdynamics/15min"
       SERVER_NAME: "_"
       BACKEND_UPSTREAM: "http://api:8000"
     depends_on:
@@ -117,6 +118,7 @@ services:
     restart: unless-stopped
     environment:
       API_URL: ""
+      DEMO_URL: "https://calendly.com/sepdynamics/15min"
       SERVER_NAME: "_"
       BACKEND_UPSTREAM: "http://api-demo:8000"
     depends_on:

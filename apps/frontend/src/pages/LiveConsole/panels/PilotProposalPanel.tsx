@@ -1,4 +1,5 @@
 import type { ScorecardResponse, SourceResponse } from "../../../types/transit";
+import { DEMO_URL } from "../../../utils/api";
 
 interface PilotProposalPanelProps {
   sourceResponse: SourceResponse;
@@ -70,6 +71,11 @@ export default function PilotProposalPanel({
             can run on public transit data and a clear corridor list.
           </p>
         </article>
+      </div>
+      <div className="pilot-actions">
+        <a className="demo-button" href={DEMO_URL} target="_blank" rel="noreferrer">
+          Book 15-min demo with BTD
+        </a>
       </div>
     </section>
   );

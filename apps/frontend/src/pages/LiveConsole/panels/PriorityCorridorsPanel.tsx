@@ -26,6 +26,8 @@ interface PriorityCorridorSeed {
   keywords: string[];
   streetFix: string;
   value: string;
+  treatmentStatus: "present" | "planned";
+  treatmentLabel: string;
 }
 
 interface PriorityCorridorRow {
@@ -45,6 +47,8 @@ const PRIORITY_CORRIDORS: PriorityCorridorSeed[] = [
     keywords: ["columbus", "ruggles", "nubian", "jackson square"],
     streetFix: "Bus lanes and signal priority",
     value: "A ready before-and-after story for one of Boston's best-known bus priority corridors.",
+    treatmentStatus: "present",
+    treatmentLabel: "TSP / bus lane present",
   },
   {
     name: "Blue Hill Avenue",
@@ -53,6 +57,8 @@ const PRIORITY_CORRIDORS: PriorityCorridorSeed[] = [
     keywords: ["blue hill", "mattapan", "grove hall", "nubian"],
     streetFix: "Bus lane, curb, and signal monitoring",
     value: "A high-ridership corridor where small reliability gains are easy for riders to feel.",
+    treatmentStatus: "planned",
+    treatmentLabel: "Priority project listed",
   },
   {
     name: "Route 57 / Brighton Avenue",
@@ -61,6 +67,8 @@ const PRIORITY_CORRIDORS: PriorityCorridorSeed[] = [
     keywords: ["brighton", "kenmore", "watertown", "allston"],
     streetFix: "Route 57 transit priority",
     value: "A focused pilot lane for proving whether priority treatments reduce bunching and gaps.",
+    treatmentStatus: "present",
+    treatmentLabel: "TSP / bus lane present",
   },
   {
     name: "Hyde Park Avenue",
@@ -69,6 +77,8 @@ const PRIORITY_CORRIDORS: PriorityCorridorSeed[] = [
     keywords: ["hyde park", "forest hills", "roslindale"],
     streetFix: "Queue, curb, and stop reliability checks",
     value: "A clear way to separate traffic delay from stop, curb, and terminal pressure.",
+    treatmentStatus: "planned",
+    treatmentLabel: "Priority project listed",
   },
   {
     name: "North Station to Seaport",
@@ -77,6 +87,8 @@ const PRIORITY_CORRIDORS: PriorityCorridorSeed[] = [
     keywords: ["north station", "south station", "seaport", "silver line"],
     streetFix: "Event-day and curb conflict watch",
     value: "A simple answer for major events: is transit still moving, or does staff need to intervene?",
+    treatmentStatus: "planned",
+    treatmentLabel: "Priority project listed",
   },
   {
     name: "Rutherford Avenue",
@@ -85,6 +97,8 @@ const PRIORITY_CORRIDORS: PriorityCorridorSeed[] = [
     keywords: ["rutherford", "sullivan", "charlestown", "haymarket"],
     streetFix: "Bus-priority and intersection delay proof",
     value: "A shared city-agency view of whether a street redesign helps bus riders in practice.",
+    treatmentStatus: "planned",
+    treatmentLabel: "Priority project listed",
   },
 ];
 
@@ -206,6 +220,14 @@ export default function PriorityCorridorsPanel({
                 </span>
               </div>
               <p>{row.seed.value}</p>
+              <div
+                className={`treatment-badge treatment-badge--${row.seed.treatmentStatus}`}
+              >
+                <span aria-hidden="true">
+                  {row.seed.treatmentStatus === "present" ? "✓" : "•"}
+                </span>
+                {row.seed.treatmentLabel}
+              </div>
               <div className="priority-corridor-card__metrics">
                 <div>
                   <span>Live vehicles</span>

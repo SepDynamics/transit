@@ -331,7 +331,8 @@
 .boston-panel,
 .meaning-panel,
 .priority-panel,
-.pilot-panel {
+.pilot-panel,
+.roadmap-panel {
   background:
     linear-gradient(180deg, rgba(15, 159, 120, 0.04), rgba(255, 255, 255, 0)),
     var(--surface);
@@ -417,10 +418,54 @@
 .meaning-card p,
 .pilot-card p,
 .source-card p,
-.priority-corridor-card p {
+.priority-corridor-card p,
+.roadmap-card p {
   margin: 0;
   color: var(--text-muted);
   line-height: 1.5;
+}
+
+.current-proof {
+  margin-bottom: 14px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 159, 120, 0.2);
+  background: rgba(15, 159, 120, 0.07);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.current-proof span {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 8px;
+  padding: 5px 10px;
+  color: var(--accent-2);
+  background: rgba(15, 159, 120, 0.12);
+  border: 1px solid rgba(15, 159, 120, 0.24);
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.current-proof p {
+  margin: 0;
+  color: var(--text-main);
+  line-height: 1.5;
+}
+
+.current-proof a {
+  color: var(--accent-2);
+  font-weight: 700;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(15, 159, 120, 0.28);
+}
+
+.current-proof a:hover {
+  color: var(--text-strong);
+  border-bottom-color: var(--text-strong);
 }
 
 .source-grid {
@@ -511,6 +556,34 @@
   color: var(--text-muted);
 }
 
+.treatment-badge {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  border: 1px solid rgba(28, 86, 73, 0.14);
+}
+
+.treatment-badge span {
+  font-weight: 800;
+}
+
+.treatment-badge--present {
+  color: var(--accent-2);
+  background: rgba(15, 159, 120, 0.12);
+  border-color: rgba(15, 159, 120, 0.28);
+}
+
+.treatment-badge--planned {
+  color: var(--text-muted);
+  background: rgba(28, 86, 73, 0.05);
+}
+
 .priority-corridor-card__metrics {
   display: grid;
   gap: 12px;
@@ -522,6 +595,86 @@
   margin-top: 4px;
   color: var(--text-strong);
   font-size: 1rem;
+}
+
+.pilot-actions {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.demo-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border-radius: 8px;
+  padding: 11px 16px;
+  color: #ffffff;
+  background: var(--accent-2);
+  border: 1px solid rgba(11, 111, 93, 0.35);
+  font-weight: 700;
+  text-decoration: none;
+  transition:
+    transform 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.demo-button:hover {
+  transform: translateY(-1px);
+  background: var(--text-strong);
+  box-shadow: 0 12px 22px rgba(21, 41, 36, 0.16);
+}
+
+.roadmap-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.roadmap-card {
+  padding: 18px;
+  border-radius: 8px;
+  border: 1px solid rgba(28, 86, 73, 0.12);
+  background: rgba(255, 255, 255, 0.72);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.roadmap-card__badge {
+  width: fit-content;
+  border-radius: 8px;
+  padding: 5px 10px;
+  color: var(--accent-2);
+  background: rgba(15, 159, 120, 0.1);
+  border: 1px solid rgba(15, 159, 120, 0.22);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.roadmap-card h3 {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 1.05rem;
+}
+
+.live-footer {
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.live-footer strong {
+  color: var(--text-strong);
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .node-grid,
@@ -1122,7 +1275,8 @@
   .meaning-grid,
   .pilot-grid,
   .source-grid,
-  .priority-corridor-grid {
+  .priority-corridor-grid,
+  .roadmap-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -1162,6 +1316,12 @@
     align-items: flex-start;
   }
 
+  .current-proof,
+  .live-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .boston-panel__live-summary,
   .pilot-panel__stat {
     width: 100%;
@@ -1184,6 +1344,7 @@
   .pilot-grid,
   .source-grid,
   .priority-corridor-grid,
+  .roadmap-grid,
   .vehicle-card__metrics,
   .node-card__stats,
   .scorecard-card__stats,
@@ -1209,6 +1370,10 @@
   .scorecard-card {
     min-height: 44px;
   }
+
+  .demo-button {
+    width: 100%;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1228,7 +1393,8 @@
   .meaning-grid,
   .pilot-grid,
   .source-grid,
-  .priority-corridor-grid {
+  .priority-corridor-grid,
+  .roadmap-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1270,6 +1436,10 @@
   .chip {
     font-size: 0.68rem;
     padding: 4px 8px;
+  }
+
+  .live-footer strong {
+    white-space: normal;
   }
 }
 

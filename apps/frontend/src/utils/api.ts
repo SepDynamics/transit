@@ -12,6 +12,7 @@ declare global {
 type RuntimeConfig = {
   API_URL?: string;
   API_BEARER_TOKEN?: string;
+  DEMO_URL?: string;
 };
 
 const runtimeConfig: RuntimeConfig =
@@ -28,6 +29,11 @@ export const API_BASE =
 
 export const API_BEARER_TOKEN =
   stringOrUndefined(runtimeConfig.API_BEARER_TOKEN) ?? "";
+
+export const DEMO_URL =
+  stringOrUndefined(runtimeConfig.DEMO_URL) ??
+  import.meta.env.VITE_DEMO_URL ??
+  "https://calendly.com/sepdynamics/15min";
 
 const normalisedBase = API_BASE ? API_BASE.replace(/\/$/, "") : "";
 
