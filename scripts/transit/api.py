@@ -57,25 +57,36 @@ class TransitAPIService:
         self.store = store or TransitStore(redis_url)
         self._cache_ttl = _float_env("TRANSIT_API_CACHE_TTL_SECONDS", 5.0)
         self._cache_max_entries = _int_env("TRANSIT_API_CACHE_MAX_ENTRIES", 32)
+        self._scorecard_cache_ttl = _float_env(
+            "TRANSIT_API_SCORECARD_CACHE_TTL_SECONDS", 60.0
+        )
+        self._scorecard_cache_max_limit = _int_env(
+            "TRANSIT_API_SCORECARD_CACHE_MAX_LIMIT", 240
+        )
         self._cache: OrderedDict[
             tuple[Any, ...], tuple[float, Dict[str, Any]]
         ] = OrderedDict()
         self._cache_lock = threading.RLock()
 
     def _cached_payload(
-        self, key: tuple[Any, ...], builder: Callable[[], Dict[str, Any]]
+        self,
+        key: tuple[Any, ...],
+        builder: Callable[[], Dict[str, Any]],
+        *,
+        ttl: float | None = None,
     ) -> Dict[str, Any]:
         now = time.monotonic()
-        if self._cache_ttl > 0:
+        cache_ttl = self._cache_ttl if ttl is None else float(ttl)
+        if cache_ttl > 0:
             with self._cache_lock:
                 cached = self._cache.get(key)
                 if cached and cached[0] >= now:
                     self._cache.move_to_end(key)
                     return cached[1]
         payload = builder()
-        if self._cache_ttl > 0 and self._cache_max_entries > 0:
+        if cache_ttl > 0 and self._cache_max_entries > 0:
             with self._cache_lock:
-                self._cache[key] = (now + self._cache_ttl, payload)
+                self._cache[key] = (now + cache_ttl, payload)
                 self._cache.move_to_end(key)
                 while len(self._cache) > self._cache_max_entries:
                     self._cache.popitem(last=False)
@@ -213,6 +224,14 @@ class TransitAPIService:
         limit: int = 720,
     ) -> Dict[str, Any]:
         """Rolling KPI scorecard for the operations dashboard and contract reporting."""
+        if int(limit) <= max(0, self._scorecard_cache_max_limit):
+            return self._cached_payload(
+                ("scorecard", scope, trace_id, int(limit)),
+                lambda: self.store.scorecard(
+                    scope=scope, trace_id=trace_id, limit=limit
+                ),
+                ttl=self._scorecard_cache_ttl,
+            )
         return self.store.scorecard(scope=scope, trace_id=trace_id, limit=limit)
 
     def transit_dashboard(
