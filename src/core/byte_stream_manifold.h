@@ -14,10 +14,13 @@
 
 namespace sep {
 
+inline constexpr size_t kDefaultByteStreamMaxWindows = 4096;
+inline constexpr size_t kHardByteStreamMaxWindows = 16384;
+
 struct ByteStreamConfig {
     size_t window_bits = 256;            // Sliding window length in bits.
     size_t step_bits = 64;               // Step between consecutive windows in bits.
-    size_t max_windows = 0;              // Optional cap on number of windows to analyse (0 = unlimited).
+    size_t max_windows = kDefaultByteStreamMaxWindows;  // Cap on windows to analyse; 0 maps to the default cap.
     bool lsb_first = true;               // Interpret bytes as LSB-first when converting to bits.
     size_t repetition_lookback = 0;      // Optional lookback (in windows) for repetition counts (0 = keep all).
     sep::structural::StructuralOptions structural_options{};  // Tunable Structural parameters.

@@ -19,8 +19,8 @@ This repository should describe and prove the Boston path only.
 - Frontend: `apps/frontend/` serves the public MBTA status page and the
   protected operations console through nginx in Docker.
 - Live operations: `scripts/transit/live_health.py` reports
-  host/container/API health, and `scripts/transit/prune_history.py` trims
-  rolling Valkey history.
+  host/container/API health. `scripts/transit/prune_history.py` is kept for
+  manual recovery of old or misconfigured history keys.
 - Proof and calibration: MBTA case packs under `data/case-packs/mbta/`,
   `scripts/transit/replay.py`, `scripts/transit/grade_calibration.py`, and
   `scripts/transit/benchmark_artifacts.py`.
@@ -156,7 +156,7 @@ Check the live host:
 make transit-live-health
 ```
 
-Trim rolling history keys:
+Manually trim rolling history keys during recovery:
 
 ```bash
 make transit-prune-history ARGS="--redis redis://localhost:6379/0 --retention 120"

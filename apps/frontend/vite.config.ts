@@ -17,5 +17,16 @@ export default defineConfig({
   },
   build: {
     sourcemap: false,
+    chunkSizeWarningLimit: 1100,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules/maplibre-gl")) {
+            return "maplibre";
+          }
+          return undefined;
+        },
+      },
+    },
   },
 });

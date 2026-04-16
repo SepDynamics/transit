@@ -128,11 +128,10 @@ deduplicated alerts to a JSONL file and/or webhook. Defaults:
 - local/public API latency warning/failure: `1500ms` / `5000ms`
 - 503 warning: 10 recent `server_busy`/`503` matches
 
-Cron guardrails used on the hosted droplet:
+Cron health check used on the hosted droplet:
 
 ```cron
 */15 * * * * cd /root/transit && set -a; [ -f .env ] && . ./.env; set +a; PYTHONPATH=. python3 scripts/transit/live_health.py --json --alert-log-file logs/transit/live_health_alerts.jsonl >> logs/transit/live_health.jsonl 2>&1
-17 7 * * 0 docker exec transit-sentinel-api python3 /app/scripts/transit/prune_history.py --retention 120 >> /root/transit/logs/transit/prune_history.log 2>&1
 ```
 
 Set `TRANSIT_LIVE_HEALTH_ALERT_WEBHOOK_URL` in `~/transit/.env` if an external
@@ -223,19 +222,17 @@ docker compose -f docker-compose.transit.yml -f docker-compose.live-host.yml res
 docker compose -f docker-compose.transit.yml -f docker-compose.live-host.yml up -d --build frontend
 ```
 
-If Valkey history has grown too large, prune rolling histories to the live
-retention target:
+If Valkey history has grown too large because of old data or a bad retention
+configuration, manually prune rolling histories to the live retention target:
 
 ```bash
 docker exec transit-sentinel-api python3 /app/scripts/transit/prune_history.py --retention 120
 ```
 
-For a weekly guardrail, schedule the same command through cron or a systemd
-timer. Run it once with `--dry-run` first after any retention change.
-
 Native Valkey expirations on history keys are the primary memory-control path.
-The prune job is still useful for cleanup after configuration changes or older
-data written before TTLs existed.
+Do not schedule the prune job during normal live operation; sweeping history
+keys while ingest is active adds avoidable CPU load. Run it once with
+`--dry-run` first after any retention change or recovery event.
 
 If the host OOMs again, check the previous boot before restarting blindly:
 

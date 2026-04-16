@@ -65,8 +65,9 @@ Valkey has a container memory limit of `900m` in the compose stack.
 Rolling history keys are bounded twice: ingest trims sorted sets to
 `TRANSIT_HISTORY_RETENTION`, and each history key receives a native Valkey
 expiration. On the live host `TRANSIT_HISTORY_TTL_SECONDS=7200`, matching the
-120 samples written every 60 seconds. The weekly prune job remains a guardrail,
-not the primary memory-control mechanism.
+120 samples written every 60 seconds. `scripts/transit/prune_history.py` is a
+manual recovery tool for old or misconfigured keys, not a scheduled runtime
+dependency.
 
 ### Scoring
 
@@ -80,6 +81,10 @@ The scoring layer emits internal regimes such as:
 - `corridor_unstable`
 - `service_degraded`
 - `feed_incoherent`
+
+The C++ byte-stream manifold engine has a bounded analysis window. Its default
+`max_windows` is `4096`; a caller-provided `0` maps back to that default instead
+of becoming unbounded, and excessive requested caps are clamped at `16384`.
 
 The frontend leads with operator language instead of raw regime tokens:
 

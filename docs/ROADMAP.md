@@ -50,7 +50,8 @@ Work:
 - alert when Valkey memory, swap usage, 503 count, or API latency crosses a
   threshold
 - keep history retention and scorecard caps explicit in docs and compose
-- keep the weekly prune/verify routine scheduled on the host
+- keep native Valkey TTLs as the primary history memory-control path
+- keep `scripts/transit/prune_history.py` available only for manual recovery
 
 Exit criteria:
 

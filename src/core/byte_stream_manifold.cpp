@@ -59,6 +59,13 @@ namespace {
 
 constexpr double clamp01(double value) { return std::clamp(value, 0.0, 1.0); }
 
+size_t effective_max_windows(size_t requested) {
+  if (requested == 0) {
+    return kDefaultByteStreamMaxWindows;
+  }
+  return std::clamp(requested, size_t{1}, kHardByteStreamMaxWindows);
+}
+
 std::string make_signature(double coherence, double stability, double entropy,
                            int precision) {
   const double scale = std::pow(10.0, std::clamp(precision, 0, 6));
@@ -270,14 +277,14 @@ ByteStreamManifold analyze_byte_stream(const std::vector<uint8_t> &bytes,
 
   const size_t step_bits = manifold.summary.step_bits;
   const size_t window_bits = std::max<size_t>(1, config.window_bits);
-  const size_t max_windows = config.max_windows;
+  const size_t max_windows = effective_max_windows(config.max_windows);
   std::unordered_map<std::string, std::deque<size_t>> repetition_history;
   Accumulators accumulators;
 
   size_t window_index = 0;
   for (size_t start = 0; start + window_bits <= manifold.summary.analysed_bits;
        start += step_bits) {
-    if (max_windows > 0 && window_index >= max_windows) {
+    if (window_index >= max_windows) {
       break;
     }
 
@@ -341,7 +348,7 @@ ByteStreamManifold::to_json(const ByteStreamConfig &config) const {
   root["config"] = {
       {"window_bits", config.window_bits},
       {"step_bits", std::max<size_t>(1, config.step_bits)},
-      {"max_windows", config.max_windows},
+      {"max_windows", effective_max_windows(config.max_windows)},
       {"lsb_first", config.lsb_first},
       {"repetition_lookback", config.repetition_lookback},
       {"signature_precision", std::clamp(config.signature_precision, 0, 6)},
