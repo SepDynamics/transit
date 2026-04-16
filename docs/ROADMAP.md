@@ -11,12 +11,13 @@ Current strengths:
 
 - live MBTA deployment at `sepdynamics.co`
 - bounded Docker runtime with Valkey, archive, ingest, API, and frontend
-- live health script and scheduled pruning guardrail
+- live health script and native Valkey history TTLs
 - Docker healthchecks for Valkey, API, and frontend
 - materialized live read models for scorecard, trends, dashboard, and public
   network status
 - native Valkey TTLs on rolling history keys
 - conditional JSON `GET` support through `ETag` / `If-None-Match`
+- API parity harness for future sidecar migrations
 - public MBTA status endpoints and status page
 - protected operations API boundary for `/api/transit/*`
 - opt-in notification dispatcher Compose profile
@@ -87,6 +88,8 @@ Work:
 
 - keep conditional GET support wired through status and console payloads
 - measure frontend-side ETag reuse under live traffic and tune only if needed
+- use `scripts/transit/api_parity.py` before any API framework sidecar takes
+  traffic
 - evaluate Server-Sent Events only after measuring polling pressure
 - consider FastAPI/Uvicorn only as a deliberate migration with parity tests
 
@@ -94,6 +97,7 @@ Exit criteria:
 
 - repeated unchanged dashboard/status reads return `304` where applicable
 - polling users do not exhaust the live host request queue
+- current and candidate APIs have zero parity diffs before route migration
 - any API rewrite preserves auth, cache, read-model, and OpenAPI behavior
 
 ### 4. Harden The Public API Schema

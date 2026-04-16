@@ -33,6 +33,8 @@ This repository should describe and prove the Boston path only.
   hosted MBTA stack is configured, verified, and recovered.
 - [Data And Calibration](/sep/transit-sentinel/docs/DATA_AND_CALIBRATION.md):
   MBTA feeds, case packs, replay, and grading workflow.
+- [API Migration](/sep/transit-sentinel/docs/API_MIGRATION.md): parity-first
+  process for any future FastAPI sidecar.
 - [Roadmap](/sep/transit-sentinel/docs/ROADMAP.md): current state, boundaries,
   and the next sensible Boston-focused work.
 - [Repo Scope](/sep/transit-sentinel/docs/REPO_SCOPE.md): what belongs in this
@@ -154,6 +156,12 @@ Check the live host:
 
 ```bash
 make transit-live-health
+```
+
+Capture current API parity fixtures:
+
+```bash
+make transit-api-parity ARGS="capture --base-url http://127.0.0.1:8000 --output-dir output/api-parity/current"
 ```
 
 Manually trim rolling history keys during recovery:

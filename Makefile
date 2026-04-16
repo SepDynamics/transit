@@ -1,4 +1,4 @@
-.PHONY: install frontend-install frontend-typecheck frontend-build build-manifold-engine test test-all test-transit check check-all check-transit check-transit-case-packs clean transit-archive transit-mbta-archive transit-ingest transit-replay transit-api transit-live-health transit-prune-history transit-history-report transit-calibration-report transit-calibration-summary transit-benchmark-artifacts transit-demo-seed transit-notify transit-proof-window
+.PHONY: install frontend-install frontend-typecheck frontend-build build-manifold-engine test test-all test-transit check check-all check-transit check-transit-case-packs clean transit-archive transit-mbta-archive transit-ingest transit-replay transit-api transit-api-parity transit-live-health transit-prune-history transit-history-report transit-calibration-report transit-calibration-summary transit-benchmark-artifacts transit-demo-seed transit-notify transit-proof-window
 
 PYTHON ?= python3
 PIP ?= $(PYTHON) -m pip
@@ -56,6 +56,9 @@ transit-replay:
 
 transit-api:
 	@PYTHONPATH=. $(PYTHON) scripts/transit/api.py $(ARGS)
+
+transit-api-parity:
+	@PYTHONPATH=. $(PYTHON) scripts/transit/api_parity.py $(ARGS)
 
 transit-live-health:
 	@PYTHONPATH=. $(PYTHON) scripts/transit/live_health.py $(ARGS)

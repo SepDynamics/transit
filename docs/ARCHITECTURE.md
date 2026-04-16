@@ -144,6 +144,11 @@ reuses those validators on status and console polling reads, so unchanged
 dashboard, map, history, scorecard, and status payloads can return
 `304 Not Modified` instead of retransmitting large JSON bodies.
 
+`scripts/transit/api_parity.py` is the migration gate for any future FastAPI
+sidecar. It captures and compares status codes, JSON shapes, ETag support, and
+conditional GET behavior for public status and frontend-consumed operations
+endpoints before any routing changes.
+
 ### Notifications
 
 `scripts/transit/notify.py` is available as the `notify` Compose profile. It
