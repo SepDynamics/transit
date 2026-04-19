@@ -60,6 +60,90 @@ def test_transit_ingest_service_persists_current_snapshot_to_store(tmp_path, val
     assert read_model_dashboard["health"]["line_count"] == 1
 
 
+def test_transit_ingest_reuses_rollup_read_models_between_history_writes():
+    store = _FakeIngestStore()
+    service = TransitIngestService(
+        TransitIngestConfig(
+            redis_url="redis://unused/0",
+            interval_seconds=5,
+            history_retention=120,
+            history_interval_seconds=60,
+            profile_enabled=True,
+            runtime=TransitRuntimeConfig(system_name="MBTA", agency_key="mbta"),
+        ),
+        store=store,
+    )
+    service.snapshot_service = _FakeSnapshotService()
+
+    service.run_once()
+    service.run_once()
+
+    assert store.read_model_reads == []
+    assert store.read_model_writes[0]["include_scorecard"] is True
+    assert store.read_model_writes[0]["include_trends"] is True
+    assert store.read_model_writes[1]["include_scorecard"] is False
+    assert store.read_model_writes[1]["include_trends"] is False
+    assert store.read_model_writes[1]["snapshot_parts"]["health"]["line_count"] == 1
+    assert store.status_writes[-1]["profile"]["stages"]
+
+
+class _FakeSnapshotService:
+    def snapshot(self):
+        return {
+            "errors": [],
+            "feed_status": {"status": "ok", "vehicle_count": 1},
+            "health": {
+                "system_name": "MBTA",
+                "line_count": 1,
+                "active_line_count": 1,
+                "incident_count": 0,
+                "critical_incidents": 0,
+                "feed_status": {"status": "ok", "vehicle_count": 1},
+            },
+            "entities": {
+                "active_lines": [],
+                "scheduled_later_lines": [],
+                "inactive_lines": [],
+                "vehicles": [],
+            },
+            "regimes": {"regimes": []},
+            "incidents": {"incidents": []},
+        }
+
+
+class _FakeIngestStore:
+    def __init__(self):
+        self.read_model_reads = []
+        self.read_model_writes = []
+        self.status_writes = []
+
+    def write_snapshot(self, payload, **_kwargs):
+        return {
+            "source": "live",
+            "trace_id": None,
+            "health": dict(payload["health"]),
+            "entities": dict(payload["entities"]),
+            "regimes": dict(payload["regimes"]),
+            "incidents": dict(payload["incidents"]),
+        }
+
+    def read_live_read_model(self, kind):
+        self.read_model_reads.append(kind)
+        return {}
+
+    def write_live_read_models(self, **kwargs):
+        self.read_model_writes.append(kwargs)
+        payload = {"dashboard": {}, "status:network": {}}
+        if kwargs.get("include_scorecard"):
+            payload["scorecard"] = {}
+        if kwargs.get("include_trends"):
+            payload["trends"] = {}
+        return payload
+
+    def write_status(self, _key, payload):
+        self.status_writes.append(payload)
+
+
 def _build_static_feed() -> bytes:
     payload = BytesIO()
     with ZipFile(payload, "w") as archive:

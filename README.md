@@ -8,6 +8,13 @@ through an API, public status page, and protected operations console.
 The current public deployment is the MBTA live stack behind `sepdynamics.co`.
 This repository should describe and prove the Boston path only.
 
+For the April 20, 2026 investor meeting, the repo source of truth is:
+
+- [Investor Brief](/sep/transit-sentinel/docs/INVESTOR_BRIEF.md)
+- [Stack Audit - 2026-04-19](/sep/transit-sentinel/docs/STACK_AUDIT_2026-04-19.md)
+- [Architecture](/sep/transit-sentinel/docs/ARCHITECTURE.md)
+- [Roadmap](/sep/transit-sentinel/docs/ROADMAP.md)
+
 ## Current Stack
 
 - Feed archive: `scripts/transit/archive.py` polls MBTA static GTFS, vehicle
@@ -27,6 +34,10 @@ This repository should describe and prove the Boston path only.
 
 ## Documentation Map
 
+- [Investor Brief](/sep/transit-sentinel/docs/INVESTOR_BRIEF.md): selling
+  points, value, differentiation, meeting demo path, risks, and next steps.
+- [Stack Audit - 2026-04-19](/sep/transit-sentinel/docs/STACK_AUDIT_2026-04-19.md):
+  dated audit of the local repo and live MBTA droplet.
 - [Architecture](/sep/transit-sentinel/docs/ARCHITECTURE.md): how MBTA archive,
   ingest, Valkey, scoring, API, and frontend fit together.
 - [Live Deployment](/sep/transit-sentinel/docs/LIVE_DEPLOYMENT.md): how the

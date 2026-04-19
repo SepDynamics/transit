@@ -8,6 +8,42 @@ The live deployment is a bounded, low-memory MBTA stack. Replay remains a proof
 and demo tool, but the public host serves current MBTA feed state and does not
 serve replay traces.
 
+## Product Role
+
+Transit Sentinel is the layer between raw public transit telemetry and a
+decision-ready status surface. MBTA already publishes schedule, real-time, and
+alert data for developers; Transit Sentinel normalizes those feeds, scores
+instability, preserves evidence, and exposes public and protected API surfaces.
+
+The product is intentionally narrower than dispatch software and broader than a
+rider ETA widget:
+
+- it does not replace CAD/AVL, crew, signal, supervisor, or incident-response
+  systems
+- it does not claim visibility into internal MBTA decisions
+- it does turn public MBTA data into ranked route status, evidence, trends, and
+  replayable proof
+- it keeps rider-facing status separate from protected operations payloads
+
+That boundary is the current value: useful operational intelligence with low
+adoption friction because the first live lane runs from public GTFS and GTFS-RT.
+
+## Differentiation In The Stack
+
+The architectural differentiators are:
+
+- public-feed-first deployment against a real network
+- explicit evidence payloads instead of opaque scores only
+- Valkey read models for low-latency dashboard/status reads
+- replay and case packs for regression, calibration, and investor proof
+- public `/api/status/*` contract separated from protected `/api/transit/*`
+  operations data
+- bounded retention, cache size, request concurrency, and container memory for
+  a small live host
+
+This makes the MBTA deployment a proof of operational shape, not just an app
+skin over the feed.
+
 ## Runtime Flow
 
 ### Archive
@@ -148,6 +184,11 @@ dashboard, map, history, scorecard, and status payloads can return
 sidecar. It captures and compares status codes, JSON shapes, ETag support, and
 conditional GET behavior for public status and frontend-consumed operations
 endpoints before any routing changes.
+
+The public `/api/status/*` OpenAPI contract is intentionally tighter than the
+protected operations schemas: status responses use closed schemas, explicit
+required fields, documented severity enums, and documented `ETag` / `304`
+conditional polling behavior.
 
 ### Notifications
 

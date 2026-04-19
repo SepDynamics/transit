@@ -129,7 +129,7 @@ class TransitStore:
         source: Optional[str] = None,
         trace_id: Optional[str] = None,
         write_history: bool = True,
-    ) -> None:
+    ) -> Dict[str, Any]:
         health = copy.deepcopy(dict(payload.get("health") or {}))
         entities = copy.deepcopy(dict(payload.get("entities") or {}))
         regimes = copy.deepcopy(dict(payload.get("regimes") or {}))
@@ -242,9 +242,20 @@ class TransitStore:
         self._execute_with_retry(_execute_pipeline)
         self._clear_json_cache()
         self._write_sources_last()
+        snapshot_parts = {
+            "source": snapshot_source,
+            "trace_id": snapshot_trace_id,
+            "timestamp_ms": snapshot_timestamp_ms,
+            "health": copy.deepcopy(health),
+            "entities": copy.deepcopy(entities),
+            "regimes": copy.deepcopy(regimes),
+            "incidents": copy.deepcopy(incidents),
+            "feed_status": copy.deepcopy(feed_status),
+            "errors": {"errors": list(errors)},
+        }
 
         if not write_history:
-            return
+            return snapshot_parts
 
         history_ttl_seconds = self._history_ttl_seconds(retention)
 
@@ -399,6 +410,7 @@ class TransitStore:
 
         self._execute_with_retry(_write_history_pipeline)
         self._clear_json_cache()
+        return snapshot_parts
 
     def write_replay_trace(self, trace: TransitReplayTrace) -> None:
         payload = trace.to_json()
@@ -449,6 +461,7 @@ class TransitStore:
         include_trends: bool = True,
         include_dashboard: bool = True,
         include_status_network: bool = True,
+        snapshot_parts: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Materialize live read models used by low-latency API paths."""
         scorecard_limit = max(1, int(scorecard_limit or 1))
@@ -465,7 +478,7 @@ class TransitStore:
                 limit=scorecard_limit,
             )
 
-        if include_trends or include_dashboard:
+        if include_trends:
             trends_payload = self._with_read_model_metadata(
                 self.trends(scope="live", limit=trends_limit, window=trends_window),
                 kind="trends",
@@ -473,8 +486,19 @@ class TransitStore:
                 limit=trends_limit,
                 window=trends_window,
             )
-            if include_trends:
-                payloads["trends"] = trends_payload
+            payloads["trends"] = trends_payload
+        elif include_dashboard:
+            trends_payload = self.read_live_read_model("trends")
+            if not trends_payload:
+                trends_payload = self._with_read_model_metadata(
+                    self.trends(
+                        scope="live", limit=trends_limit, window=trends_window
+                    ),
+                    kind="trends",
+                    generated_at=generated_at,
+                    limit=trends_limit,
+                    window=trends_window,
+                )
         else:
             trends_payload = {}
 
@@ -483,10 +507,22 @@ class TransitStore:
         regimes_payload: Dict[str, Any] = {}
         incidents_payload: Dict[str, Any] = {}
         if include_dashboard or include_status_network:
-            health_payload = self.health(scope="live")
-            entities_payload = self.entities(scope="live")
-            regimes_payload = self.regimes(scope="live")
-            incidents_payload = self.incidents(scope="live")
+            if _snapshot_parts_are_live(snapshot_parts):
+                health_payload = copy.deepcopy(dict(snapshot_parts.get("health") or {}))
+                entities_payload = copy.deepcopy(
+                    dict(snapshot_parts.get("entities") or {})
+                )
+                regimes_payload = copy.deepcopy(
+                    dict(snapshot_parts.get("regimes") or {})
+                )
+                incidents_payload = copy.deepcopy(
+                    dict(snapshot_parts.get("incidents") or {})
+                )
+            else:
+                health_payload = self.health(scope="live")
+                entities_payload = self.entities(scope="live")
+                regimes_payload = self.regimes(scope="live")
+                incidents_payload = self.incidents(scope="live")
 
         if include_dashboard:
             if not trends_payload:
@@ -2098,6 +2134,20 @@ def _public_route_status_rows(
         )
     )
     return rows
+
+
+def _snapshot_parts_are_live(snapshot_parts: Optional[Dict[str, Any]]) -> bool:
+    if not isinstance(snapshot_parts, dict) or not snapshot_parts:
+        return False
+    if str(snapshot_parts.get("source") or "live") != "live":
+        return False
+    trace_id = snapshot_parts.get("trace_id")
+    if trace_id not in (None, ""):
+        return False
+    return all(
+        isinstance(snapshot_parts.get(name), dict)
+        for name in ("health", "entities", "regimes", "incidents")
+    )
 
 
 def _float_env(name: str, default: float) -> float:

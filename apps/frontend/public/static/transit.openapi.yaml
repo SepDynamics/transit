@@ -28,6 +28,14 @@ components:
         enum: [all, live, replay]
         default: all
       description: Feed view to read from. Public status endpoints default to live.
+    PublicStatusScope:
+      name: scope
+      in: query
+      schema:
+        type: string
+        enum: [live, replay]
+        default: live
+      description: Public status feed view. Omit for the live MBTA feed.
     TraceId:
       name: trace_id
       in: query
@@ -41,6 +49,15 @@ components:
         type: integer
         minimum: 1
       description: Result limit. Scorecard endpoints clamp to 2000; audit clamps to 500.
+    PublicScorecardLimit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 2000
+        default: 720
+      description: Rolling scorecard sample limit. The live host may apply a lower configured cap.
     EntityId:
       name: entity_id
       in: query
@@ -67,10 +84,12 @@ components:
           type: string
     FeedStatus:
       type: object
-      additionalProperties: true
+      additionalProperties: false
+      required: [feed_label, updated_at, agency_key, vehicle_count, trip_update_count, alert_count, collection_source, status]
       properties:
         feed_label:
           type: string
+          nullable: true
         updated_at:
           type: string
           format: date-time
@@ -88,6 +107,33 @@ components:
           type: string
         status:
           type: string
+    ReadModelMetadata:
+      type: object
+      additionalProperties: false
+      required: [kind, scope, generated_at]
+      properties:
+        kind:
+          type: string
+        scope:
+          type: string
+          enum: [live]
+        generated_at:
+          type: string
+          format: date-time
+        limit:
+          type: integer
+        window:
+          type: integer
+        trends_limit:
+          type: integer
+        trends_window:
+          type: integer
+    PublicSeverity:
+      type: string
+      enum: [good, advisory, delay, disruption, severe, unknown]
+    PublicSeverityColor:
+      type: string
+      enum: [green, yellow, orange, red, gray]
     EventOverlay:
       type: object
       additionalProperties: true
@@ -1127,7 +1173,7 @@ components:
             $ref: "#/components/schemas/TransitScorecardCorridor"
     RouteStatus:
       type: object
-      additionalProperties: true
+      additionalProperties: false
       required: [entity_id, label, severity, severity_label, severity_color, headline, body, short_summary, active_alert_count, advisories]
       properties:
         entity_id:
@@ -1141,12 +1187,11 @@ components:
         label:
           type: string
         severity:
-          type: string
-          enum: [good, advisory, delay, disruption, severe, unknown]
+          $ref: "#/components/schemas/PublicSeverity"
         severity_label:
           type: string
         severity_color:
-          type: string
+          $ref: "#/components/schemas/PublicSeverityColor"
         headline:
           type: string
         body:
@@ -1180,64 +1225,74 @@ components:
             type: string
     PublicStatusRoutesResponse:
       type: object
-      additionalProperties: true
-      required: [route_count, routes]
+      additionalProperties: false
+      required: [generated_at, scope, route_count, routes]
       properties:
         generated_at:
           type: string
           format: date-time
         scope:
           type: string
+          enum: [live, replay]
         route_count:
           type: integer
+          minimum: 0
         routes:
           type: array
           items:
             $ref: "#/components/schemas/RouteStatus"
     DisruptedRoute:
       type: object
-      additionalProperties: true
+      additionalProperties: false
+      required: [entity_id, label, severity]
       properties:
         entity_id:
           type: string
         label:
           type: string
         severity:
-          type: string
+          $ref: "#/components/schemas/PublicSeverity"
     PublicStatusNetworkResponse:
       type: object
-      additionalProperties: true
-      required: [severity, severity_label, severity_color, active_route_count, incident_count, critical_incident_count, disrupted_route_count, disrupted_routes]
+      additionalProperties: false
+      required: [generated_at, scope, severity, severity_label, severity_color, active_route_count, incident_count, critical_incident_count, disrupted_route_count, disrupted_routes]
       properties:
         generated_at:
           type: string
           format: date-time
         scope:
           type: string
+          enum: [live, replay]
         severity:
-          type: string
+          $ref: "#/components/schemas/PublicSeverity"
         severity_label:
           type: string
         severity_color:
-          type: string
+          $ref: "#/components/schemas/PublicSeverityColor"
         active_route_count:
           type: integer
+          minimum: 0
         incident_count:
           type: integer
+          minimum: 0
         critical_incident_count:
           type: integer
+          minimum: 0
         disrupted_route_count:
           type: integer
+          minimum: 0
         disrupted_routes:
           type: array
           items:
             $ref: "#/components/schemas/DisruptedRoute"
         feed_status:
           $ref: "#/components/schemas/FeedStatus"
+        read_model:
+          $ref: "#/components/schemas/ReadModelMetadata"
     PublicStatusAlert:
       type: object
-      additionalProperties: true
-      required: [severity, severity_label, severity_color, headline]
+      additionalProperties: false
+      required: [alert_id, entity_id, route_label, severity, severity_label, severity_color, headline, recommended_action, timestamp_ms]
       properties:
         alert_id:
           type: string
@@ -1247,11 +1302,11 @@ components:
         route_label:
           type: string
         severity:
-          type: string
+          $ref: "#/components/schemas/PublicSeverity"
         severity_label:
           type: string
         severity_color:
-          type: string
+          $ref: "#/components/schemas/PublicSeverityColor"
         headline:
           type: string
         recommended_action:
@@ -1262,37 +1317,48 @@ components:
           nullable: true
     PublicStatusAlertsResponse:
       type: object
-      additionalProperties: true
-      required: [alert_count, alerts]
+      additionalProperties: false
+      required: [generated_at, scope, alert_count, alerts]
       properties:
         generated_at:
           type: string
           format: date-time
         scope:
           type: string
+          enum: [live, replay]
         alert_count:
           type: integer
+          minimum: 0
         alerts:
           type: array
           items:
             $ref: "#/components/schemas/PublicStatusAlert"
     PublicScorecardNetwork:
       type: object
-      additionalProperties: true
+      additionalProperties: false
+      required: [on_time_pct, healthy_pct, unstable_pct, avg_delay_seconds, unstable_corridor_count]
       properties:
         on_time_pct:
           type: number
+          minimum: 0
+          maximum: 100
         healthy_pct:
           type: number
+          minimum: 0
+          maximum: 100
         unstable_pct:
           type: number
+          minimum: 0
+          maximum: 100
         avg_delay_seconds:
           type: number
         unstable_corridor_count:
           type: integer
+          minimum: 0
     PublicScorecardCorridor:
       type: object
-      additionalProperties: true
+      additionalProperties: false
+      required: [entity_id, label, route_id, on_time_pct, avg_delay_seconds, incident_count, snapshot_count, healthy_pct, unstable_pct]
       properties:
         entity_id:
           type: string
@@ -1303,32 +1369,44 @@ components:
           nullable: true
         on_time_pct:
           type: number
+          minimum: 0
+          maximum: 100
         avg_delay_seconds:
           type: number
         incident_count:
           type: integer
+          minimum: 0
         snapshot_count:
           type: integer
+          minimum: 0
         healthy_pct:
           type: number
+          minimum: 0
+          maximum: 100
         unstable_pct:
           type: number
+          minimum: 0
+          maximum: 100
     PublicStatusScorecardResponse:
       type: object
-      additionalProperties: true
-      required: [network, corridors]
+      additionalProperties: false
+      required: [generated_at, scope, window_snapshots, corridor_count, total_incidents, network, corridors]
       properties:
         generated_at:
           type: string
           format: date-time
         scope:
           type: string
+          enum: [live, replay]
         window_snapshots:
           type: integer
+          minimum: 0
         corridor_count:
           type: integer
+          minimum: 0
         total_incidents:
           type: integer
+          minimum: 0
         network:
           $ref: "#/components/schemas/PublicScorecardNetwork"
         corridors:
@@ -1392,58 +1470,130 @@ paths:
       tags: [Public status]
       summary: Rider-facing network status
       parameters:
-        - $ref: "#/components/parameters/Scope"
+        - $ref: "#/components/parameters/PublicStatusScope"
         - $ref: "#/components/parameters/TraceId"
       responses:
         "200":
           description: Network severity, route counts, feed status, and disrupted routes.
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: Strong validator for conditional polling with If-None-Match.
+            Cache-Control:
+              schema:
+                type: string
+              description: Public status responses are revalidated by clients.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/PublicStatusNetworkResponse"
+        "304":
+          description: The client's If-None-Match validator still matches the current payload.
+          headers:
+            ETag:
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
   /api/status/routes:
     get:
       tags: [Public status]
       summary: Rider-facing route status list
       parameters:
-        - $ref: "#/components/parameters/Scope"
+        - $ref: "#/components/parameters/PublicStatusScope"
         - $ref: "#/components/parameters/TraceId"
       responses:
         "200":
           description: Plain-language status rows for active and scheduled-later corridors.
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: Strong validator for conditional polling with If-None-Match.
+            Cache-Control:
+              schema:
+                type: string
+              description: Public status responses are revalidated by clients.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/PublicStatusRoutesResponse"
+        "304":
+          description: The client's If-None-Match validator still matches the current payload.
+          headers:
+            ETag:
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
   /api/status/alerts:
     get:
       tags: [Public status]
       summary: Rider-facing active alerts
       parameters:
-        - $ref: "#/components/parameters/Scope"
+        - $ref: "#/components/parameters/PublicStatusScope"
         - $ref: "#/components/parameters/TraceId"
       responses:
         "200":
           description: Active public advisories derived from Sentinel incident state.
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: Strong validator for conditional polling with If-None-Match.
+            Cache-Control:
+              schema:
+                type: string
+              description: Public status responses are revalidated by clients.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/PublicStatusAlertsResponse"
+        "304":
+          description: The client's If-None-Match validator still matches the current payload.
+          headers:
+            ETag:
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
   /api/status/scorecard:
     get:
       tags: [Public status]
       summary: Rider-facing reliability scorecard
       parameters:
-        - $ref: "#/components/parameters/Scope"
+        - $ref: "#/components/parameters/PublicStatusScope"
         - $ref: "#/components/parameters/TraceId"
-        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/PublicScorecardLimit"
       responses:
         "200":
           description: Network and corridor reliability scorecard for the status page.
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: Strong validator for conditional polling with If-None-Match.
+            Cache-Control:
+              schema:
+                type: string
+              description: Public status responses are revalidated by clients.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/PublicStatusScorecardResponse"
+        "304":
+          description: The client's If-None-Match validator still matches the current payload.
+          headers:
+            ETag:
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
   /api/transit/dashboard:
     get:
       tags: [Operations]

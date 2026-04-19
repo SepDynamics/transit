@@ -3,6 +3,8 @@
 This runbook covers the hosted MBTA live deployment behind `sepdynamics.co`.
 The host checkout is expected at `~/transit`.
 
+Latest documented audit: [Stack Audit - 2026-04-19](/sep/transit-sentinel/docs/STACK_AUDIT_2026-04-19.md).
+
 ## Current Shape
 
 - public URL: `https://sepdynamics.co/`
@@ -115,6 +117,20 @@ docker exec transit-sentinel-valkey redis-cli MGET \
   transit:dashboard:live:last \
   transit:status:network:last
 ```
+
+Ingest profiling for a one-off investigation:
+
+```bash
+docker exec transit-sentinel-ingest python3 /app/scripts/transit/ingest.py \
+  --once \
+  --profile \
+  --redis redis://valkey:6379/0
+```
+
+The profile is written into `ops:transit_ingest_status` and logs per-stage wall
+and CPU time for snapshot building, Valkey snapshot writes, read-model writes,
+and status writes. Use it for short investigations; keep the continuous live
+service on the normal loop unless actively debugging.
 
 ## Health Alerts
 

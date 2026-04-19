@@ -63,6 +63,62 @@ def test_openapi_marks_ops_paths_as_bearer_auth_and_public_status_open():
         assert "security" not in operation
 
 
+def test_openapi_public_status_contract_is_closed_and_conditional():
+    spec = _load_spec()
+    schemas = spec["components"]["schemas"]
+    public_schemas = {
+        "FeedStatus",
+        "RouteStatus",
+        "DisruptedRoute",
+        "PublicStatusRoutesResponse",
+        "PublicStatusNetworkResponse",
+        "PublicStatusAlert",
+        "PublicStatusAlertsResponse",
+        "PublicScorecardNetwork",
+        "PublicScorecardCorridor",
+        "PublicStatusScorecardResponse",
+    }
+
+    for name in public_schemas:
+        assert schemas[name]["additionalProperties"] is False
+
+    assert schemas["PublicStatusNetworkResponse"]["required"] == [
+        "generated_at",
+        "scope",
+        "severity",
+        "severity_label",
+        "severity_color",
+        "active_route_count",
+        "incident_count",
+        "critical_incident_count",
+        "disrupted_route_count",
+        "disrupted_routes",
+    ]
+    assert schemas["PublicStatusScorecardResponse"]["required"] == [
+        "generated_at",
+        "scope",
+        "window_snapshots",
+        "corridor_count",
+        "total_incidents",
+        "network",
+        "corridors",
+    ]
+
+    for path in (
+        "/api/status/network",
+        "/api/status/routes",
+        "/api/status/alerts",
+        "/api/status/scorecard",
+    ):
+        operation = spec["paths"][path]["get"]
+        assert operation["parameters"][0]["$ref"].endswith("/PublicStatusScope")
+        assert "ETag" in operation["responses"]["200"]["headers"]
+        assert "304" in operation["responses"]
+
+    scorecard_params = spec["paths"]["/api/status/scorecard"]["get"]["parameters"]
+    assert scorecard_params[2]["$ref"].endswith("/PublicScorecardLimit")
+
+
 def _load_spec():
     with OPENAPI_PATH.open(encoding="utf-8") as handle:
         return yaml.safe_load(handle)

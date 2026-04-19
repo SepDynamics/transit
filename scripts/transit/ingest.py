@@ -35,6 +35,7 @@ class TransitIngestConfig:
     read_model_scorecard_limit: int = 60
     read_model_trends_limit: int = 6
     read_model_trends_window: int = 24
+    profile_enabled: bool = False
 
 
 class TransitIngestService:
@@ -44,6 +45,7 @@ class TransitIngestService:
         self.snapshot_service = TransitSnapshotService(config.runtime)
         self._stop = False
         self._last_history_write_at = 0.0
+        self._read_model_rollups_ready = False
 
     def run(self) -> None:
         logger.info("Transit ingest service starting for system=%s", self.cfg.runtime.system_name)
@@ -57,7 +59,30 @@ class TransitIngestService:
             time.sleep(max(0.2, self.cfg.interval_seconds - elapsed))
 
     def run_once(self) -> Dict[str, Any]:
+        stage_timings: list[Dict[str, Any]] = []
+        started_wall = time.perf_counter()
+        started_cpu = time.process_time()
+        last_wall = started_wall
+        last_cpu = started_cpu
+
+        def mark_stage(stage: str) -> None:
+            nonlocal last_wall, last_cpu
+            if not self.cfg.profile_enabled:
+                return
+            now_wall = time.perf_counter()
+            now_cpu = time.process_time()
+            stage_timings.append(
+                {
+                    "stage": stage,
+                    "wall_ms": round((now_wall - last_wall) * 1000.0, 2),
+                    "cpu_ms": round((now_cpu - last_cpu) * 1000.0, 2),
+                }
+            )
+            last_wall = now_wall
+            last_cpu = now_cpu
+
         payload = self.snapshot_service.snapshot()
+        mark_stage("snapshot")
         configured_feeds = {
             "static_gtfs": bool(self.cfg.runtime.static_feed),
             "vehicle_positions": bool(self.cfg.runtime.vehicle_positions_feed),
@@ -66,22 +91,27 @@ class TransitIngestService:
             "event_overlays": bool(self.cfg.runtime.event_overlays_feed),
         }
         write_history = self._should_write_history()
-        self.store.write_snapshot(
+        snapshot_parts = self.store.write_snapshot(
             payload,
             configured_feeds=configured_feeds,
             retention=self.cfg.history_retention,
             write_history=write_history,
         )
+        mark_stage("write_snapshot")
         if write_history:
             self._last_history_write_at = time.monotonic()
         read_model_status: Dict[str, Any] = {"enabled": self.cfg.materialize_read_models}
         if self.cfg.materialize_read_models:
             try:
-                should_refresh_rollups = (
-                    write_history
-                    or not self.store.read_live_read_model("trends")
-                    or not self.store.read_live_read_model("scorecard")
-                )
+                if write_history:
+                    should_refresh_rollups = True
+                elif self._read_model_rollups_ready:
+                    should_refresh_rollups = False
+                else:
+                    should_refresh_rollups = not (
+                        self.store.read_live_read_model("trends")
+                        and self.store.read_live_read_model("scorecard")
+                    )
                 read_models = self.store.write_live_read_models(
                     scorecard_limit=self.cfg.read_model_scorecard_limit,
                     trends_limit=self.cfg.read_model_trends_limit,
@@ -89,13 +119,23 @@ class TransitIngestService:
                     include_scorecard=should_refresh_rollups,
                     include_trends=should_refresh_rollups,
                     include_dashboard=True,
+                    snapshot_parts=snapshot_parts,
                 )
                 read_model_status["updated"] = sorted(read_models.keys())
             except Exception:
                 logger.exception("failed to materialize live read models")
                 read_model_status["status"] = "error"
+                self._read_model_rollups_ready = False
             else:
                 read_model_status["status"] = "ok"
+                if should_refresh_rollups:
+                    self._read_model_rollups_ready = {
+                        "scorecard",
+                        "trends",
+                    } <= set(read_models)
+                elif self._read_model_rollups_ready:
+                    self._read_model_rollups_ready = True
+        mark_stage("read_models")
         status = {
             "system_name": self.cfg.runtime.system_name,
             "agency_key": self.cfg.runtime.agency_key,
@@ -108,13 +148,31 @@ class TransitIngestService:
         manifest = _load_current_manifest(self.cfg.runtime.static_feed)
         if manifest:
             status["archive_manifest"] = manifest
+        if self.cfg.profile_enabled:
+            status["profile"] = {
+                "stages": stage_timings,
+                "total_wall_ms_before_status_write": round(
+                    (time.perf_counter() - started_wall) * 1000.0, 2
+                ),
+                "total_cpu_ms_before_status_write": round(
+                    (time.process_time() - started_cpu) * 1000.0, 2
+                ),
+            }
         self.store.write_status("ops:transit_ingest_status", status)
+        mark_stage("status_write")
         logger.info(
             "persisted transit snapshot with %d vehicles and %d incidents history=%s",
             len((payload.get("entities") or {}).get("vehicles") or []),
             len((payload.get("incidents") or {}).get("incidents") or []),
             write_history,
         )
+        if self.cfg.profile_enabled:
+            logger.info(
+                "transit ingest profile wall_ms=%.2f cpu_ms=%.2f stages=%s",
+                (time.perf_counter() - started_wall) * 1000.0,
+                (time.process_time() - started_cpu) * 1000.0,
+                stage_timings,
+            )
         return payload
 
     def stop(self) -> None:
@@ -158,6 +216,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=int(os.getenv("TRANSIT_READ_MODEL_TRENDS_WINDOW", "24")),
     )
+    parser.add_argument(
+        "--profile",
+        action=argparse.BooleanOptionalAction,
+        default=_bool_env("TRANSIT_INGEST_PROFILE", False),
+        help="record per-stage wall and CPU timings in ingest status and logs",
+    )
     parser.add_argument("--agency", default=os.getenv("TRANSIT_AGENCY", adapter.key))
     parser.add_argument("--system-name", default=os.getenv("TRANSIT_SYSTEM_NAME", adapter.system_name))
     parser.add_argument("--static-feed", default=os.getenv("TRANSIT_GTFS_STATIC_PATH", default_feed_paths["static_gtfs"]))
@@ -193,6 +257,7 @@ def main() -> int:
         read_model_scorecard_limit=max(1, int(args.read_model_scorecard_limit)),
         read_model_trends_limit=max(1, int(args.read_model_trends_limit)),
         read_model_trends_window=max(1, int(args.read_model_trends_window)),
+        profile_enabled=bool(args.profile),
         runtime=TransitRuntimeConfig(
             system_name=str(args.system_name or adapter.system_name),
             agency_key=adapter.key,

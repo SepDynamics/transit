@@ -192,6 +192,43 @@ def test_transit_store_materializes_live_read_models(valkey_url):
     assert network["severity"] in {"delay", "disruption", "severe"}
 
 
+def test_transit_store_builds_live_dashboard_read_models_from_written_snapshot(
+    valkey_url, monkeypatch
+):
+    store = TransitStore(valkey_url)
+    snapshot_parts = store.write_snapshot(
+        _snapshot(timestamp_ms=1_710_000_100_000, delay_seconds=90, hazard=0.42)
+    )
+    store.write_live_read_models(
+        include_scorecard=False,
+        include_trends=True,
+        include_dashboard=False,
+        include_status_network=False,
+    )
+
+    def fail_latest_read(*_args, **_kwargs):
+        raise AssertionError("latest snapshot should not be reread from Valkey")
+
+    monkeypatch.setattr(store, "health", fail_latest_read)
+    monkeypatch.setattr(store, "entities", fail_latest_read)
+    monkeypatch.setattr(store, "regimes", fail_latest_read)
+    monkeypatch.setattr(store, "incidents", fail_latest_read)
+
+    read_models = store.write_live_read_models(
+        include_scorecard=False,
+        include_trends=False,
+        include_dashboard=True,
+        include_status_network=True,
+        snapshot_parts=snapshot_parts,
+    )
+
+    assert sorted(read_models) == ["dashboard", "status:network"]
+    dashboard = store.read_live_read_model("dashboard")
+    network = store.read_live_read_model("status:network")
+    assert dashboard["health"]["line_count"] == 1
+    assert network["active_route_count"] == 1
+
+
 def test_transit_store_sorts_active_lines_and_incidents_by_priority(valkey_url):
     store = TransitStore(valkey_url)
 
