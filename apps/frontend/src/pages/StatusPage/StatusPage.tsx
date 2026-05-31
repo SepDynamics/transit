@@ -223,22 +223,17 @@ function useStatusData() {
       controller = new AbortController();
       setRefreshing(true);
       try {
-        const [
-          networkPayload,
-          routesPayload,
-          alertsPayload,
-          scorecardPayload,
-          feedQualityPayload,
-          triagePayload,
-        ] =
+        const [networkPayload, routesPayload, alertsPayload, scorecardPayload] =
           await Promise.all([
             fetchCachedJson<PublicStatusNetworkResponse>("/api/status/network", { signal: controller.signal }),
             fetchCachedJson<PublicStatusRoutesResponse>("/api/status/routes", { signal: controller.signal }),
             fetchCachedJson<PublicStatusAlertsResponse>("/api/status/alerts", { signal: controller.signal }),
             fetchCachedJson<PublicStatusScorecardResponse>(`/api/status/scorecard?limit=${STATUS_SCORECARD_LIMIT}`, { signal: controller.signal }),
-            fetchCachedJson<PublicStatusFeedQualityResponse>("/api/status/feed-quality", { signal: controller.signal }).catch(() => null),
-            fetchCachedJson<PublicStatusTriageResponse>(`/api/status/triage?limit=${STATUS_TRIAGE_LIMIT}`, { signal: controller.signal }).catch(() => null),
           ]);
+        const [feedQualityPayload, triagePayload] = await Promise.all([
+          fetchCachedJson<PublicStatusFeedQualityResponse>("/api/status/feed-quality", { signal: controller.signal }).catch(() => null),
+          fetchCachedJson<PublicStatusTriageResponse>(`/api/status/triage?limit=${STATUS_TRIAGE_LIMIT}`, { signal: controller.signal }).catch(() => null),
+        ]);
         if (!active) return;
         setData({
           network: networkPayload,
