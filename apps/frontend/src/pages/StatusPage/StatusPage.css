@@ -120,6 +120,13 @@
   font-size: 1.1rem;
 }
 
+.network-banner__stat small {
+  max-width: 180px;
+  color: var(--text-subtle);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
 /* ---------------------------------------------------------------------------
    Section header for status page
    --------------------------------------------------------------------------- */
@@ -601,6 +608,10 @@
 
   .network-banner__stat {
     text-align: left;
+  }
+
+  .network-banner__stat small {
+    max-width: none;
   }
 
   .route-tiles {

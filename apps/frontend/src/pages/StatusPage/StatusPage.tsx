@@ -159,6 +159,27 @@ const routeMatchesSearch = (route: RouteStatus, rawQuery: string): boolean => {
   return query.split(/\s+/).every((token) => searchText.includes(token) || compactText.includes(token));
 };
 
+const FEED_SOURCE_LABELS: Record<string, string> = {
+  gtfs_rt_alerts: "alerts",
+  gtfs_rt_trip_updates: "trip updates",
+  gtfs_rt_vehicle_positions: "vehicle positions",
+};
+
+const describeFeedSource = (
+  feedStatus: PublicStatusNetworkResponse["feed_status"],
+): { label: string; summary: string } => {
+  const feedLabel = feedStatus?.feed_label?.trim() || "Transit";
+  const sourceParts = (feedStatus?.collection_source ?? "")
+    .split("+")
+    .map((part) => FEED_SOURCE_LABELS[part] ?? part.replace(/_/g, " "))
+    .filter(Boolean);
+
+  return {
+    label: `${feedLabel} live feeds`,
+    summary: sourceParts.length ? sourceParts.join(" + ") : "awaiting data",
+  };
+};
+
 // ---------------------------------------------------------------------------
 // Polling hook
 // ---------------------------------------------------------------------------
@@ -238,6 +259,8 @@ function useStatusData() {
 
 function NetworkBanner({ network }: { network: PublicStatusNetworkResponse }) {
   const sev = network.severity || "unknown";
+  const feedSource = describeFeedSource(network.feed_status);
+  const rawAlertCount = network.feed_status?.alert_count;
   return (
     <div className={`network-banner network-banner--${sev}`}>
       <div className="network-banner__status">
@@ -257,12 +280,16 @@ function NetworkBanner({ network }: { network: PublicStatusNetworkResponse }) {
           <strong>{network.active_route_count}</strong>
         </div>
         <div className="network-banner__stat">
-          <span>Active alerts</span>
+          <span>Priority alerts</span>
           <strong>{network.incident_count}</strong>
+          {typeof rawAlertCount === "number" && (
+            <small>{rawAlertCount} MBTA alerts read</small>
+          )}
         </div>
         <div className="network-banner__stat">
-          <span>Feed</span>
-          <strong>{network.feed_status?.collection_source ?? "n/a"}</strong>
+          <span>Source</span>
+          <strong>{feedSource.label}</strong>
+          <small>{feedSource.summary}</small>
         </div>
       </div>
     </div>
@@ -511,7 +538,7 @@ export default function StatusPage() {
         {alertList.length > 0 && (
           <div className="status-section">
             <div className="status-section__header">
-              <h2 className="status-section__title">Active alerts</h2>
+              <h2 className="status-section__title">Priority alerts</h2>
               <span className="status-section__count">{alertList.length} alert{alertList.length !== 1 ? "s" : ""}</span>
             </div>
             <div className="alert-list">

@@ -1,6 +1,9 @@
 # Investor Brief
 
-Meeting target: April 20, 2026
+Meeting target: current investor / partner meeting
+
+For the shortest room-ready version, start with
+[Transit Sentinel Meeting One-Sheet](/sep/transit-sentinel/docs/MEETING_ONE_SHEET.md).
 
 Transit Sentinel is a live MBTA intelligence layer. It takes public MBTA GTFS
 and GTFS Realtime feeds, turns them into scored route and vehicle state, and
@@ -161,13 +164,16 @@ curl -fsS https://sepdynamics.co/api/status/routes
 Demo sequence:
 
 1. Open `https://sepdynamics.co/` and show the public MBTA status page.
-2. Point out feed freshness, active route count, disrupted routes, and active
-   alerts.
+2. Point out the network banner, active route count, priority alerts, and
+   source data.
 3. Show `/api/status/network` as the public integration surface.
 4. Explain that `/api/transit/*` is the protected operations surface and is not
    exposed to anonymous browsers.
-5. Show this repo's MBTA case packs and calibration workflow as the proof path.
-6. Show the live health report to prove this is deployed software, not a mock.
+5. Use [the one-sheet](/sep/transit-sentinel/docs/MEETING_ONE_SHEET.md) for the
+   simple comparison to `mbta.com/alerts/bus`: MBTA alerts are the bulletin
+   board; Transit Sentinel is the triage desk.
+6. Show this repo's MBTA case packs and calibration workflow as the proof path.
+7. Show the live health report to prove this is deployed software, not a mock.
 
 Do not position the public host as a dispatch replacement. The sharper claim is
 that Transit Sentinel is an explainable intelligence and proof layer built on
