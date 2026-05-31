@@ -13,6 +13,7 @@ import sys
 import threading
 import time
 from collections import OrderedDict
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Callable, Dict
@@ -428,6 +429,149 @@ class TransitAPIService:
             "disrupted_route_count": len(disrupted_routes),
             "disrupted_routes": disrupted_routes,
             "feed_status": health.get("feed_status"),
+        }
+
+    def public_status_feed_quality(
+        self, *, scope: str = "live", trace_id: str | None = None
+    ) -> Dict[str, Any]:
+        return self._cached_payload(
+            ("public_status_feed_quality", scope, trace_id),
+            lambda: self._public_status_feed_quality_uncached(
+                scope=scope, trace_id=trace_id
+            ),
+        )
+
+    def _public_status_feed_quality_uncached(
+        self, *, scope: str = "live", trace_id: str | None = None
+    ) -> Dict[str, Any]:
+        network = self.public_status_network(scope=scope, trace_id=trace_id)
+        feed_status = dict(network.get("feed_status") or {})
+        updated_at = feed_status.get("updated_at")
+        age_seconds = _age_seconds(updated_at)
+        active_route_count = int(network.get("active_route_count") or 0)
+        vehicle_count = int(feed_status.get("vehicle_count") or 0)
+        trip_update_count = int(feed_status.get("trip_update_count") or 0)
+        alert_count = int(feed_status.get("alert_count") or 0)
+        feed_status = {
+            "feed_label": feed_status.get("feed_label"),
+            "updated_at": updated_at,
+            "agency_key": feed_status.get("agency_key"),
+            "vehicle_count": vehicle_count,
+            "trip_update_count": trip_update_count,
+            "alert_count": alert_count,
+            "collection_source": str(feed_status.get("collection_source") or ""),
+            "status": str(feed_status.get("status") or "unknown"),
+        }
+
+        checks = [
+            _feed_quality_check(
+                "freshness",
+                "Feed freshness",
+                _freshness_status(age_seconds),
+                _freshness_detail(age_seconds),
+            ),
+            _feed_quality_check(
+                "route_coverage",
+                "Route coverage",
+                "good" if active_route_count > 0 else "disruption",
+                f"{active_route_count} routes currently scoreable",
+            ),
+            _feed_quality_check(
+                "vehicle_positions",
+                "Vehicle positions",
+                "good" if vehicle_count > 0 else "disruption",
+                f"{vehicle_count} vehicles read from the latest sample",
+            ),
+            _feed_quality_check(
+                "trip_updates",
+                "Trip updates",
+                "good" if trip_update_count > 0 else "advisory",
+                f"{trip_update_count} trip updates read from the latest sample",
+            ),
+            _feed_quality_check(
+                "alerts",
+                "Service alerts",
+                "good",
+                f"{alert_count} MBTA alerts read from the latest sample",
+            ),
+        ]
+        check_statuses = {str(check.get("status") or "unknown") for check in checks}
+        if "disruption" in check_statuses:
+            status = "disruption"
+        elif "advisory" in check_statuses:
+            status = "advisory"
+        elif "unknown" in check_statuses:
+            status = "unknown"
+        else:
+            status = "good"
+        return {
+            "generated_at": isoformat_ms(),
+            "scope": scope,
+            "status": status,
+            "status_label": SEVERITY_LABELS.get(status, status),
+            "status_color": SEVERITY_COLOR.get(status, "gray"),
+            "updated_at": updated_at,
+            "age_seconds": age_seconds,
+            "checks": checks,
+            "feed_status": feed_status,
+        }
+
+    def public_status_triage(
+        self,
+        *,
+        scope: str = "live",
+        trace_id: str | None = None,
+        limit: int = 12,
+    ) -> Dict[str, Any]:
+        return self._cached_payload(
+            ("public_status_triage", scope, trace_id, int(limit)),
+            lambda: self._public_status_triage_uncached(
+                scope=scope, trace_id=trace_id, limit=limit
+            ),
+        )
+
+    def _public_status_triage_uncached(
+        self,
+        *,
+        scope: str = "live",
+        trace_id: str | None = None,
+        limit: int = 12,
+    ) -> Dict[str, Any]:
+        routes_payload = self.public_status_routes(scope=scope, trace_id=trace_id)
+        candidates = [
+            dict(route)
+            for route in (routes_payload.get("routes") or [])
+            if isinstance(route, dict)
+            and str(route.get("severity") or "good") not in ("good", "unknown")
+        ]
+        candidates.sort(key=_triage_sort_key)
+        rows = []
+        for rank, route in enumerate(candidates[: max(1, min(int(limit), 50))], start=1):
+            severity = str(route.get("severity") or "unknown")
+            rows.append(
+                {
+                    "rank": rank,
+                    "entity_id": route.get("entity_id"),
+                    "route_id": route.get("route_id"),
+                    "label": route.get("label"),
+                    "severity": severity,
+                    "severity_label": route.get("severity_label")
+                    or SEVERITY_LABELS.get(severity, severity),
+                    "headline": route.get("headline"),
+                    "short_summary": route.get("short_summary"),
+                    "hazard_score": route.get("hazard_score"),
+                    "active_alert_count": int(route.get("active_alert_count") or 0),
+                    "median_delay_seconds": route.get("median_delay_seconds"),
+                    "updated_at_ms": route.get("timestamp_ms"),
+                    "evidence": _triage_evidence(route),
+                    "recommended_action": _public_recommended_action(severity),
+                }
+            )
+        return {
+            "generated_at": isoformat_ms(),
+            "scope": scope,
+            "triage_count": len(rows),
+            "routes": rows,
         }
 
     def public_status_alerts(
@@ -917,6 +1061,94 @@ def _int_env(name: str, default: int) -> int:
         return default
 
 
+def _age_seconds(timestamp: Any) -> int | None:
+    if not timestamp:
+        return None
+    try:
+        value = datetime.fromisoformat(str(timestamp).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return max(0, int((datetime.now(timezone.utc) - value).total_seconds()))
+
+
+def _freshness_status(age_seconds: int | None) -> str:
+    if age_seconds is None:
+        return "unknown"
+    if age_seconds <= 120:
+        return "good"
+    if age_seconds <= 300:
+        return "advisory"
+    return "disruption"
+
+
+def _freshness_detail(age_seconds: int | None) -> str:
+    if age_seconds is None:
+        return "No feed timestamp available"
+    if age_seconds < 60:
+        return f"Updated {age_seconds}s ago"
+    return f"Updated {round(age_seconds / 60)}m ago"
+
+
+def _feed_quality_check(
+    check_id: str, label: str, status: str, detail: str
+) -> Dict[str, Any]:
+    return {
+        "check_id": check_id,
+        "label": label,
+        "status": status,
+        "status_label": SEVERITY_LABELS.get(status, status),
+        "detail": detail,
+    }
+
+
+def _triage_sort_key(route: Dict[str, Any]) -> tuple:
+    severity = str(route.get("severity") or "good")
+    hazard = _number_or_zero(route.get("hazard_score"))
+    alert_count = int(route.get("active_alert_count") or 0)
+    delay = abs(_number_or_zero(route.get("median_delay_seconds")))
+    timestamp = int(route.get("timestamp_ms") or 0)
+    label = str(route.get("label") or "")
+    return (-severity_rank(severity), -alert_count, -hazard, -delay, -timestamp, label)
+
+
+def _triage_evidence(route: Dict[str, Any]) -> list[str]:
+    evidence: list[str] = []
+    alert_count = int(route.get("active_alert_count") or 0)
+    if alert_count:
+        suffix = "" if alert_count == 1 else "s"
+        evidence.append(f"{alert_count} active alert{suffix}")
+    delay = route.get("median_delay_seconds")
+    if isinstance(delay, (int, float)) and abs(delay) >= 60:
+        evidence.append(f"median delay {round(delay / 60)}m")
+    hazard = route.get("hazard_score")
+    if isinstance(hazard, (int, float)) and hazard >= 0.2:
+        evidence.append(f"risk score {hazard:.2f}")
+    advisories = [str(item) for item in (route.get("advisories") or []) if item]
+    if advisories:
+        evidence.append(advisories[0])
+    if not evidence:
+        evidence.append(str(route.get("headline") or "Route elevated by live status"))
+    return evidence[:4]
+
+
+def _public_recommended_action(severity: str) -> str:
+    if severity in ("severe", "disruption"):
+        return "Escalate for operations review and align rider messaging."
+    if severity == "delay":
+        return "Monitor service and publish delay guidance if it persists."
+    if severity == "advisory":
+        return "Watch for corroborating changes in vehicles, trips, and alerts."
+    return "No public action needed."
+
+
+def _number_or_zero(value: Any) -> float:
+    if isinstance(value, (int, float)):
+        return float(value)
+    return 0.0
+
+
 class TransitAPIHandler(BaseHTTPRequestHandler):
     server_version = "TransitSentinel/1.0"
 
@@ -1035,6 +1267,27 @@ class TransitAPIHandler(BaseHTTPRequestHandler):
                 self._send_json(
                     self.svc.public_status_network(
                         scope=status_scope, trace_id=trace_id
+                    )
+                )
+                return
+            if parsed.path == "/api/status/feed-quality":
+                self._send_json(
+                    self.svc.public_status_feed_quality(
+                        scope=status_scope, trace_id=trace_id
+                    )
+                )
+                return
+            if parsed.path == "/api/status/triage":
+                limit_raw = (params.get("limit") or ["12"])[0]
+                try:
+                    triage_limit = int(limit_raw)
+                except ValueError:
+                    triage_limit = 12
+                self._send_json(
+                    self.svc.public_status_triage(
+                        scope=status_scope,
+                        trace_id=trace_id,
+                        limit=max(1, min(triage_limit, 50)),
                     )
                 )
                 return

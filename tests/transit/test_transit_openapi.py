@@ -17,6 +17,8 @@ PUBLIC_PATHS = {
     "/api/health",
     "/api/status",
     "/api/status/network",
+    "/api/status/feed-quality",
+    "/api/status/triage",
     "/api/status/routes",
     "/api/status/alerts",
     "/api/status/scorecard",
@@ -72,6 +74,10 @@ def test_openapi_public_status_contract_is_closed_and_conditional():
         "DisruptedRoute",
         "PublicStatusRoutesResponse",
         "PublicStatusNetworkResponse",
+        "PublicFeedQualityCheck",
+        "PublicStatusFeedQualityResponse",
+        "PublicTriageRoute",
+        "PublicStatusTriageResponse",
         "PublicStatusAlert",
         "PublicStatusAlertsResponse",
         "PublicScorecardNetwork",
@@ -106,6 +112,8 @@ def test_openapi_public_status_contract_is_closed_and_conditional():
 
     for path in (
         "/api/status/network",
+        "/api/status/feed-quality",
+        "/api/status/triage",
         "/api/status/routes",
         "/api/status/alerts",
         "/api/status/scorecard",
@@ -117,6 +125,8 @@ def test_openapi_public_status_contract_is_closed_and_conditional():
 
     scorecard_params = spec["paths"]["/api/status/scorecard"]["get"]["parameters"]
     assert scorecard_params[2]["$ref"].endswith("/PublicScorecardLimit")
+    triage_params = spec["paths"]["/api/status/triage"]["get"]["parameters"]
+    assert triage_params[2]["$ref"].endswith("/PublicTriageLimit")
 
 
 def _load_spec():

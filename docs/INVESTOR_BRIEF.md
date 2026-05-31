@@ -73,6 +73,8 @@ What is already implemented:
 - route, vehicle, alert, trip-update, feed-status, regime, incident, trend, and
   scorecard payloads
 - public `/api/status/*` endpoints for status page and integrations
+- public feed-quality and live-triage endpoints for status monitoring and
+  route prioritization
 - protected `/api/transit/*` operations endpoints
 - materialized live read models for dashboard, network status, scorecard, and
   trends
@@ -164,16 +166,18 @@ curl -fsS https://sepdynamics.co/api/status/routes
 Demo sequence:
 
 1. Open `https://sepdynamics.co/` and show the public MBTA status page.
-2. Point out the network banner, active route count, priority alerts, and
-   source data.
+2. Point out the network banner, active route count, priority alerts, source
+   data, feed quality, and live triage queue.
 3. Show `/api/status/network` as the public integration surface.
-4. Explain that `/api/transit/*` is the protected operations surface and is not
+4. Show `/api/status/feed-quality` and `/api/status/triage` as the first build
+   toward feed-quality monitoring and live status triage.
+5. Explain that `/api/transit/*` is the protected operations surface and is not
    exposed to anonymous browsers.
-5. Use [the one-sheet](/sep/transit-sentinel/docs/MEETING_ONE_SHEET.md) for the
+6. Use [the one-sheet](/sep/transit-sentinel/docs/MEETING_ONE_SHEET.md) for the
    simple comparison to `mbta.com/alerts/bus`: MBTA alerts are the bulletin
    board; Transit Sentinel is the triage desk.
-6. Show this repo's MBTA case packs and calibration workflow as the proof path.
-7. Show the live health report to prove this is deployed software, not a mock.
+7. Show this repo's MBTA case packs and calibration workflow as the proof path.
+8. Show the live health report to prove this is deployed software, not a mock.
 
 Do not position the public host as a dispatch replacement. The sharper claim is
 that Transit Sentinel is an explainable intelligence and proof layer built on

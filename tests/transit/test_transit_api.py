@@ -218,6 +218,63 @@ class _FakeTransitService:
             "feed_status": {"collection_source": "gtfs_rt"},
         }
 
+    def public_status_feed_quality(self, *, scope: str = "live", trace_id=None):
+        return {
+            "generated_at": "2024-01-01T00:00:00.000Z",
+            "scope": scope,
+            "status": "good",
+            "status_label": "Good Service",
+            "status_color": "green",
+            "updated_at": "2024-01-01T00:00:00.000Z",
+            "age_seconds": 30,
+            "checks": [
+                {
+                    "check_id": "freshness",
+                    "label": "Feed freshness",
+                    "status": "good",
+                    "status_label": "Good Service",
+                    "detail": "Updated 30s ago",
+                }
+            ],
+            "feed_status": {
+                "feed_label": "MBTA",
+                "updated_at": "2024-01-01T00:00:00.000Z",
+                "agency_key": "mbta",
+                "vehicle_count": 10,
+                "trip_update_count": 20,
+                "alert_count": 1,
+                "collection_source": "gtfs_rt",
+                "status": "ok",
+            },
+        }
+
+    def public_status_triage(
+        self, *, scope: str = "live", trace_id=None, limit: int = 12
+    ):
+        return {
+            "generated_at": "2024-01-01T00:00:00.000Z",
+            "scope": scope,
+            "triage_count": 1,
+            "routes": [
+                {
+                    "rank": 1,
+                    "entity_id": "route:Red:0",
+                    "route_id": "Red",
+                    "label": "Red Line",
+                    "severity": "delay",
+                    "severity_label": "Delays",
+                    "headline": "Red Line: Delays",
+                    "short_summary": "Delays reported",
+                    "hazard_score": 0.61,
+                    "active_alert_count": 1,
+                    "median_delay_seconds": 165.0,
+                    "updated_at_ms": 1700000000000,
+                    "evidence": ["1 active alert", "risk score 0.61"],
+                    "recommended_action": "Monitor service and publish delay guidance if it persists.",
+                }
+            ][:limit],
+        }
+
     def public_status_alerts(self, *, scope: str = "live", trace_id=None):
         return {
             "generated_at": "2024-01-01T00:00:00.000Z",
@@ -614,6 +671,41 @@ def test_public_status_network_endpoint_serves_json():
     assert payload["severity_label"] == "Delays"
     assert payload["disrupted_route_count"] == 1
     assert payload["disrupted_routes"][0]["entity_id"] == "route:Red:0"
+
+
+def test_public_status_feed_quality_endpoint_serves_json():
+    server = start_transit_http_server(_FakeTransitService(), host="127.0.0.1", port=0)
+    try:
+        with urlopen(
+            f"http://127.0.0.1:{server.server_port}/api/status/feed-quality"
+        ) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    finally:
+        server.shutdown()
+        server.server_close()
+
+    assert payload["scope"] == "live"
+    assert payload["status"] == "good"
+    assert payload["checks"][0]["check_id"] == "freshness"
+    assert payload["feed_status"]["vehicle_count"] == 10
+
+
+def test_public_status_triage_endpoint_serves_json():
+    server = start_transit_http_server(_FakeTransitService(), host="127.0.0.1", port=0)
+    try:
+        with urlopen(
+            f"http://127.0.0.1:{server.server_port}/api/status/triage?limit=1"
+        ) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    finally:
+        server.shutdown()
+        server.server_close()
+
+    assert payload["scope"] == "live"
+    assert payload["triage_count"] == 1
+    assert payload["routes"][0]["rank"] == 1
+    assert payload["routes"][0]["entity_id"] == "route:Red:0"
+    assert "evidence" in payload["routes"][0]
 
 
 def test_public_status_alerts_endpoint_serves_json():

@@ -547,6 +547,50 @@ export interface PublicStatusNetworkResponse {
   feed_status?: TransitFeedStatus;
 }
 
+export interface PublicFeedQualityCheck {
+  check_id: string;
+  label: string;
+  status: RouteStatus["severity"];
+  status_label: string;
+  detail: string;
+}
+
+export interface PublicStatusFeedQualityResponse {
+  generated_at?: string;
+  scope?: string;
+  status: RouteStatus["severity"];
+  status_label: string;
+  status_color: string;
+  updated_at?: string | null;
+  age_seconds?: number | null;
+  checks: PublicFeedQualityCheck[];
+  feed_status: TransitFeedStatus;
+}
+
+export interface PublicTriageRoute {
+  rank: number;
+  entity_id: string;
+  route_id?: string | null;
+  label: string;
+  severity: RouteStatus["severity"];
+  severity_label: string;
+  headline: string;
+  short_summary: string;
+  hazard_score?: number | null;
+  active_alert_count: number;
+  median_delay_seconds?: number | null;
+  updated_at_ms?: number | null;
+  evidence: string[];
+  recommended_action: string;
+}
+
+export interface PublicStatusTriageResponse {
+  generated_at?: string;
+  scope?: string;
+  triage_count: number;
+  routes: PublicTriageRoute[];
+}
+
 export interface PublicStatusAlert {
   alert_id?: string | null;
   entity_id?: string;

@@ -58,6 +58,15 @@ components:
         maximum: 2000
         default: 720
       description: Rolling scorecard sample limit. The live host may apply a lower configured cap.
+    PublicTriageLimit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 50
+        default: 12
+      description: Maximum number of elevated routes to return in the public triage queue.
     EntityId:
       name: entity_id
       in: query
@@ -1289,6 +1298,111 @@ components:
           $ref: "#/components/schemas/FeedStatus"
         read_model:
           $ref: "#/components/schemas/ReadModelMetadata"
+    PublicFeedQualityCheck:
+      type: object
+      additionalProperties: false
+      required: [check_id, label, status, status_label, detail]
+      properties:
+        check_id:
+          type: string
+        label:
+          type: string
+        status:
+          $ref: "#/components/schemas/PublicSeverity"
+        status_label:
+          type: string
+        detail:
+          type: string
+    PublicStatusFeedQualityResponse:
+      type: object
+      additionalProperties: false
+      required: [generated_at, scope, status, status_label, status_color, updated_at, age_seconds, checks, feed_status]
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+        scope:
+          type: string
+          enum: [live, replay]
+        status:
+          $ref: "#/components/schemas/PublicSeverity"
+        status_label:
+          type: string
+        status_color:
+          $ref: "#/components/schemas/PublicSeverityColor"
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+        age_seconds:
+          type: integer
+          nullable: true
+        checks:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicFeedQualityCheck"
+        feed_status:
+          $ref: "#/components/schemas/FeedStatus"
+    PublicTriageRoute:
+      type: object
+      additionalProperties: false
+      required: [rank, entity_id, route_id, label, severity, severity_label, headline, short_summary, hazard_score, active_alert_count, median_delay_seconds, updated_at_ms, evidence, recommended_action]
+      properties:
+        rank:
+          type: integer
+          minimum: 1
+        entity_id:
+          type: string
+        route_id:
+          type: string
+          nullable: true
+        label:
+          type: string
+        severity:
+          $ref: "#/components/schemas/PublicSeverity"
+        severity_label:
+          type: string
+        headline:
+          type: string
+        short_summary:
+          type: string
+        hazard_score:
+          type: number
+          nullable: true
+        active_alert_count:
+          type: integer
+          minimum: 0
+        median_delay_seconds:
+          type: number
+          nullable: true
+        updated_at_ms:
+          type: integer
+          format: int64
+          nullable: true
+        evidence:
+          type: array
+          items:
+            type: string
+        recommended_action:
+          type: string
+    PublicStatusTriageResponse:
+      type: object
+      additionalProperties: false
+      required: [generated_at, scope, triage_count, routes]
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+        scope:
+          type: string
+          enum: [live, replay]
+        triage_count:
+          type: integer
+          minimum: 0
+        routes:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicTriageRoute"
     PublicStatusAlert:
       type: object
       additionalProperties: false
@@ -1488,6 +1602,71 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PublicStatusNetworkResponse"
+        "304":
+          description: The client's If-None-Match validator still matches the current payload.
+          headers:
+            ETag:
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+  /api/status/feed-quality:
+    get:
+      tags: [Public status]
+      summary: Public feed quality summary
+      parameters:
+        - $ref: "#/components/parameters/PublicStatusScope"
+        - $ref: "#/components/parameters/TraceId"
+      responses:
+        "200":
+          description: Feed freshness, source counts, and route coverage checks.
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: Strong validator for conditional polling with If-None-Match.
+            Cache-Control:
+              schema:
+                type: string
+              description: Public status responses are revalidated by clients.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicStatusFeedQualityResponse"
+        "304":
+          description: The client's If-None-Match validator still matches the current payload.
+          headers:
+            ETag:
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+  /api/status/triage:
+    get:
+      tags: [Public status]
+      summary: Public live status triage queue
+      parameters:
+        - $ref: "#/components/parameters/PublicStatusScope"
+        - $ref: "#/components/parameters/TraceId"
+        - $ref: "#/components/parameters/PublicTriageLimit"
+      responses:
+        "200":
+          description: Ranked elevated routes with public evidence and recommended action.
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: Strong validator for conditional polling with If-None-Match.
+            Cache-Control:
+              schema:
+                type: string
+              description: Public status responses are revalidated by clients.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicStatusTriageResponse"
         "304":
           description: The client's If-None-Match validator still matches the current payload.
           headers:

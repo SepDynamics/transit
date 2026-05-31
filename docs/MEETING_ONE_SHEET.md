@@ -24,6 +24,10 @@ The cleanest one-line explanation:
 - **Priority alerts**: Sentinel-generated advisories. This is not just the raw
   MBTA alert count; it is the subset of route conditions Sentinel is elevating.
 - **Source**: the MBTA public live data Sentinel is reading.
+- **Feed quality**: whether the current MBTA feed sample is fresh enough and
+  has route, vehicle, trip-update, and alert coverage.
+- **Live triage**: the ranked queue of elevated routes, with the evidence and
+  public-facing action Sentinel would put first.
 - **Route status**: per-route cards grouped by rapid transit, bus, commuter
   rail, ferry, and other routes. Search a route like `Red Line`, `66`, or
   `Green-B`.
@@ -85,10 +89,17 @@ monitoring, operations triage, feed quality, or proof reports.
 2. Point to the top banner: "This is the current network readout."
 3. Point to **Source**: "This is the MBTA public realtime feed Sentinel is
    reading: alerts, trip updates, and vehicle positions."
-4. Search for a recognizable route, such as `Red Line`, `66`, or `Green-B`.
-5. Open `https://sepdynamics.co/api/status/network` to show the same live state
+4. Point to **Feed quality**: "This tells us whether the input data is fresh
+   and usable before we trust the status."
+5. Point to **Live triage**: "This is the short list of routes Sentinel would
+   ask a human to look at first."
+6. Search for a recognizable route, such as `Red Line`, `66`, or `Green-B`.
+7. Open `https://sepdynamics.co/api/status/network` to show the same live state
    is available as a public JSON API.
-6. Explain that the private operations API exists behind auth at
+8. Open `https://sepdynamics.co/api/status/feed-quality` and
+   `https://sepdynamics.co/api/status/triage` to show the monitoring and triage
+   surfaces are API products, not just screen copy.
+9. Explain that the private operations API exists behind auth at
    `/api/transit/*`, but the public site intentionally uses only `/api/status/*`.
 
 ## What Not To Overclaim
@@ -106,4 +117,3 @@ The strongest ask is a focused pilot conversation:
 
 > Which wedge is most valuable: live status/API monitoring, operations triage,
 > feed-quality assurance, or reliability proof reports?
-

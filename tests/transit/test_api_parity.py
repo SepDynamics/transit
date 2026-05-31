@@ -32,6 +32,23 @@ class _ParityService:
             "routes": [{"entity_id": "route:Red:0", "severity": "good"}],
         }
 
+    def public_status_feed_quality(self, *, scope="live", trace_id=None):
+        return {
+            "scope": scope,
+            "trace_id": trace_id,
+            "status": "good",
+            "checks": [],
+            "feed_status": {"status": "ok"},
+        }
+
+    def public_status_triage(self, *, scope="live", trace_id=None, limit=12):
+        return {
+            "scope": scope,
+            "trace_id": trace_id,
+            "triage_count": 0,
+            "routes": [],
+        }
+
     def public_status_alerts(self, *, scope="live", trace_id=None):
         return {"scope": scope, "trace_id": trace_id, "alert_count": 0, "alerts": []}
 
@@ -162,7 +179,7 @@ def test_capture_and_verify_fixture_shape(tmp_path: Path) -> None:
         server.shutdown()
         server.server_close()
 
-    assert manifest["case_count"] == 6
+    assert manifest["case_count"] == 8
     assert manifest["skipped_count"] == 9
     assert report["status"] == "passed"
-    assert report["case_count"] == 6
+    assert report["case_count"] == 8

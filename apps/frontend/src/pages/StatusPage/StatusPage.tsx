@@ -3,8 +3,9 @@
  *
  * Rider-facing view that shows:
  *   - Network-level severity banner
+ *   - Feed-quality and live-triage summaries
  *   - Per-route status tiles with plain-language severity
- *   - Active alerts feed
+ *   - Priority alerts feed
  *   - Reliability scorecard table
  *
  * Consumes /api/status/* endpoints only.
@@ -13,9 +14,12 @@
 import { useEffect, useMemo, useState } from "react";
 import type {
   PublicStatusAlertsResponse,
+  PublicStatusFeedQualityResponse,
   PublicStatusNetworkResponse,
   PublicStatusRoutesResponse,
   PublicStatusScorecardResponse,
+  PublicStatusTriageResponse,
+  PublicTriageRoute,
   RouteStatus,
 } from "../../types/transit";
 import { fetchCachedJson } from "../../utils/api";
@@ -32,6 +36,7 @@ import "./StatusPage.css";
 const STATUS_REFRESH_MS = 30_000;
 const STATUS_HIDDEN_REFRESH_MS = 60_000;
 const STATUS_SCORECARD_LIMIT = 60;
+const STATUS_TRIAGE_LIMIT = 8;
 const SEVERITY_ORDER = ["severe", "disruption", "delay", "advisory", "good", "unknown"] as const;
 const ROUTE_GROUP_ORDER = ["Rapid Transit", "Bus", "Commuter Rail", "Ferry", "Other Routes"] as const;
 type SeverityFilter = "all" | RouteStatus["severity"];
@@ -41,6 +46,8 @@ type StatusDataState = {
   routes: PublicStatusRoutesResponse | null;
   alerts: PublicStatusAlertsResponse | null;
   scorecard: PublicStatusScorecardResponse | null;
+  feedQuality: PublicStatusFeedQualityResponse | null;
+  triage: PublicStatusTriageResponse | null;
 };
 
 type RouteGroup = {
@@ -190,6 +197,8 @@ function useStatusData() {
     routes: null,
     alerts: null,
     scorecard: null,
+    feedQuality: null,
+    triage: null,
   });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -214,12 +223,21 @@ function useStatusData() {
       controller = new AbortController();
       setRefreshing(true);
       try {
-        const [networkPayload, routesPayload, alertsPayload, scorecardPayload] =
+        const [
+          networkPayload,
+          routesPayload,
+          alertsPayload,
+          scorecardPayload,
+          feedQualityPayload,
+          triagePayload,
+        ] =
           await Promise.all([
             fetchCachedJson<PublicStatusNetworkResponse>("/api/status/network", { signal: controller.signal }),
             fetchCachedJson<PublicStatusRoutesResponse>("/api/status/routes", { signal: controller.signal }),
             fetchCachedJson<PublicStatusAlertsResponse>("/api/status/alerts", { signal: controller.signal }),
             fetchCachedJson<PublicStatusScorecardResponse>(`/api/status/scorecard?limit=${STATUS_SCORECARD_LIMIT}`, { signal: controller.signal }),
+            fetchCachedJson<PublicStatusFeedQualityResponse>("/api/status/feed-quality", { signal: controller.signal }).catch(() => null),
+            fetchCachedJson<PublicStatusTriageResponse>(`/api/status/triage?limit=${STATUS_TRIAGE_LIMIT}`, { signal: controller.signal }).catch(() => null),
           ]);
         if (!active) return;
         setData({
@@ -227,6 +245,8 @@ function useStatusData() {
           routes: routesPayload,
           alerts: alertsPayload,
           scorecard: scorecardPayload,
+          feedQuality: feedQualityPayload,
+          triage: triagePayload,
         });
         setLastUpdatedAt(networkPayload.generated_at ?? routesPayload.generated_at ?? new Date().toISOString());
         setLoading(false);
@@ -393,12 +413,93 @@ function PercentBar({ pct }: { pct?: number | null }) {
   );
 }
 
+function formatFeedAge(ageSeconds?: number | null): string {
+  if (typeof ageSeconds !== "number" || !Number.isFinite(ageSeconds)) return "n/a";
+  if (ageSeconds < 60) return `${Math.max(0, Math.round(ageSeconds))}s`;
+  return `${Math.round(ageSeconds / 60)}m`;
+}
+
+function FeedQualityPanel({ feedQuality }: { feedQuality: PublicStatusFeedQualityResponse }) {
+  const status = feedQuality.status || "unknown";
+  return (
+    <section className={`feed-quality-panel feed-quality-panel--${status}`} aria-labelledby="feed-quality-title">
+      <div className="feed-quality-panel__summary">
+        <span className="status-section__title" id="feed-quality-title">Feed quality</span>
+        <strong>{feedQuality.status_label}</strong>
+        <span>Latest sample {formatFeedAge(feedQuality.age_seconds)} old</span>
+      </div>
+      <div className="feed-quality-checks">
+        {feedQuality.checks.map((check) => (
+          <div className="feed-quality-check" key={check.check_id}>
+            <span className={`feed-quality-check__dot severity-dot--${check.status}`} />
+            <div>
+              <strong>{check.label}</strong>
+              <span>{check.detail}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function TriagePanel({ triage }: { triage: PublicStatusTriageResponse }) {
+  if (!triage.routes.length) {
+    return (
+      <section className="status-section">
+        <div className="status-section__header">
+          <h2 className="status-section__title">Live triage</h2>
+          <span className="status-section__count">0 routes</span>
+        </div>
+        <div className="status-empty">No elevated routes in the current live status sample.</div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="status-section">
+      <div className="status-section__header">
+        <h2 className="status-section__title">Live triage</h2>
+        <span className="status-section__count">{triage.triage_count} route{triage.triage_count !== 1 ? "s" : ""}</span>
+      </div>
+      <div className="triage-list">
+        {triage.routes.map((route) => (
+          <TriageCard route={route} key={route.entity_id} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function TriageCard({ route }: { route: PublicTriageRoute }) {
+  const sev = route.severity || "unknown";
+  return (
+    <a className={`triage-card triage-card--${sev}`} href={`#status/route/${encodeURIComponent(route.entity_id)}`}>
+      <div className="triage-card__rank">#{route.rank}</div>
+      <div className="triage-card__body">
+        <div className="triage-card__header">
+          <strong>{route.label}</strong>
+          <span className={`route-tile__severity-badge severity-badge--${sev}`}>
+            {route.short_summary || route.severity_label}
+          </span>
+        </div>
+        <p>{route.recommended_action}</p>
+        <div className="triage-card__evidence">
+          {route.evidence.map((item, index) => (
+            <span key={`${route.entity_id}-${index}`}>{item}</span>
+          ))}
+        </div>
+      </div>
+    </a>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Main page
 // ---------------------------------------------------------------------------
 
 export default function StatusPage() {
-  const { network, routes, alerts, scorecard, loading, refreshing, error, lastUpdatedAt } = useStatusData();
+  const { network, routes, alerts, scorecard, feedQuality, triage, loading, refreshing, error, lastUpdatedAt } = useStatusData();
   const [searchTerm, setSearchTerm] = useState("");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(getSelectedRouteId);
@@ -469,6 +570,10 @@ export default function StatusPage() {
             </div>
           </div>
         )}
+
+        {feedQuality && <FeedQualityPanel feedQuality={feedQuality} />}
+
+        {triage && <TriagePanel triage={triage} />}
 
         {/* Route tiles */}
         {routeList.length > 0 && (

@@ -25,6 +25,7 @@ Current strengths:
 - conditional JSON `GET` support through `ETag` / `If-None-Match`
 - API parity harness for future sidecar migrations
 - public MBTA status endpoints and status page
+- public feed-quality and live-triage status surfaces
 - protected operations API boundary for `/api/transit/*`
 - opt-in notification dispatcher Compose profile
 - React operations console with priority queue, evidence drawer, lazy-loaded
@@ -201,6 +202,8 @@ Work:
   - agency operations triage
   - feed quality assurance
   - reliability analytics and proof reports
+- use the new public feed-quality and triage endpoints as the first concrete
+  demo of the status/API monitoring and operations-triage wedges
 - pick one primary offer before broadening features
 - define the pilot success metrics: feed-to-status latency, alert precision,
   uptime, operator time saved, or public information quality

@@ -42,6 +42,8 @@ DEFAULT_CASES: tuple[EndpointCase, ...] = (
     EndpointCase("health", "GET", "/health"),
     EndpointCase("api_health", "GET", "/api/health"),
     EndpointCase("status_network", "GET", "/api/status/network"),
+    EndpointCase("status_feed_quality", "GET", "/api/status/feed-quality"),
+    EndpointCase("status_triage", "GET", "/api/status/triage?limit=12"),
     EndpointCase("status_routes", "GET", "/api/status/routes"),
     EndpointCase("status_alerts", "GET", "/api/status/alerts"),
     EndpointCase("status_scorecard", "GET", "/api/status/scorecard?limit=60"),

@@ -128,6 +128,161 @@
 }
 
 /* ---------------------------------------------------------------------------
+   Feed quality and live triage
+   --------------------------------------------------------------------------- */
+
+.feed-quality-panel {
+  border-radius: 8px;
+  border: 1px solid rgba(28, 86, 73, 0.16);
+  background: rgba(255, 255, 255, 0.56);
+  padding: 18px;
+  display: grid;
+  grid-template-columns: minmax(180px, 0.7fr) minmax(0, 1.6fr);
+  gap: 16px;
+  animation: rise-in 520ms ease both;
+}
+
+.feed-quality-panel--advisory {
+  border-color: rgba(234, 179, 8, 0.34);
+  background: rgba(234, 179, 8, 0.07);
+}
+
+.feed-quality-panel--delay,
+.feed-quality-panel--disruption,
+.feed-quality-panel--severe {
+  border-color: rgba(239, 68, 68, 0.24);
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.feed-quality-panel__summary {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.feed-quality-panel__summary strong {
+  font-size: 1.15rem;
+}
+
+.feed-quality-panel__summary span:last-child {
+  color: var(--text-muted);
+}
+
+.feed-quality-checks {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.feed-quality-check {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.feed-quality-check__dot {
+  width: 9px;
+  height: 9px;
+  margin-top: 5px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.feed-quality-check div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.feed-quality-check strong {
+  font-size: 0.86rem;
+}
+
+.feed-quality-check span:last-child {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.triage-list {
+  display: grid;
+  gap: 10px;
+}
+
+.triage-card {
+  border-radius: 8px;
+  border: 1px solid rgba(28, 86, 73, 0.14);
+  border-left: 3px solid #6b7280;
+  background: rgba(255, 255, 255, 0.52);
+  color: inherit;
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px 16px;
+  text-decoration: none;
+  animation: rise-in 480ms ease both;
+}
+
+.triage-card:hover {
+  border-color: rgba(28, 86, 73, 0.26);
+}
+
+.triage-card--advisory { border-left-color: #eab308; }
+.triage-card--delay { border-left-color: #f97316; }
+.triage-card--disruption { border-left-color: #ef4444; }
+.triage-card--severe { border-left-color: #dc2626; }
+
+.triage-card__rank {
+  color: var(--text-subtle);
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+}
+
+.triage-card__body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.triage-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.triage-card__header strong {
+  overflow-wrap: anywhere;
+}
+
+.triage-card p {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.triage-card__evidence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.triage-card__evidence span {
+  border: 1px solid rgba(28, 86, 73, 0.12);
+  border-radius: 8px;
+  background: rgba(15, 159, 120, 0.05);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  padding: 5px 8px;
+}
+
+/* ---------------------------------------------------------------------------
    Section header for status page
    --------------------------------------------------------------------------- */
 
@@ -612,6 +767,14 @@
 
   .network-banner__stat small {
     max-width: none;
+  }
+
+  .feed-quality-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .triage-card {
+    grid-template-columns: 1fr;
   }
 
   .route-tiles {
