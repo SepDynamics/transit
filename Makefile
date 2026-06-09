@@ -20,7 +20,8 @@ frontend-typecheck: $(FRONTEND_NODE_MODULES_STAMP)
 	cd apps/frontend && npm run typecheck
 
 frontend-build: $(FRONTEND_NODE_MODULES_STAMP)
-	cd apps/frontend && npm run build
+	@echo "Starting frontend build..."
+	@cd apps/frontend && bash -c 'start=$$(date +%s%N); npm run build; end=$$(date +%s%N); elapsed=$$(( (end - start) / 1000000 )); echo "Frontend build completed in $$((elapsed / 1000)).$$((elapsed % 1000))s"'
 
 build-manifold-engine:
 	@sh scripts/build_manifold_engine.sh

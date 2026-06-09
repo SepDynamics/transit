@@ -10,11 +10,11 @@ This repository should describe and prove the Boston path only.
 
 For investor and partner meetings, the repo source of truth is:
 
-- [Meeting One-Sheet](/sep/transit-sentinel/docs/MEETING_ONE_SHEET.md)
-- [Investor Brief](/sep/transit-sentinel/docs/INVESTOR_BRIEF.md)
-- [Stack Audit - 2026-04-19](/sep/transit-sentinel/docs/STACK_AUDIT_2026-04-19.md)
-- [Architecture](/sep/transit-sentinel/docs/ARCHITECTURE.md)
-- [Roadmap](/sep/transit-sentinel/docs/ROADMAP.md)
+- [Meeting One-Sheet](docs/MEETING_ONE_SHEET.md) — Plain-English explanation for non-technical stakeholders
+- [Investor Brief](docs/INVESTOR_BRIEF.md) — Meeting positioning, differentiation, risks, next steps
+- [Architecture](docs/ARCHITECTURE.md) — Technical architecture, data flow, and roadmap
+- [Live Deployment](docs/LIVE_DEPLOYMENT.md) — Deployment runbook with current stack audit
+- [Uptime & Performance Summary](docs/UPTIME_SUMMARY.md) — Live host reliability, latency, and memory trends
 
 ## Current Stack
 
@@ -35,27 +35,12 @@ For investor and partner meetings, the repo source of truth is:
 
 ## Documentation Map
 
-- [Investor Brief](/sep/transit-sentinel/docs/INVESTOR_BRIEF.md): selling
-  points, value, differentiation, meeting demo path, risks, and next steps.
-- [Meeting One-Sheet](/sep/transit-sentinel/docs/MEETING_ONE_SHEET.md):
-  plain-English site explanation, source-feed translation, and MBTA alerts
-  comparison for non-technical meetings.
-- [Stack Audit - 2026-04-19](/sep/transit-sentinel/docs/STACK_AUDIT_2026-04-19.md):
-  dated audit of the local repo and live MBTA droplet.
-- [Architecture](/sep/transit-sentinel/docs/ARCHITECTURE.md): how MBTA archive,
-  ingest, Valkey, scoring, API, and frontend fit together.
-- [Live Deployment](/sep/transit-sentinel/docs/LIVE_DEPLOYMENT.md): how the
-  hosted MBTA stack is configured, verified, and recovered.
-- [Data And Calibration](/sep/transit-sentinel/docs/DATA_AND_CALIBRATION.md):
-  MBTA feeds, case packs, replay, and grading workflow.
-- [API Migration](/sep/transit-sentinel/docs/API_MIGRATION.md): parity-first
-  process for any future FastAPI sidecar.
-- [Roadmap](/sep/transit-sentinel/docs/ROADMAP.md): current state, boundaries,
-  and the next sensible Boston-focused work.
-- [Repo Scope](/sep/transit-sentinel/docs/REPO_SCOPE.md): what belongs in this
-  repository.
-- [Systemd Backend Runtime](/sep/transit-sentinel/ops/systemd/README.md):
-  optional host-supervised MBTA backend process path.
+- [Investor Brief](docs/INVESTOR_BRIEF.md): selling points, value, differentiation, meeting demo path, risks, and next steps.
+- [Meeting One-Sheet](docs/MEETING_ONE_SHEET.md): plain-English site explanation, source-feed translation, and comparison for non-technical meetings.
+- [Architecture](docs/ARCHITECTURE.md): how archive, ingest, Valkey, scoring, API, and frontend fit together, plus data calibration, case packs, and roadmap.
+- [Live Deployment](docs/LIVE_DEPLOYMENT.md): how the hosted MBTA stack is configured, verified, and recovered, with embedded current stack audit.
+- [Uptime & Performance Summary](docs/UPTIME_SUMMARY.md): live host reliability, API response times, feed freshness, and container memory trends.
+- [Systemd Backend Runtime](ops/systemd/README.md): optional host-supervised MBTA backend process path.
 
 ## Local Development
 

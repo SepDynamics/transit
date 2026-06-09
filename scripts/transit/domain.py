@@ -248,7 +248,18 @@ class TransitRuntimeConfig:
 
 
 class TransitSnapshotService:
-    """Build transit-native dashboard payloads from GTFS and GTFS-RT inputs."""
+    """Build transit-native dashboard payloads from GTFS and GTFS-RT inputs.
+
+    Production scoring path: This class uses pure-Python heuristic scoring
+    (see _score_routes(), _classify_route(), _compute_route_metrics()) with
+    ~40 route metrics across 7 hazard components. This is the sole production
+    classifier -- no C++ manifold engine is involved.
+
+    A compiled PyBind11 C++ manifold engine exists at src/core/ for future
+    time-series structural entropy analysis, but it is NOT used in the live
+    ingest or scoring path. The C++ module is available for future integration
+    when longer-window pattern detection is added.
+    """
 
     def __init__(self, config: Optional[TransitRuntimeConfig] = None) -> None:
         if config is None:

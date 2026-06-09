@@ -1,0 +1,11 @@
+{
+  "agency_keys": [
+    "mbta"
+  ],
+  "case_pack_id": "mbta-green-line-c-sunday-disruption",
+  "category": "rail_disruption",
+  "city_key": "boston",
+  "city_name": "Boston",
+  "event_key": "sunday-evening-green-line-c",
+  "event_name": "Green Line C Sunday evening disruption"
+}

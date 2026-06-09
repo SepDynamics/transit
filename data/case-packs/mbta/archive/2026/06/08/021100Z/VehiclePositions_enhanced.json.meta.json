@@ -1,0 +1,14 @@
+{
+  "captured_at": "2026-06-09T02:09:55.161000+00:00",
+  "content_length": 204886,
+  "content_type": "application/json",
+  "etag": "\"0899db878e56751ff51068e046d383e1\"",
+  "filename": "VehiclePositions_enhanced.json",
+  "last_modified": "Tue, 09 Jun 2026 02:09:55 GMT",
+  "name": "vehicle_positions",
+  "path": "current/VehiclePositions_enhanced.json",
+  "sha256": "3422de4b50be217c2ddb5123055ab50a2c12cf67497b2fa5c01a5ae06ff2e8f7",
+  "status": "current",
+  "timestamp_ms": 1780970995161,
+  "url": "https://cdn.mbta.com/realtime/VehiclePositions_enhanced.json"
+}

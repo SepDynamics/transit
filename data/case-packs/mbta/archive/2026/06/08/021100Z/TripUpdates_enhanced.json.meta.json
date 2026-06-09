@@ -1,0 +1,14 @@
+{
+  "captured_at": "2026-06-09T02:09:55.161000+00:00",
+  "content_length": 2023225,
+  "content_type": "application/json",
+  "etag": "\"ec1360efdbcfaa6c043b8dbe65b9e91d\"",
+  "filename": "TripUpdates_enhanced.json",
+  "last_modified": "Tue, 09 Jun 2026 02:09:55 GMT",
+  "name": "trip_updates",
+  "path": "current/TripUpdates_enhanced.json",
+  "sha256": "6e27bbfd0eff0889a9164fd22872f48c5d18d3b4242f81ecc91b9042cb8eaf6d",
+  "status": "current",
+  "timestamp_ms": 1780970995161,
+  "url": "https://cdn.mbta.com/realtime/TripUpdates_enhanced.json"
+}

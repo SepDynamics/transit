@@ -1,0 +1,14 @@
+{
+  "captured_at": "2026-06-09T02:09:55.161000+00:00",
+  "content_length": 583883,
+  "content_type": "application/json",
+  "etag": "\"1d7b5e0dfc5e39891fb3a5ef84cf47d6\"",
+  "filename": "Alerts_enhanced.json",
+  "last_modified": "Tue, 09 Jun 2026 02:09:32 GMT",
+  "name": "alerts",
+  "path": "current/Alerts_enhanced.json",
+  "sha256": "97f1ee36577132916423a423d3661855cbcd3e75018c405b2944f5e8b77f3b2f",
+  "status": "current",
+  "timestamp_ms": 1780970995161,
+  "url": "https://cdn.mbta.com/realtime/Alerts_enhanced.json"
+}

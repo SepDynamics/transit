@@ -8,6 +8,8 @@ The live deployment is a bounded, low-memory MBTA stack. Replay remains a proof
 and demo tool, but the public host serves current MBTA feed state and does not
 serve replay traces.
 
+---
+
 ## Product Role
 
 Transit Sentinel is the layer between raw public transit telemetry and a
@@ -43,6 +45,104 @@ The architectural differentiators are:
 
 This makes the MBTA deployment a proof of operational shape, not just an app
 skin over the feed.
+
+---
+
+## Data And Calibration
+
+Transit Sentinel stays grounded in MBTA public data that can be collected,
+replayed, and regression-tested from this repo.
+
+### Supported MBTA Inputs
+
+| Feed | URL |
+|------|-----|
+| Static GTFS | `https://cdn.mbta.com/MBTA_GTFS.zip` |
+| Vehicle positions | `https://cdn.mbta.com/realtime/VehiclePositions_enhanced.json` |
+| Trip updates | `https://cdn.mbta.com/realtime/TripUpdates_enhanced.json` |
+| Alerts | `https://cdn.mbta.com/realtime/Alerts_enhanced.json` |
+
+MBTA is the only lane for continuous live operation, case-pack expansion,
+replay imports, scorecard validation, and public status behavior.
+
+### Case Packs
+
+Committed proof packs live under `data/case-packs/mbta/`. They include both:
+
+- **Positive incidents** — windows where Transit Sentinel should detect instability
+- **Quiet controls** — windows where it should remain quiet
+
+Run the committed MBTA suite:
+
+```bash
+make check-transit-case-packs
+```
+
+Label shape — positive incident:
+
+```json
+{
+  "dataset_id": "mbta-bunching-proof",
+  "incidents": [
+    {
+      "incident_id": "red-bunching-001",
+      "snapshot_path": "archive/2026/04/04/010000Z",
+      "route_id": "Red",
+      "direction_id": 0,
+      "expected_regime": "bunching_onset",
+      "expected_action": "hold"
+    }
+  ]
+}
+```
+
+Quiet control:
+
+```json
+{
+  "dataset_id": "mbta-overnight-controls",
+  "incidents": [
+    {
+      "incident_id": "orange-dir0-future-single-track-control",
+      "snapshot_path": "archive/2026/04/04/071140Z",
+      "route_id": "Orange",
+      "direction_id": 0,
+      "expected_detection": false
+    }
+  ]
+}
+```
+
+### Proof Standard
+
+A scoring change is useful when:
+
+- it matches at least as many labeled incidents as the naive baseline
+- it creates no more extra alerts than the naive baseline
+- it recommends a more useful operator action than a generic rider warning
+- quiet control packs stay quiet
+- API and frontend behavior remain consistent between live and replay scopes
+
+Route-level zero delay should be interpreted as no measured delay burden in the
+current sample, not as proof that every route is healthy.
+
+### Reporting And Artifacts
+
+Generate a corridor report:
+
+```bash
+make transit-history-report ARGS="--root-dir data/feeds/mbta --max-snapshots 20"
+```
+
+Generate MBTA benchmark artifacts:
+
+```bash
+make transit-benchmark-artifacts ARGS="--archive-root data/case-packs/mbta --labels data/case-packs/mbta --artifact-name mbta-suite"
+```
+
+Output lives under `artifacts/benchmarks/<artifact-name>/`.
+
+---
 
 ## Runtime Flow
 
@@ -96,7 +196,8 @@ The live compose override runs Valkey with AOF disabled and RDB snapshots:
 redis-server --appendonly no --save 300 1
 ```
 
-Valkey has a container memory limit of `900m` in the compose stack.
+Valkey has a container memory limit of `900m` in the compose stack and is
+configured with explicit `--maxmemory 768mb --maxmemory-policy allkeys-lru`.
 
 Rolling history keys are bounded twice: ingest trims sorted sets to
 `TRANSIT_HISTORY_RETENTION`, and each history key receives a native Valkey
@@ -118,9 +219,18 @@ The scoring layer emits internal regimes such as:
 - `service_degraded`
 - `feed_incoherent`
 
-The C++ byte-stream manifold engine has a bounded analysis window. Its default
-`max_windows` is `4096`; a caller-provided `0` maps back to that default instead
-of becoming unbounded, and excessive requested caps are clamped at `16384`.
+**Production scoring path**: The heuristic Python classifier in
+`scripts/transit/domain.py` is the production scoring path. It uses ~40 route
+metrics (delay distributions, headway compression, dwell overruns, terminal
+backlog, alert analysis, feed freshness) to classify into 7 regimes and
+recommend 6 actions. This is the core intelligence that runs every ingest cycle.
+
+**C++ manifold engine** (`src/core/byte_stream_manifold.cpp`): A compiled
+PyBind11 module is available in the repository for future time-series analysis.
+It is not currently used in the production scoring path — the heuristic Python
+scorer is the sole production classifier. The C++ engine was built for
+structural entropy analysis over longer windows and will be integrated when
+time-series pattern detection is added to the scoring pipeline.
 
 The frontend leads with operator language instead of raw regime tokens:
 
@@ -147,6 +257,8 @@ that need exact classifier output.
 - `/api/status/routes`
 - `/api/status/alerts`
 - `/api/status/scorecard`
+- `/api/status/feed-quality`
+- `/api/status/triage`
 - `/api/transit/dashboard`
 - `/api/transit/health`
 - `/api/transit/entities`
@@ -231,6 +343,8 @@ Use replay and calibration for proof, regression, and demos. Do not treat a
 seeded replay state as the primary public deployment while the live MBTA lane is
 healthy.
 
+---
+
 ## Boundaries
 
 - MBTA is the only supported live lane.
@@ -241,3 +355,58 @@ healthy.
   not expose internal dispatch constraints.
 - Documentation and committed proof assets should stay Boston-focused unless a
   future scope change is implemented end to end.
+
+---
+
+## Roadmap: Current State & Next Work
+
+### Where The Product Stands
+
+Transit Sentinel is a working MBTA public-data transit operations platform.
+The wedge is precise: convert MBTA public GTFS and GTFS Realtime feeds into
+ranked, explainable route status and operational proof.
+
+Current strengths:
+- live MBTA deployment at `sepdynamics.co`
+- bounded Docker runtime with Valkey, archive, ingest, API, and frontend
+- live health script and native Valkey history TTLs
+- materialized live read models for scorecard, trends, dashboard, and network
+- conditional JSON GET support through `ETag` / `If-None-Match`
+- public MBTA status endpoints with feed-quality and triage surfaces
+- protected operations API boundary for `/api/transit/*`
+- opt-in notification dispatcher Compose profile
+- React operations console with priority queue, evidence drawer, map, trends
+- replay imports and committed MBTA case-pack calibration
+
+### Next Sensible Work
+
+**1. Make the investor demo repeatable** — screenshots, documented demo path,
+live health output before every meeting.
+
+**2. Keep the live host boring** — alert thresholds, Valkey memory policy,
+prune recovery tooling.
+
+**3. Improve MBTA read models** — materialized scorecard and trends outside the
+request path; fast on first request after restart.
+
+**4. Reduce ingest and API runtime cost** — profile snapshot cost, avoid
+repeated GTFS parsing, measure ETag reuse.
+
+**5. Harden the public API schema** — keep OpenAPI aligned, stable schema for
+`/api/status/*`.
+
+**6. Grow MBTA proof carefully** — more case packs, more quiet controls,
+balanced positive/negative corpus.
+
+**7. Improve the console** — evidence drawer, route search, map lazy-loading.
+
+**8. Choose the commercial wedge** — status/API monitoring, operations triage,
+feed quality, or reliability analytics. Pick one pilot offer before broadening.
+
+### Not Current Priorities
+
+- campaign-specific copy inside the product UI
+- generic audience decks inside the product UI
+- claims about non-Boston coverage
+- expanding functionality that increases host load before read-model caching
+  and health checks stay boring under live traffic

@@ -3,7 +3,10 @@
 This runbook covers the hosted MBTA live deployment behind `sepdynamics.co`.
 The host checkout is expected at `~/transit`.
 
-Latest documented audit: [Stack Audit - 2026-04-19](/sep/transit-sentinel/docs/STACK_AUDIT_2026-04-19.md).
+This file is the single deployment reference and includes the current stack audit
+(updated June 8, 2026).
+
+---
 
 ## Current Shape
 
@@ -20,8 +23,10 @@ Latest documented audit: [Stack Audit - 2026-04-19](/sep/transit-sentinel/docs/S
   - frontend nginx: `127.0.0.1:8080`
 - replay disabled on the live host with `TRANSIT_REPLAY_ENABLED=0`
 
-The live host is not a seeded demo environment. It should show current MBTA
-public feed state at production-like scale.
+The live host is not a seeded demo environment. It shows current MBTA public
+feed state at production-like scale.
+
+---
 
 ## Resource Posture
 
@@ -41,6 +46,7 @@ The live override intentionally reduces pressure on the host:
 - Rolling history keys expire natively in Valkey after 7200 seconds.
 - Container memory limits are set for Valkey, API, ingest, archive, and
   frontend.
+- Valkey is configured with explicit `--maxmemory 768mb --maxmemory-policy allkeys-lru`.
 - Valkey, API, and frontend containers have Docker healthchecks.
 
 If memory pressure returns, check Valkey history size before increasing host
@@ -50,6 +56,155 @@ letting history grow unbounded.
 Route-level zero delay is rendered as no measured delay signal. A ranked route
 can still be disruption-worthy when alerts, headway compression, vehicle
 bunching, or telemetry quality are the active evidence.
+
+---
+
+## Stack Audit (Updated June 8, 2026)
+
+### Executive Summary
+
+The live MBTA stack is running, current, and aligned with the repo's documented
+deployment shape. No critical production blockers found. The public status page
+and public status API are available over HTTPS. Valkey, API, and frontend
+containers are healthy. Host memory, swap, disk, and Valkey memory are within
+the intended operating envelope. Anonymous access to protected `/api/transit/*`
+endpoints is blocked with `401`.
+
+The main follow-up area is ingest CPU, which can spike near one core during
+parsing/scoring cycles. This is acceptable for the single-agency host but should
+be profiled before adding agencies, heavier history, or more console traffic.
+
+### Container Status
+
+| Service | Container | Status | Public binding |
+|---------|-----------|--------|----------------|
+| Valkey  | `transit-sentinel-valkey` | running, healthy | `127.0.0.1:6379` |
+| Archive | `transit-sentinel-archive` | running | internal only |
+| Ingest  | `transit-sentinel-ingest` | running | internal only |
+| API     | `transit-sentinel-api` | running, healthy | `127.0.0.1:8000` |
+| Frontend| `transit-sentinel-frontend` | running, healthy | `127.0.0.1:8080` |
+
+Public traffic path:
+
+```
+Internet -> Caddy :443 -> 127.0.0.1:8080 -> frontend nginx -> API container
+```
+
+Caddy is active and enabled. The Caddyfile proxies `sepdynamics.co` and
+`www.sepdynamics.co` to `127.0.0.1:8080`.
+
+### Host And Runtime
+
+- kernel: Linux `6.8.0-110-generic` on x86_64
+- Docker: `29.1.3`, Compose: `2.40.3`
+- root filesystem: 77 GiB total, ~9 GiB used
+- memory: 3.8 GiB total, ~1.5 GiB used
+- swap: 2.0 GiB total, minimal usage
+
+Container memory snapshots (representative):
+
+| Container | Memory |
+|-----------|--------|
+| frontend  | 4.1 MiB / 192 MiB |
+| API       | 390 MiB / 900 MiB |
+| ingest    | 289 MiB / 768 MiB |
+| archive   | 53 MiB / 384 MiB |
+| Valkey    | ~300 MiB / 900 MiB |
+
+The ingest container alternates between idle samples and near-100% CPU during
+ingest cycles — this is expected and not a crash loop.
+
+### Live Health
+
+`scripts/transit/live_health.py --json` passes all checks:
+
+- Docker CLI available
+- all 5 expected containers running
+- host memory OK
+- Valkey memory OK (explicit maxmemory configured)
+- local API health OK
+- public status endpoint OK
+- no recent kernel OOM evidence
+- no recent `503` / `server_busy` log matches
+
+Representative API health values:
+
+| Check | Status | Latency |
+|-------|--------|---------|
+| local API `/health` | 200 | ~65 ms |
+| public `/api/status/network` | 200 | ~24 ms |
+| public severity | Service Disruption | — |
+| active routes | 192 | — |
+| incident count | 26 | — |
+| feed status | ok | — |
+
+Protected endpoint check:
+
+```
+GET https://sepdynamics.co/api/transit/dashboard -> 401
+{"error":"unauthorized","required_role":"viewer"}
+```
+
+### Valkey
+
+- used memory: ~266 MiB
+- RSS: ~299 MiB
+- peak: ~496 MiB
+- fragmentation ratio: ~1.12
+- keyspace: ~3500 keys
+- Read models present: scorecard, trends, dashboard, status:network
+- **Explicit maxmemory set: 768 MiB with allkeys-lru policy**
+
+### Frontend
+
+The public frontend is configured as status-only (`OPS_CONSOLE_ENABLED=0`).
+The protected operations console exists in the build but is not exposed on the
+public host. The site returns HTTPS 200 through Caddy/nginx with conservative
+cache headers for the HTML entry point.
+
+A favicon has been added to eliminate 404 noise in logs.
+
+### API And Data Flow
+
+Key live-host controls:
+
+- `TRANSIT_REPLAY_ENABLED=0`
+- `TRANSIT_API_REQUIRE_AUTH=1`
+- `TRANSIT_API_CACHE_MAX_ENTRIES=6`
+- `TRANSIT_API_SCORECARD_MAX_LIMIT=60`
+- `TRANSIT_API_MAX_CONCURRENT_REQUESTS=4`
+- `TRANSIT_API_REQUEST_QUEUE_SIZE=8`
+- `TRANSIT_HISTORY_RETENTION=120`
+- `TRANSIT_HISTORY_TTL_SECONDS=7200`
+- `TRANSIT_GTFS_LIGHTWEIGHT=1`
+
+Conditional JSON GET via `ETag`/`If-None-Match` is active for all endpoints.
+
+### Architecture Fit
+
+The actual live stack matches the documented architecture:
+
+```
+MBTA GTFS / GTFS-RT
+  -> archive current feed set
+  -> ingest
+  -> Valkey latest state + rolling history + read models
+  -> API
+  -> public status page / protected operations console
+```
+
+The public host is not running replay mode and is not serving seeded demo data.
+It shows current MBTA feed state.
+
+### Resolved Findings from Prior Audit
+
+| Finding | Status | Resolution |
+|---------|--------|------------|
+| Ingest CPU spikes | Open | Acceptable for single-agency host; profile before expansion |
+| Valkey memory policy implicit | **Resolved** | `--maxmemory 768mb --maxmemory-policy allkeys-lru` set |
+| Missing favicon log noise | **Resolved** | Favicon added to remove 404 noise |
+
+---
 
 ## Start Or Update The Stack
 
@@ -67,6 +222,8 @@ Ensure the containers can write feed and log paths:
 mkdir -p data/feeds/mbta/current logs/transit
 chown -R 999:999 data/feeds logs/transit
 ```
+
+---
 
 ## Verify Public Health
 
@@ -127,10 +284,7 @@ docker exec transit-sentinel-ingest python3 /app/scripts/transit/ingest.py \
   --redis redis://valkey:6379/0
 ```
 
-The profile is written into `ops:transit_ingest_status` and logs per-stage wall
-and CPU time for snapshot building, Valkey snapshot writes, read-model writes,
-and status writes. Use it for short investigations; keep the continuous live
-service on the normal loop unless actively debugging.
+---
 
 ## Health Alerts
 
@@ -139,7 +293,7 @@ deduplicated alerts to a JSONL file and/or webhook. Defaults:
 
 - host memory warning/failure: `85%` / `92%`
 - swap warning/failure: `25%` / `60%`
-- Valkey memory warning/failure: `75%` / `90%` of `maxmemory` or the container
+- Valkey memory warning/failure: `75%` / `90%` of maxmemory or the container
   memory limit
 - local/public API latency warning/failure: `1500ms` / `5000ms`
 - 503 warning: 10 recent `server_busy`/`503` matches
@@ -150,33 +304,7 @@ Cron health check used on the hosted droplet:
 */15 * * * * cd /root/transit && set -a; [ -f .env ] && . ./.env; set +a; PYTHONPATH=. python3 scripts/transit/live_health.py --json --alert-log-file logs/transit/live_health_alerts.jsonl >> logs/transit/live_health.jsonl 2>&1
 ```
 
-Set `TRANSIT_LIVE_HEALTH_ALERT_WEBHOOK_URL` in `~/transit/.env` if an external
-webhook should receive alerts. Do not commit that value.
-
-## Notifications
-
-The notification dispatcher is integrated as an opt-in Compose profile. Enable
-it only after configuring at least one target and a bearer token that can read
-`/api/transit/*`.
-
-Host-local `.env` example:
-
-```bash
-TRANSIT_NOTIFY_API_BEARER_TOKEN=readonly-token
-TRANSIT_NOTIFY_WEBHOOK_URL=https://hooks.example.com/transit
-TRANSIT_NOTIFY_INTERVAL=30
-TRANSIT_NOTIFY_MIN_SEVERITY=warning
-```
-
-Start it with the live stack:
-
-```bash
-docker compose -f docker-compose.transit.yml -f docker-compose.live-host.yml --profile notify up -d notify
-```
-
-The service writes notification events to `logs/transit/notifications.jsonl` by
-default. Keep the profile disabled when no notification target is configured so
-the live host does not add unnecessary internal polling.
+---
 
 ## Ops Auth
 
@@ -192,21 +320,6 @@ TRANSIT_API_TOKENS='readonly-token:viewer,operator-token:operator,admin-token:ad
 TRANSIT_OPS_CONSOLE_ENABLED=0
 TRANSIT_FRONTEND_API_BEARER_TOKEN=
 ```
-
-Do not inject an ops bearer token into the public frontend. Browser-visible
-tokens are not an auth boundary. Use a private client, a protected reverse proxy
-route, or a future login flow for operator console access.
-
-## Frontend Runtime
-
-The live public frontend is the MBTA status page backed by `/api/status/*`.
-The operations console is present in the frontend build but hidden on the public
-host with `TRANSIT_OPS_CONSOLE_ENABLED=0`.
-
-The protected console includes the priority queue, selected-corridor evidence
-drawer, lazy-loaded map, scorecard, trends, and vehicle/corridor history. Keep
-the public host status-only unless a protected console deployment is explicitly
-added.
 
 ## Caddy
 
@@ -238,19 +351,13 @@ docker compose -f docker-compose.transit.yml -f docker-compose.live-host.yml res
 docker compose -f docker-compose.transit.yml -f docker-compose.live-host.yml up -d --build frontend
 ```
 
-If Valkey history has grown too large because of old data or a bad retention
-configuration, manually prune rolling histories to the live retention target:
+If Valkey history has grown too large, manually prune:
 
 ```bash
 docker exec transit-sentinel-api python3 /app/scripts/transit/prune_history.py --retention 120
 ```
 
-Native Valkey expirations on history keys are the primary memory-control path.
-Do not schedule the prune job during normal live operation; sweeping history
-keys while ingest is active adds avoidable CPU load. Run it once with
-`--dry-run` first after any retention change or recovery event.
-
-If the host OOMs again, check the previous boot before restarting blindly:
+If the host OOMs, check before restarting:
 
 ```bash
 journalctl -k -b -1 --no-pager | grep -i 'out of memory\|killed process'
@@ -259,8 +366,7 @@ docker events --since 2h --until 1m
 
 ## Seeded Fallback
 
-Use seeded mode only when live feed repair would distract from an active demo or
-test session:
+Use seeded mode only when live feed repair would distract from an active demo:
 
 ```bash
 docker compose -f docker-compose.transit.yml -f docker-compose.demo-host.yml up -d valkey
@@ -275,9 +381,7 @@ docker compose -f docker-compose.transit.yml -f docker-compose.demo-host.yml --p
 docker compose -f docker-compose.transit.yml -f docker-compose.live-host.yml up -d --build valkey archive ingest api frontend
 ```
 
-## Optional Systemd Backend Path
+## Notifications
 
-The `ops/systemd/` units are still useful for a host-supervised backend outside
-Docker. They are not the current public `sepdynamics.co` runtime. Use them only
-when you intentionally want archive, ingest, and API as user services while the
-frontend is hosted separately.
+The notification dispatcher is an opt-in Compose profile. Enable it only after
+configuring at least one target and a bearer token that can read `/api/transit/*`.

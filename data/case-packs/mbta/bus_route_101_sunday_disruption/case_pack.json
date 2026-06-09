@@ -1,0 +1,11 @@
+{
+  "agency_keys": [
+    "mbta"
+  ],
+  "case_pack_id": "mbta-bus-route-101-sunday-disruption",
+  "category": "bus_delay",
+  "city_key": "boston",
+  "city_name": "Boston",
+  "event_key": "sunday-bus-route-101",
+  "event_name": "Route 101 Sunday evening alert-based disruption"
+}

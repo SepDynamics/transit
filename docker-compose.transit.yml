@@ -3,7 +3,7 @@ services:
     image: redis:7-alpine
     container_name: transit-sentinel-valkey
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "768mb", "--maxmemory-policy", "allkeys-lru"]
     mem_limit: 900m
     ports:
       - "127.0.0.1:6379:6379"

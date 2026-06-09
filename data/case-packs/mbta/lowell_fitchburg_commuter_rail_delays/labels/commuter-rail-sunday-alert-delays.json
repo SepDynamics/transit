@@ -1,0 +1,33 @@
+{
+  "dataset_id": "mbta-commuter-rail-sunday-alert-delays",
+  "use_case": "Detect commuter rail line alert-based disruptions where multiple high-impact advisories are active with corroborating telemetry.",
+  "incidents": [
+    {
+      "incident_id": "fitchburg-line-sunday-disruption-2026-06-08",
+      "snapshot_path": "archive/2026/06/08/021100Z",
+      "route_id": "Fitchburg",
+      "direction_id": 0,
+      "expected_regime": "service_degraded",
+      "expected_action": "warn_riders",
+      "note": "Fitchburg Line to Wachusett: 2 alerts, detected by live triage as disruption during Sunday evening service."
+    },
+    {
+      "incident_id": "lowell-line-outbound-sunday-2026-06-08",
+      "snapshot_path": "archive/2026/06/08/021100Z",
+      "route_id": "Lowell",
+      "direction_id": 0,
+      "expected_regime": "service_degraded",
+      "expected_action": "warn_riders",
+      "note": "Lowell Line to North Billerica: 2 alerts detected as disruption."
+    },
+    {
+      "incident_id": "lowell-line-inbound-sunday-2026-06-08",
+      "snapshot_path": "archive/2026/06/08/021100Z",
+      "route_id": "Lowell",
+      "direction_id": 1,
+      "expected_regime": "service_degraded",
+      "expected_action": "warn_riders",
+      "note": "Lowell Line to North Station: inbound direction, same alert-based disruption."
+    }
+  ]
+}
