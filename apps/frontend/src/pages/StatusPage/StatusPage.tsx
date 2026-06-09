@@ -2,721 +2,435 @@
  * Public Service Status Page
  *
  * Rider-facing view that shows:
- *   - Network-level severity banner
- *   - Feed-quality and live-triage summaries
- *   - Per-route status tiles with plain-language severity
- *   - Priority alerts feed
- *   - Reliability scorecard table
- *
- * Consumes /api/status/* endpoints only.
- * No internal scoring vocabulary is surfaced to the user.
+ *   - Network-level severity banner + stats bar
+ *   - Live map of vehicles + corridors
+ *   - Triage queue (ranked routes needing attention)
+ *   - Feed-quality checks with freshness indicators
+ *   - Active alerts list
+ *   - Per-route status tiles (grouped by mode)
+ *   - Public reliability scorecard
  */
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useState, useCallback, useRef } from "react";
 import type {
-  PublicStatusAlertsResponse,
-  PublicStatusFeedQualityResponse,
   PublicStatusNetworkResponse,
+  PublicStatusAlertsResponse,
+  PublicStatusTriageResponse,
+  PublicStatusFeedQualityResponse,
   PublicStatusRoutesResponse,
   PublicStatusScorecardResponse,
-  PublicStatusTriageResponse,
-  PublicTriageRoute,
-  RouteStatus,
+  TransitMapResponse,
 } from "../../types/transit";
 import { fetchCachedJson } from "../../utils/api";
-import {
-  formatDelay,
-  formatDelaySignal,
-  formatPercent,
-  hasDelaySignal,
-  relativeTime,
-  relativeTimeFromMs,
-} from "../../utils/formatters";
 import "./StatusPage.css";
 
-const STATUS_REFRESH_MS = 30_000;
-const STATUS_HIDDEN_REFRESH_MS = 60_000;
-const STATUS_SCORECARD_LIMIT = 60;
-const STATUS_TRIAGE_LIMIT = 8;
-const SEVERITY_ORDER = ["severe", "disruption", "delay", "advisory", "good", "unknown"] as const;
-const ROUTE_GROUP_ORDER = ["Rapid Transit", "Bus", "Commuter Rail", "Ferry", "Other Routes"] as const;
-type SeverityFilter = "all" | RouteStatus["severity"];
+// Lazy-load the map component (MapLibre is ~500KB)
+const TransitMap = lazy(() => import("../../components/TransitMap"));
 
-type StatusDataState = {
-  network: PublicStatusNetworkResponse | null;
-  routes: PublicStatusRoutesResponse | null;
-  alerts: PublicStatusAlertsResponse | null;
-  scorecard: PublicStatusScorecardResponse | null;
-  feedQuality: PublicStatusFeedQualityResponse | null;
-  triage: PublicStatusTriageResponse | null;
-};
+// ---------------------------------------------------------------------------
+// Polling intervals
+// ---------------------------------------------------------------------------
+const NETWORK_POLL_MS = 10_000;
+const TRIAGE_POLL_MS = 10_000;
+const ALERTS_POLL_MS = 15_000;
+const FEED_POLL_MS = 15_000;
+const ROUTES_POLL_MS = 15_000;
+const SCORECARD_POLL_MS = 30_000;
+const MAP_POLL_MS = 30_000;
 
-type RouteGroup = {
-  label: string;
-  routes: RouteStatus[];
-};
-
-const slugify = (value: string): string =>
-  value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
-const routeKey = (route: RouteStatus): string => route.entity_id || route.route_id || route.label;
-
-const routeHref = (route: RouteStatus): string => `#status/route/${encodeURIComponent(routeKey(route))}`;
-
-const routeMatchesHash = (route: RouteStatus, hashId: string | null): boolean => {
-  if (!hashId) return false;
-  return [route.entity_id, route.route_id, slugify(route.label)]
-    .filter(Boolean)
-    .some((value) => String(value) === hashId || slugify(String(value)) === hashId);
-};
-
-const normalizeSearch = (value: string): string =>
-  value
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/&/g, " and ")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-
-const compactSearch = (value: string): string => normalizeSearch(value).replace(/\s+/g, "");
-
-const severityRank = (severity: RouteStatus["severity"]): number => {
-  const rank = SEVERITY_ORDER.indexOf(severity);
-  return rank === -1 ? SEVERITY_ORDER.length : rank;
-};
-
-const getSelectedRouteId = (): string | null => {
-  if (typeof window === "undefined") return null;
-  const match = window.location.hash.match(/^#status\/route\/(.+)$/);
-  return match ? decodeURIComponent(match[1]) : null;
-};
-
-const inferRouteGroup = (route: RouteStatus): string => {
-  const routeId = String(route.route_id ?? "");
-  const label = String(route.label ?? "");
-  const normalized = normalizeSearch(`${routeId} ${label}`);
-  const compact = compactSearch(`${routeId} ${label}`);
-
-  if (
-    /^cr[-_]?/i.test(routeId) ||
-    /\bcommuter rail\b/.test(normalized) ||
-    /(fairmount|framingham|worcester|lowell|fitchburg|haverhill|kingston|greenbush|newburyport|rockport|providence|stoughton|needham|middleborough|newbedford)/.test(compact)
-  ) {
-    return "Commuter Rail";
-  }
-  if (/\b(ferry|boat)\b/.test(normalized) || /^boat[-_]?/i.test(routeId)) return "Ferry";
-  if (
-    /^(red|orange|blue|green|mattapan)/i.test(routeId) ||
-    /(redline|orangeline|blueline|greenline|greenb|greenc|greend|greene|mattapanline|rapidtransit)/.test(compact)
-  ) {
-    return "Rapid Transit";
-  }
-  if (/^\s*\d/.test(routeId || label)) return "Bus";
-  return "Other Routes";
-};
-
-const groupRoutes = (routes: RouteStatus[]): RouteGroup[] => {
-  const groups = new Map<string, RouteStatus[]>();
-  routes.forEach((route) => {
-    const label = inferRouteGroup(route);
-    groups.set(label, [...(groups.get(label) ?? []), route]);
-  });
-  return [...groups.entries()]
-    .map(([label, groupedRoutes]) => ({
-      label,
-      routes: [...groupedRoutes].sort((left, right) => {
-        const severityDelta = severityRank(left.severity) - severityRank(right.severity);
-        return severityDelta || left.label.localeCompare(right.label);
-      }),
-    }))
-    .sort((left, right) => {
-      const leftRank = ROUTE_GROUP_ORDER.indexOf(left.label as (typeof ROUTE_GROUP_ORDER)[number]);
-      const rightRank = ROUTE_GROUP_ORDER.indexOf(right.label as (typeof ROUTE_GROUP_ORDER)[number]);
-      const normalizedLeftRank = leftRank === -1 ? ROUTE_GROUP_ORDER.length : leftRank;
-      const normalizedRightRank = rightRank === -1 ? ROUTE_GROUP_ORDER.length : rightRank;
-      return normalizedLeftRank - normalizedRightRank || left.label.localeCompare(right.label);
-    });
-};
-
-const routeMatchesSearch = (route: RouteStatus, rawQuery: string): boolean => {
-  const query = normalizeSearch(rawQuery);
-  if (!query) return true;
-  const compactQuery = compactSearch(rawQuery);
-  const group = inferRouteGroup(route);
-  const searchText = normalizeSearch(
-    [
-      route.label,
-      route.route_id,
-      route.entity_id,
-      route.headline,
-      route.short_summary,
-      route.agency_key,
-      group,
-      route.route_id ? `route ${route.route_id}` : null,
-    ]
-      .filter(Boolean)
-      .join(" "),
-  );
-  const compactText = searchText.replace(/\s+/g, "");
-  if (compactQuery && compactText.includes(compactQuery)) return true;
-  return query.split(/\s+/).every((token) => searchText.includes(token) || compactText.includes(token));
-};
-
-const FEED_SOURCE_LABELS: Record<string, string> = {
-  gtfs_rt_alerts: "alerts",
-  gtfs_rt_trip_updates: "trip updates",
-  gtfs_rt_vehicle_positions: "vehicle positions",
-};
-
-const describeFeedSource = (
-  feedStatus: PublicStatusNetworkResponse["feed_status"],
-): { label: string; summary: string } => {
-  const feedLabel = feedStatus?.feed_label?.trim() || "Transit";
-  const sourceParts = (feedStatus?.collection_source ?? "")
-    .split("+")
-    .map((part) => FEED_SOURCE_LABELS[part] ?? part.replace(/_/g, " "))
-    .filter(Boolean);
-
-  return {
-    label: `${feedLabel} live feeds`,
-    summary: sourceParts.length ? sourceParts.join(" + ") : "awaiting data",
+// ---------------------------------------------------------------------------
+// Severity display helpers
+// ---------------------------------------------------------------------------
+function severityColor(sev: string): string {
+  const m: Record<string, string> = {
+    good: "green", advisory: "yellow", delay: "orange",
+    disruption: "red", severe: "red", unknown: "gray",
   };
-};
+  return m[sev] ?? "gray";
+}
+
+function severityBg(sev: string): string {
+  const m: Record<string, string> = {
+    good: "#166534", advisory: "#854d0e", delay: "#9a3412",
+    disruption: "#991b1b", severe: "#7f1d1d", unknown: "#4b5563",
+  };
+  return m[sev] ?? "#4b5563";
+}
+
+function ageString(seconds: number | null | undefined): string {
+  if (seconds === null || seconds === undefined) return "unknown";
+  if (seconds < 60) return `${seconds}s ago`;
+  const m = Math.floor(seconds / 60);
+  return `${m}m ago`;
+}
 
 // ---------------------------------------------------------------------------
-// Polling hook
+// Component
 // ---------------------------------------------------------------------------
+export default function StatusPage() {
+  const [network, setNetwork] = useState<PublicStatusNetworkResponse | null>(null);
+  const [triage, setTriage] = useState<PublicStatusTriageResponse | null>(null);
+  const [alerts, setAlerts] = useState<PublicStatusAlertsResponse | null>(null);
+  const [feedQuality, setFeedQuality] = useState<PublicStatusFeedQualityResponse | null>(null);
+  const [routesPayload, setRoutesPayload] = useState<PublicStatusRoutesResponse | null>(null);
+  const [scorecard, setScorecard] = useState<PublicStatusScorecardResponse | null>(null);
+  const [mapData, setMapData] = useState<TransitMapResponse | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showMap, setShowMap] = useState(false);
+  const [feedAgeNow, setFeedAgeNow] = useState<number | null>(null);
+  const feedAgeRef = useRef<number | null>(null);
 
-function useStatusData() {
-  const [data, setData] = useState<StatusDataState>({
-    network: null,
-    routes: null,
-    alerts: null,
-    scorecard: null,
-    feedQuality: null,
-    triage: null,
-  });
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
-
+  // Poll network status (used for the top banner)
   useEffect(() => {
     let active = true;
-    let timer: number | undefined;
-    let controller: AbortController | null = null;
-
-    const schedule = (delayMs: number) => {
-      timer = window.setTimeout(load, delayMs);
-    };
-
     const load = async () => {
-      if (document.visibilityState === "hidden") {
-        schedule(STATUS_HIDDEN_REFRESH_MS);
-        return;
-      }
-      controller?.abort();
-      controller = new AbortController();
-      setRefreshing(true);
-      try {
-        const [networkPayload, routesPayload, alertsPayload, scorecardPayload] =
-          await Promise.all([
-            fetchCachedJson<PublicStatusNetworkResponse>("/api/status/network", { signal: controller.signal }),
-            fetchCachedJson<PublicStatusRoutesResponse>("/api/status/routes", { signal: controller.signal }),
-            fetchCachedJson<PublicStatusAlertsResponse>("/api/status/alerts", { signal: controller.signal }),
-            fetchCachedJson<PublicStatusScorecardResponse>(`/api/status/scorecard?limit=${STATUS_SCORECARD_LIMIT}`, { signal: controller.signal }),
-          ]);
-        const [feedQualityPayload, triagePayload] = await Promise.all([
-          fetchCachedJson<PublicStatusFeedQualityResponse>("/api/status/feed-quality", { signal: controller.signal }).catch(() => null),
-          fetchCachedJson<PublicStatusTriageResponse>(`/api/status/triage?limit=${STATUS_TRIAGE_LIMIT}`, { signal: controller.signal }).catch(() => null),
-        ]);
-        if (!active) return;
-        setData({
-          network: networkPayload,
-          routes: routesPayload,
-          alerts: alertsPayload,
-          scorecard: scorecardPayload,
-          feedQuality: feedQualityPayload,
-          triage: triagePayload,
-        });
-        setLastUpdatedAt(networkPayload.generated_at ?? routesPayload.generated_at ?? new Date().toISOString());
-        setLoading(false);
-        setRefreshing(false);
-        setError(null);
-        schedule(STATUS_REFRESH_MS);
-      } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") return;
-        if (!active) return;
-        setError(err instanceof Error ? err.message : "status unavailable");
-        setLoading(false);
-        setRefreshing(false);
-        schedule(30_000);
-      }
+      try { const d = await fetchCachedJson<PublicStatusNetworkResponse>("/api/status/network"); if (active) setNetwork(d); }
+      catch { /* ignore polling errors */ }
     };
-    load();
-    return () => {
-      active = false;
-      controller?.abort();
-      if (timer !== undefined) window.clearTimeout(timer);
-    };
+    load(); const t = window.setInterval(load, NETWORK_POLL_MS);
+    return () => { active = false; window.clearInterval(t); };
   }, []);
 
-  return { ...data, loading, refreshing, error, lastUpdatedAt };
-}
-
-// ---------------------------------------------------------------------------
-// Network banner
-// ---------------------------------------------------------------------------
-
-function NetworkBanner({ network }: { network: PublicStatusNetworkResponse }) {
-  const sev = network.severity || "unknown";
-  const feedSource = describeFeedSource(network.feed_status);
-  const rawAlertCount = network.feed_status?.alert_count;
-  return (
-    <div className={`network-banner network-banner--${sev}`}>
-      <div className="network-banner__status">
-        <div className={`network-banner__dot severity-dot--${sev}`} />
-        <div className="network-banner__label">
-          <div className="network-banner__title">{network.severity_label}</div>
-          <div className="network-banner__subtitle">
-            {network.disrupted_route_count > 0
-              ? `${network.disrupted_route_count} route${network.disrupted_route_count !== 1 ? "s" : ""} with disruptions`
-              : "All routes operating normally"}
-          </div>
-        </div>
-      </div>
-      <div className="network-banner__stats">
-        <div className="network-banner__stat">
-          <span>Active routes</span>
-          <strong>{network.active_route_count}</strong>
-        </div>
-        <div className="network-banner__stat">
-          <span>Priority alerts</span>
-          <strong>{network.incident_count}</strong>
-          {typeof rawAlertCount === "number" && (
-            <small>{rawAlertCount} MBTA alerts read</small>
-          )}
-        </div>
-        <div className="network-banner__stat">
-          <span>Source</span>
-          <strong>{feedSource.label}</strong>
-          <small>{feedSource.summary}</small>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Route tile
-// ---------------------------------------------------------------------------
-
-function RouteTile({ route, selected }: { route: RouteStatus; selected?: boolean }) {
-  const sev = route.severity || "unknown";
-  return (
-    <a
-      className={`route-tile route-tile--${sev}${selected ? " route-tile--selected" : ""}`}
-      href={routeHref(route)}
-    >
-      <div className="route-tile__header">
-        <div className="route-tile__name">{route.label}</div>
-        <span className={`route-tile__severity-badge severity-badge--${sev}`}>
-          <span>{route.short_summary}</span>
-        </span>
-      </div>
-      <div className="route-tile__body">{route.headline}</div>
-      {route.advisories.length > 0 && (
-        <div className="route-tile__advisories">
-          {route.advisories.map((advisory, idx) => (
-            <div key={idx} className="route-tile__advisory">
-              {advisory}
-            </div>
-          ))}
-        </div>
-      )}
-      <div className="route-tile__meta">
-        {hasDelaySignal(route.median_delay_seconds) && (
-          <span>Median delay: {formatDelay(route.median_delay_seconds)}</span>
-        )}
-        {route.active_alert_count > 0 && (
-          <span>{route.active_alert_count} alert{route.active_alert_count !== 1 ? "s" : ""}</span>
-        )}
-        {route.timestamp_ms != null && (
-          <span>Updated {relativeTimeFromMs(route.timestamp_ms)}</span>
-        )}
-      </div>
-    </a>
-  );
-}
-
-function RouteDrilldown({ route }: { route: RouteStatus }) {
-  const sev = route.severity || "unknown";
-  return (
-    <div className={`route-detail route-detail--${sev}`}>
-      <div>
-        <div className="route-detail__eyebrow">Selected route</div>
-        <h3 className="route-detail__title">{route.label}</h3>
-      </div>
-      <div className="route-detail__grid">
-        <div>
-          <span>Route</span>
-          <strong>{route.route_id ?? "n/a"}</strong>
-        </div>
-        <div>
-          <span>Status</span>
-          <strong>{route.severity_label}</strong>
-        </div>
-        <div>
-          <span>Alerts</span>
-          <strong>{route.active_alert_count}</strong>
-        </div>
-        <div>
-          <span>Delay</span>
-          <strong>{formatDelaySignal(route.median_delay_seconds)}</strong>
-        </div>
-      </div>
-      <p>{route.body || route.headline}</p>
-      <a className="route-detail__clear" href="#status">
-        Clear selection
-      </a>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Percent bar helper
-// ---------------------------------------------------------------------------
-
-function PercentBar({ pct }: { pct?: number | null }) {
-  const hasValue = typeof pct === "number" && Number.isFinite(pct);
-  const value = hasValue ? pct : 0;
-  const tier = value >= 80 ? "good" : value >= 60 ? "ok" : "poor";
-  return (
-    <span className="on-time-bar">
-      <span className="on-time-bar__track">
-        <span
-          className={`on-time-bar__fill on-time-bar__fill--${tier}`}
-          style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
-        />
-      </span>
-      <span>{hasValue ? formatPercent(value, 0) : "n/a"}</span>
-    </span>
-  );
-}
-
-function formatFeedAge(ageSeconds?: number | null): string {
-  if (typeof ageSeconds !== "number" || !Number.isFinite(ageSeconds)) return "n/a";
-  if (ageSeconds < 60) return `${Math.max(0, Math.round(ageSeconds))}s`;
-  return `${Math.round(ageSeconds / 60)}m`;
-}
-
-function FeedQualityPanel({ feedQuality }: { feedQuality: PublicStatusFeedQualityResponse }) {
-  const status = feedQuality.status || "unknown";
-  return (
-    <section className={`feed-quality-panel feed-quality-panel--${status}`} aria-labelledby="feed-quality-title">
-      <div className="feed-quality-panel__summary">
-        <span className="status-section__title" id="feed-quality-title">Feed quality</span>
-        <strong>{feedQuality.status_label}</strong>
-        <span>Latest sample {formatFeedAge(feedQuality.age_seconds)} old</span>
-      </div>
-      <div className="feed-quality-checks">
-        {feedQuality.checks.map((check) => (
-          <div className="feed-quality-check" key={check.check_id}>
-            <span className={`feed-quality-check__dot severity-dot--${check.status}`} />
-            <div>
-              <strong>{check.label}</strong>
-              <span>{check.detail}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function TriagePanel({ triage }: { triage: PublicStatusTriageResponse }) {
-  if (!triage.routes.length) {
-    return (
-      <section className="status-section">
-        <div className="status-section__header">
-          <h2 className="status-section__title">Live triage</h2>
-          <span className="status-section__count">0 routes</span>
-        </div>
-        <div className="status-empty">No elevated routes in the current live status sample.</div>
-      </section>
-    );
-  }
-
-  return (
-    <section className="status-section">
-      <div className="status-section__header">
-        <h2 className="status-section__title">Live triage</h2>
-        <span className="status-section__count">{triage.triage_count} route{triage.triage_count !== 1 ? "s" : ""}</span>
-      </div>
-      <div className="triage-list">
-        {triage.routes.map((route) => (
-          <TriageCard route={route} key={route.entity_id} />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function TriageCard({ route }: { route: PublicTriageRoute }) {
-  const sev = route.severity || "unknown";
-  return (
-    <a className={`triage-card triage-card--${sev}`} href={`#status/route/${encodeURIComponent(route.entity_id)}`}>
-      <div className="triage-card__rank">#{route.rank}</div>
-      <div className="triage-card__body">
-        <div className="triage-card__header">
-          <strong>{route.label}</strong>
-          <span className={`route-tile__severity-badge severity-badge--${sev}`}>
-            {route.short_summary || route.severity_label}
-          </span>
-        </div>
-        <p>{route.recommended_action}</p>
-        <div className="triage-card__evidence">
-          {route.evidence.map((item, index) => (
-            <span key={`${route.entity_id}-${index}`}>{item}</span>
-          ))}
-        </div>
-      </div>
-    </a>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Main page
-// ---------------------------------------------------------------------------
-
-export default function StatusPage() {
-  const { network, routes, alerts, scorecard, feedQuality, triage, loading, refreshing, error, lastUpdatedAt } = useStatusData();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
-  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(getSelectedRouteId);
-
-  const routeList = routes?.routes ?? [];
-  const alertList = alerts?.alerts ?? [];
-  const corridorList = scorecard?.corridors ?? [];
-  const now = lastUpdatedAt ?? network?.generated_at ?? routes?.generated_at;
-
+  // Poll triage
   useEffect(() => {
-    const handler = () => setSelectedRouteId(getSelectedRouteId());
-    window.addEventListener("hashchange", handler);
-    return () => window.removeEventListener("hashchange", handler);
+    let active = true;
+    const load = async () => {
+      try { const d = await fetchCachedJson<PublicStatusTriageResponse>("/api/status/triage?limit=8"); if (active) setTriage(d); }
+      catch { /* */ }
+    };
+    load(); const t = window.setInterval(load, TRIAGE_POLL_MS);
+    return () => { active = false; window.clearInterval(t); };
   }, []);
 
-  const selectedRoute = useMemo(
-    () => routeList.find((route) => routeMatchesHash(route, selectedRouteId)) ?? null,
-    [routeList, selectedRouteId],
-  );
+  // Poll alerts
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try { const d = await fetchCachedJson<PublicStatusAlertsResponse>("/api/status/alerts"); if (active) setAlerts(d); }
+      catch { /* */ }
+    };
+    load(); const t = window.setInterval(load, ALERTS_POLL_MS);
+    return () => { active = false; window.clearInterval(t); };
+  }, []);
 
-  const searchMatchedRoutes = useMemo(
-    () => routeList.filter((route) => routeMatchesSearch(route, searchTerm)),
-    [routeList, searchTerm],
-  );
+  // Poll feed quality
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try { const d = await fetchCachedJson<PublicStatusFeedQualityResponse>("/api/status/feed-quality"); if (active) { setFeedQuality(d); feedAgeRef.current = d.age_seconds ?? null; } }
+      catch { /* */ }
+    };
+    load(); const t = window.setInterval(load, FEED_POLL_MS);
+    return () => { active = false; window.clearInterval(t); };
+  }, []);
 
-  const filteredRoutes = useMemo(
-    () =>
-      searchMatchedRoutes.filter(
-        (route) => severityFilter === "all" || route.severity === severityFilter,
-      ),
-    [searchMatchedRoutes, severityFilter],
-  );
+  // Live feed age counter
+  useEffect(() => {
+    const tick = () => {
+      if (feedAgeRef.current !== null) setFeedAgeNow(feedAgeRef.current + 1);
+    };
+    const t = window.setInterval(tick, 1000);
+    return () => window.clearInterval(t);
+  }, []);
 
-  const routeGroups = useMemo(() => groupRoutes(filteredRoutes), [filteredRoutes]);
-  const severityCounts = useMemo(() => {
-    const counts = new Map<SeverityFilter, number>([["all", searchMatchedRoutes.length]]);
-    searchMatchedRoutes.forEach((route) => counts.set(route.severity, (counts.get(route.severity) ?? 0) + 1));
-    return counts;
-  }, [searchMatchedRoutes]);
+  // Poll routes
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try { const d = await fetchCachedJson<PublicStatusRoutesResponse>("/api/status/routes"); if (active) setRoutesPayload(d); }
+      catch { /* */ }
+    };
+    load(); const t = window.setInterval(load, ROUTES_POLL_MS);
+    return () => { active = false; window.clearInterval(t); };
+  }, []);
+
+  // Poll scorecard
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try { const d = await fetchCachedJson<PublicStatusScorecardResponse>("/api/status/scorecard?limit=60"); if (active) setScorecard(d); }
+      catch { /* */ }
+    };
+    load(); const t = window.setInterval(load, SCORECARD_POLL_MS);
+    return () => { active = false; window.clearInterval(t); };
+  }, []);
+
+  // Poll map data
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try { const d = await fetchCachedJson<TransitMapResponse>("/api/status/map"); if (active) setMapData(d); }
+      catch { /* */ }
+    };
+    load(); const t = window.setInterval(load, MAP_POLL_MS);
+    return () => { active = false; window.clearInterval(t); };
+  }, []);
+
+  // Filter routes by search
+  const routes = routesPayload?.routes ?? [];
+  const filteredRoutes = searchTerm
+    ? routes.filter(r => r.label.toLowerCase().includes(searchTerm.toLowerCase()))
+    : routes;
+
+  // Group by mode
+  const groupByMode = (routes: typeof filteredRoutes) => {
+    const groups: Record<string, typeof filteredRoutes> = {};
+    for (const r of routes) {
+      const mode = guessMode(r.label) || (r.route_id ? (isNaN(Number(r.route_id)) ? "Rail" : "Bus") : "Other");
+      if (!groups[mode]) groups[mode] = [];
+      groups[mode].push(r);
+    }
+    return groups;
+  };
+  const grouped = groupByMode(filteredRoutes);
+
+  // Scorecard network stats
+  const netStats = scorecard?.network;
 
   return (
     <main className="status-page">
-      <div className="status-page__shell">
-        {/* Network banner */}
-        {network ? (
-          <NetworkBanner network={network} />
-        ) : loading ? (
-          <div className="network-banner network-banner--unknown">
-            <div className="network-banner__status">
-              <div className="network-banner__dot severity-dot--unknown" />
-              <div className="network-banner__label">
-                <div className="network-banner__title">Loading service status...</div>
+      {/* ================================================================ */}
+      {/* NETWORK BANNER */}
+      {/* ================================================================ */}
+      {network && (
+        <header className="sp-banner" style={{ background: severityBg(network.severity) }}>
+          <div className="sp-banner-inner">
+            <div className="sp-banner-left">
+              <span className="sp-banner-severity">{network.severity_label}</span>
+              <span className="sp-banner-subtitle">MBTA Network — Live Status</span>
+            </div>
+            <div className="sp-banner-stats">
+              <div className="sp-stat">
+                <span className="sp-stat-value">{network.active_route_count}</span>
+                <span className="sp-stat-label">Routes</span>
+              </div>
+              <div className="sp-stat">
+                <span className="sp-stat-value">{network.disrupted_route_count}</span>
+                <span className="sp-stat-label">Disrupted</span>
+              </div>
+              <div className="sp-stat">
+                <span className="sp-stat-value">{network.incident_count}</span>
+                <span className="sp-stat-label">Incidents</span>
+              </div>
+              <div className="sp-stat">
+                <span className="sp-stat-value">{feedAgeNow !== null ? ageString(feedAgeNow) : "..."}</span>
+                <span className="sp-stat-label">Last update</span>
               </div>
             </div>
+          </div>
+        </header>
+      )}
+
+      {/* ================================================================ */}
+      {/* MAP SECTION */}
+      {/* ================================================================ */}
+      <section className="sp-section sp-map-section">
+        <div className="sp-section-header">
+          <h2>Live Vehicle Positions</h2>
+          <button className="sp-toggle-map" onClick={() => setShowMap(v => !v)}>
+            {showMap ? "Hide map" : "Show map"}
+          </button>
+        </div>
+        {showMap && mapData && (
+          <div className="sp-map-container">
+            <Suspense fallback={<div className="sp-map-loading">Loading map...</div>}>
+              <TransitMap
+                mapData={mapData}
+                defaultCenter={[-71.0589, 42.3601]}
+                defaultZoom={11}
+                className="sp-map"
+                style={{ width: "100%", height: "100%" }}
+              />
+            </Suspense>
+          </div>
+        )}
+        {showMap && !mapData && (
+          <div className="sp-map-placeholder">Map data loading...</div>
+        )}
+        <div className="sp-map-meta">
+          {mapData && (
+            <span>{mapData.vehicle_count} vehicles &middot; {mapData.corridor_count} routes &middot; Color-coded by service health</span>
+          )}
+        </div>
+      </section>
+
+      {/* ================================================================ */}
+      {/* LIV E TRIAGE — what needs attention */}
+      {/* ================================================================ */}
+      <section className="sp-section sp-triage-section">
+        <h2 className="sp-section-title">What Needs Attention</h2>
+        {triage && triage.routes.length > 0 ? (
+          <div className="sp-triage-list">
+            {triage.routes.map(r => (
+              <div key={r.rank} className={`sp-triage-row sp-triage-${r.severity}`}>
+                <span className="sp-triage-rank">#{r.rank}</span>
+                <div className="sp-triage-body">
+                  <span className="sp-triage-label">{r.label}</span>
+                  <span className="sp-triage-headline">{r.headline}</span>
+                  <div className="sp-triage-evidence">
+                    {r.evidence.slice(0, 2).map((e, i) => <span key={i} className="sp-evidence-chip">{e}</span>)}
+                    {r.active_alert_count > 0 && <span className="sp-evidence-chip">{r.active_alert_count} alert{r.active_alert_count !== 1 ? "s" : ""}</span>}
+                  </div>
+                </div>
+                <span className="sp-triage-action">{r.recommended_action}</span>
+              </div>
+            ))}
           </div>
         ) : (
-          <div className="network-banner network-banner--unknown">
-            <div className="network-banner__status">
-              <div className="network-banner__dot severity-dot--unknown" />
-              <div className="network-banner__label">
-                <div className="network-banner__title">Status unavailable</div>
-                {error && (
-                  <div className="network-banner__subtitle">
-                    <code>{error}</code>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <p className="sp-empty">No routes currently need attention.</p>
         )}
+      </section>
 
-        {feedQuality && <FeedQualityPanel feedQuality={feedQuality} />}
-
-        {triage && <TriagePanel triage={triage} />}
-
-        {/* Route tiles */}
-        {routeList.length > 0 && (
-          <div className="status-section">
-            <div className="status-section__header">
-              <h2 className="status-section__title">Route status</h2>
-              <span className="status-section__count">
-                {filteredRoutes.length} of {routeList.length} routes
-              </span>
-            </div>
-            <div className="status-controls">
-              <label className="status-search">
-                <span>Find a route</span>
-                <input
-                  type="search"
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder="Red Line, Redline, Green-B, 15"
-                />
-              </label>
-              <div className="severity-filters" aria-label="Severity filters">
-                {(["all", ...SEVERITY_ORDER] as SeverityFilter[]).map((severity) => (
-                  <button
-                    key={severity}
-                    className={
-                      severityFilter === severity
-                        ? "severity-filter severity-filter--active"
-                        : "severity-filter"
-                    }
-                    type="button"
-                    onClick={() => setSeverityFilter(severity)}
-                  >
-                    {severity === "all" ? "All" : severity.replace(/^\w/, (letter) => letter.toUpperCase())}
-                    <span>{severityCounts.get(severity) ?? 0}</span>
-                  </button>
-                ))}
+      {/* ================================================================ */}
+      {/* SCORECARD OVERVIEW + FEED QUALITY in a 2-col layout */}
+      {/* ================================================================ */}
+      <div className="sp-two-col">
+        {/* Scorecard summary */}
+        <section className="sp-section">
+          <h2 className="sp-section-title">Service Reliability</h2>
+          {netStats ? (
+            <div className="sp-scorecard-grid">
+              <div className="sp-scorecard-stat">
+                <span className="sp-scorecard-value">{netStats.on_time_pct ?? "—"}%</span>
+                <span className="sp-scorecard-label">On-time</span>
+              </div>
+              <div className="sp-scorecard-stat">
+                <span className="sp-scorecard-value">{netStats.healthy_pct ?? "—"}%</span>
+                <span className="sp-scorecard-label">Stable routes</span>
+              </div>
+              <div className="sp-scorecard-stat sp-scorecard-warn">
+                <span className="sp-scorecard-value">{netStats.unstable_pct ?? "—"}%</span>
+                <span className="sp-scorecard-label">Unstable</span>
+              </div>
+              <div className="sp-scorecard-stat">
+                <span className="sp-scorecard-value">{netStats.avg_delay_seconds ?? "—"}s</span>
+                <span className="sp-scorecard-label">Avg delay</span>
               </div>
             </div>
-            {selectedRoute && <RouteDrilldown route={selectedRoute} />}
-            {routeGroups.length > 0 ? (
-              <div className="route-groups">
-                {routeGroups.map((group) => (
-                  <section className="route-group" key={group.label}>
-                    <div className="route-group__header">
-                      <h3>{group.label}</h3>
-                      <span>{group.routes.length} routes</span>
+          ) : (
+            <p className="sp-empty">Loading reliability data...</p>
+          )}
+          {scorecard && scorecard.corridors.length > 0 && (
+            <details className="sp-details">
+              <summary>Worst-performing routes</summary>
+              <div className="sp-scorecard-rows">
+                {scorecard.corridors
+                  .filter(c => (c.unstable_pct ?? 0) >= 15)
+                  .sort((a, b) => (b.unstable_pct ?? 0) - (a.unstable_pct ?? 0))
+                  .slice(0, 8)
+                  .map(c => (
+                    <div key={c.entity_id ?? c.label} className="sp-scorecard-row">
+                      <span className="sp-sc-label">{c.label}</span>
+                      <span className="sp-sc-value">{c.unstable_pct ?? 0}% unstable</span>
+                      <span className="sp-sc-sub">{c.avg_delay_seconds ?? 0}s avg delay</span>
                     </div>
-                    <div className="route-tiles">
-                      {group.routes.map((route) => (
-                        <RouteTile
-                          key={route.entity_id}
-                          route={route}
-                          selected={selectedRoute ? routeMatchesHash(route, routeKey(selectedRoute)) : false}
-                        />
-                      ))}
-                    </div>
-                  </section>
-                ))}
+                  ))}
               </div>
-            ) : (
-              <div className="status-empty">No routes match the current filters.</div>
-            )}
-          </div>
-        )}
+            </details>
+          )}
+        </section>
 
-        {/* Active alerts */}
-        {alertList.length > 0 && (
-          <div className="status-section">
-            <div className="status-section__header">
-              <h2 className="status-section__title">Priority alerts</h2>
-              <span className="status-section__count">{alertList.length} alert{alertList.length !== 1 ? "s" : ""}</span>
-            </div>
-            <div className="alert-list">
-              {alertList.map((alert, idx) => {
-                const sev = alert.severity || "unknown";
-                return (
-                  <div key={alert.alert_id ?? idx} className={`alert-card alert-card--${sev}`}>
-                    <div className="alert-card__header">
-                      <span className="alert-card__route">{alert.route_label}</span>
-                      <span className={`route-tile__severity-badge severity-badge--${sev}`}>
-                        {alert.severity_label}
-                      </span>
-                    </div>
-                    <div className="alert-card__headline">{alert.headline}</div>
-                    {alert.recommended_action && (
-                      <div className="alert-card__action">{alert.recommended_action}</div>
-                    )}
-                    {alert.timestamp_ms != null && (
-                      <div className="alert-card__route">
-                        {relativeTimeFromMs(alert.timestamp_ms)}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Reliability scorecard */}
-        {corridorList.length > 0 && (
-          <div className="status-section">
-            <div className="status-section__header">
-              <h2 className="status-section__title">Reliability scorecard</h2>
-              {scorecard?.window_snapshots != null && (
-                <span className="status-section__count">
-                  {scorecard.window_snapshots} snapshots
-                </span>
-              )}
-            </div>
-            <table className="scorecard-table">
-              <thead>
-                <tr>
-                  <th>Route</th>
-                  <th>Stable</th>
-                  <th>Avg delay</th>
-                  <th>Incidents</th>
-                </tr>
-              </thead>
-              <tbody>
-                {corridorList.map((corridor) => (
-                  <tr key={corridor.entity_id}>
-                    <td className="scorecard-table__label">{corridor.label}</td>
-                    <td>
-                      <PercentBar pct={corridor.healthy_pct} />
-                    </td>
-                    <td>{formatDelaySignal(corridor.avg_delay_seconds)}</td>
-                    <td>{corridor.incident_count ?? 0}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {scorecard?.network && (
-              <div style={{ marginTop: 10, fontSize: "0.82rem", color: "var(--text-subtle)", textAlign: "right" }}>
-                Network: {formatPercent(scorecard.network.healthy_pct, 1)} stable •{" "}
-                {formatPercent(scorecard.network.unstable_pct, 1)} at risk •{" "}
-                avg delay {formatDelaySignal(scorecard.network.avg_delay_seconds)}
+        {/* Feed quality */}
+        <section className="sp-section">
+          <h2 className="sp-section-title">Source & Feed Quality</h2>
+          {feedQuality ? (
+            <div className="sp-feed-checks">
+              {feedQuality.checks.map(c => (
+                <div key={c.check_id} className={`sp-feed-check sp-feed-${c.status}`}>
+                  <span className="sp-feed-dot" />
+                  <span className="sp-feed-label">{c.label}</span>
+                  <span className="sp-feed-detail">{c.detail}</span>
+                </div>
+              ))}
+              <div className="sp-feed-freshness">
+                <span>Last updated: </span>
+                <strong>{feedAgeNow !== null ? ageString(feedAgeNow) : "unknown"}</strong>
+                {" · "}
+                <span>Source: {feedQuality.feed_status?.feed_label ?? "MBTA public feeds"}</span>
               </div>
-            )}
-          </div>
-        )}
-
-        {/* Footer */}
-        <div className="status-footer">
-          <span>Transit Sentinel - Public Service Status</span>
-          {now && <span>{refreshing ? "Refreshing" : "Updated"} {relativeTime(now)}</span>}
-        </div>
+            </div>
+          ) : (
+            <p className="sp-empty">Loading feed status...</p>
+          )}
+        </section>
       </div>
+
+      {/* ================================================================ */}
+      {/* ACTIVE ALERTS */}
+      {/* ================================================================ */}
+      <section className="sp-section">
+        <h2 className="sp-section-title">
+          Priority Alerts
+          {alerts && alerts.alert_count > 0 && <span className="sp-badge">{alerts.alert_count}</span>}
+        </h2>
+        {alerts && alerts.alerts.length > 0 ? (
+          <div className="sp-alerts-list">
+            {alerts.alerts.slice(0, 10).map(a => (
+              <div key={a.alert_id ?? a.entity_id} className={`sp-alert-row sp-alert-${a.severity}`}>
+                <span className="sp-alert-severity" style={{ background: a.severity_color }} />
+                <div className="sp-alert-body">
+                  <strong className="sp-alert-route">{a.route_label}</strong>
+                  <span className="sp-alert-headline">{a.headline}</span>
+                </div>
+                <span className="sp-alert-action">{a.recommended_action}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="sp-empty">No priority alerts.</p>
+        )}
+      </section>
+
+      {/* ================================================================ */}
+      {/* ROUTE LIST */}
+      {/* ================================================================ */}
+      <section className="sp-section sp-routes-section">
+        <div className="sp-route-header">
+          <h2 className="sp-section-title">Route Status</h2>
+          <input
+            className="sp-search"
+            type="text"
+            placeholder="Search routes..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div className="sp-route-count">{routes.length} routes tracked</div>
+
+        {Object.entries(grouped).map(([mode, modeRoutes]) => (
+          <details key={mode} className="sp-mode-group" open>
+            <summary className="sp-mode-title">{mode} ({modeRoutes.length})</summary>
+            <div className="sp-route-cards">
+              {modeRoutes.map(r => (
+                <div key={r.entity_id} className={`sp-route-card sp-card-${r.severity}`}>
+                  <div className="sp-card-top">
+                    <span className="sp-card-severity" style={{ background: severityColor(r.severity) }} />
+                    <span className="sp-card-label">{r.label}</span>
+                  </div>
+                  <div className="sp-card-body">{r.headline}</div>
+                  <div className="sp-card-meta">
+                    {r.median_delay_seconds !== null && r.median_delay_seconds !== undefined && (
+                      <span className="sp-card-delay">{r.median_delay_seconds > 0 ? `+${r.median_delay_seconds}s` : "on time"}</span>
+                    )}
+                    {r.active_alert_count > 0 && <span className="sp-card-alerts">{r.active_alert_count} alert{r.active_alert_count !== 1 ? "s" : ""}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </details>
+        ))}
+      </section>
     </main>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+function guessMode(label: string): string {
+  const l = label.toLowerCase();
+  if (l.includes("red line") || l.includes("orange line") || l.includes("blue line") || l.includes("green line") || l.includes("green-") || l.includes("mattapan")) return "Rapid Transit";
+  if (l.includes("commuter rail") || l.includes("fitchburg") || l.includes("lowell") || l.includes("worcester") || l.includes("providence") || l.includes("needham") || l.includes("framingham") || l.includes("fairmount") || l.includes("middleton") || l.includes("newburyport") || l.includes("rockport") || l.includes("haverhill") || l.includes("kingston") || l.includes("greenbush")) return "Commuter Rail";
+  if (l.includes("ferry") || l.includes("boat")) return "Ferry";
+  if (l.includes("bus") || l.includes("route ") || /^\d+/.test(label)) return "Bus";
+  return "Other";
 }

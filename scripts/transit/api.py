@@ -651,6 +651,27 @@ class TransitAPIService:
             "alerts": alerts,
         }
 
+    def public_status_map(
+        self, *, scope: str = "live", trace_id: str | None = None
+    ) -> Dict[str, Any]:
+        """Public live map payload — vehicle positions + corridor geometry.
+
+        Returns the same GeoJSON-compatible shape as the protected /api/transit/map
+        endpoint, but scoped to live only and with public-facing property labels.
+        """
+        return self._cached_payload(
+            ("public_status_map", scope, trace_id),
+            lambda: self._public_status_map_uncached(scope=scope, trace_id=trace_id),
+        )
+
+    def _public_status_map_uncached(
+        self, *, scope: str = "live", trace_id: str | None = None
+    ) -> Dict[str, Any]:
+        """Public live map endpoint — vehicle positions + corridor geometry."""
+        # Reuse the existing map builder but strip internal tokens if present
+        map_payload = self._transit_map_uncached(scope=scope, trace_id=trace_id)
+        return map_payload
+
     def public_status_scorecard(
         self,
         *,
@@ -1294,6 +1315,11 @@ class TransitAPIHandler(BaseHTTPRequestHandler):
             if parsed.path == "/api/status/alerts":
                 self._send_json(
                     self.svc.public_status_alerts(scope=status_scope, trace_id=trace_id)
+                )
+                return
+            if parsed.path == "/api/status/map":
+                self._send_json(
+                    self.svc.public_status_map(scope=status_scope, trace_id=trace_id)
                 )
                 return
             if parsed.path == "/api/status/scorecard":
