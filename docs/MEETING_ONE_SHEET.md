@@ -18,23 +18,22 @@ The cleanest one-line explanation:
 ## What You Are Looking At
 
 - **Top status banner**: the network-level readout. It says whether the live
-  MBTA system looks normal, advisory-level, delayed, or disrupted.
-- **Active routes**: how many routes or directions Sentinel is currently seeing
-  enough live data to score.
-- **Priority alerts**: Sentinel-generated advisories. This is not just the raw
-  MBTA alert count; it is the subset of route conditions Sentinel is elevating.
-- **Source**: the MBTA public live data Sentinel is reading.
-- **Feed quality**: whether the current MBTA feed sample is fresh enough and
-  has route, vehicle, trip-update, and alert coverage.
-- **Live triage**: the ranked queue of elevated routes, with the evidence and
-  public-facing action Sentinel would put first.
+  MBTA system looks normal, advisory-level, delayed, or disrupted, plus a
+  live feed freshness countdown.
+- **Live vehicle map**: click "Show map" to see 300+ MBTA vehicles in
+  real-time, color-coded by health (green=good, red=disruption). Click any
+  vehicle for delay, route, and risk details.
+- **What Needs Attention**: the ranked triage queue of elevated routes, with
+  evidence chips (delay, alerts, risk score) and recommended actions.
+- **Service Reliability**: a scorecard showing network-wide on-time percentage,
+  stable vs. unstable routes, and average delay. Expand worst-performing routes.
+- **Source & Feed Quality**: whether the current MBTA feed sample is fresh
+  enough and has route, vehicle, trip-update, and alert coverage.
+- **Priority alerts**: plain-language explanation of the route conditions
+  Sentinel thinks are worth calling out.
 - **Route status**: per-route cards grouped by rapid transit, bus, commuter
   rail, ferry, and other routes. Search a route like `Red Line`, `66`, or
   `Green-B`.
-- **Priority alerts list**: plain-language explanation of the route conditions
-  Sentinel thinks are worth calling out.
-- **Reliability scorecard**: a rolling memory of recent route checks: stable
-  percentage, average delay signal, and incident count.
 
 ## What "Source" Means
 
@@ -86,21 +85,25 @@ monitoring, operations triage, feed quality, or proof reports.
 ## Demo Path
 
 1. Open `https://sepdynamics.co/`.
-2. Point to the top banner: "This is the current network readout."
-3. Point to **Source**: "This is the MBTA public realtime feed Sentinel is
-   reading: alerts, trip updates, and vehicle positions."
-4. Point to **Feed quality**: "This tells us whether the input data is fresh
-   and usable before we trust the status."
-5. Point to **Live triage**: "This is the short list of routes Sentinel would
-   ask a human to look at first."
-6. Search for a recognizable route, such as `Red Line`, `66`, or `Green-B`.
-7. Open `https://sepdynamics.co/api/status/network` to show the same live state
-   is available as a public JSON API.
-8. Open `https://sepdynamics.co/api/status/feed-quality` and
-   `https://sepdynamics.co/api/status/triage` to show the monitoring and triage
-   surfaces are API products, not just screen copy.
-9. Explain that the private operations API exists behind auth at
-   `/api/transit/*`, but the public site intentionally uses only `/api/status/*`.
+2. Point to the top banner: "This is the current network readout — severity,
+   route count, disruption count, and feed freshness."
+3. Click **Show map**: "These are live MBTA vehicle positions, color-coded by
+   service health. Green is normal, red is disruption. Click any vehicle for
+   delay and route details."
+4. Point to **What Needs Attention**: "This is the ranked triage queue —
+   Transit Sentinel prioritizes what needs a human to look at it first."
+5. Point to **Service Reliability**: "A live scorecard of network health:
+   on-time percentage, stable vs. unstable routes, average delay."
+6. Point to **Source & Feed Quality**: "This tells us whether the input data
+   is fresh and usable before we trust the status."
+7. Search for a recognizable route, such as `Red Line`, `66`, or `Green-B`.
+8. Open `https://sepdynamics.co/api/status/network` to show the same live
+   state is available as a public JSON API.
+9. Open `https://sepdynamics.co/api/status/feed-quality`,
+   `https://sepdynamics.co/api/status/triage`, and
+   `https://sepdynamics.co/api/status/map` to show the API products.
+10. Explain that the private operations API exists behind auth at
+    `/api/transit/*`, but the public site intentionally uses only `/api/status/*`.
 
 ## What Not To Overclaim
 

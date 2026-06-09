@@ -259,6 +259,7 @@ that need exact classifier output.
 - `/api/status/scorecard`
 - `/api/status/feed-quality`
 - `/api/status/triage`
+- `/api/status/map`
 - `/api/transit/dashboard`
 - `/api/transit/health`
 - `/api/transit/entities`

@@ -13,7 +13,8 @@ replayable proof workflow.
 The current product is not a slideware prototype. It is deployed at
 `https://sepdynamics.co/`, running the live MBTA stack on a small droplet, with
 bounded memory, current feed ingest, Valkey read models, API health checks, and
-a status-only public frontend.
+a public frontend featuring a live map, triage queue, route status, and
+reliability scorecard.
 
 ## One-Sentence Pitch
 
@@ -166,18 +167,26 @@ curl -fsS https://sepdynamics.co/api/status/routes
 Demo sequence:
 
 1. Open `https://sepdynamics.co/` and show the public MBTA status page.
-2. Point out the network banner, active route count, priority alerts, source
-   data, feed quality, and live triage queue.
-3. Show `/api/status/network` as the public integration surface.
-4. Show `/api/status/feed-quality` and `/api/status/triage` as the first build
-   toward feed-quality monitoring and live status triage.
-5. Explain that `/api/transit/*` is the protected operations surface and is not
+2. Point out the network banner with live route count, disruption count, and
+   feed freshness indicator.
+3. Click "Show map" to reveal the live vehicle position map — 300+ vehicles
+   color-coded by service health, clickable for detail. This is the same map
+   used in the protected operations console.
+4. Show the **What Needs Attention** triage queue — ranked routes with evidence
+   chips (delay, alerts, risk score) and recommended actions.
+5. Show **Service Reliability** scorecard with on-time %, stable routes, and
+   average delay. Expand the worst-performing routes list.
+6. Show **Source & Feed Quality** with live freshness timer ticking.
+7. Open `/api/status/network` to show the public JSON integration surface.
+8. Show `/api/status/feed-quality`, `/api/status/triage`, and `/api/status/map`
+   to demonstrate the API-as-product surface.
+9. Explain that `/api/transit/*` is the protected operations surface and is not
    exposed to anonymous browsers.
-6. Use [the one-sheet](/sep/transit-sentinel/docs/MEETING_ONE_SHEET.md) for the
-   simple comparison to `mbta.com/alerts/bus`: MBTA alerts are the bulletin
-   board; Transit Sentinel is the triage desk.
-7. Show this repo's MBTA case packs and calibration workflow as the proof path.
-8. Show the live health report to prove this is deployed software, not a mock.
+10. Use [the one-sheet](/sep/transit-sentinel/docs/MEETING_ONE_SHEET.md) for the
+    simple comparison to `mbta.com/alerts/bus`: MBTA alerts are the bulletin
+    board; Transit Sentinel is the triage desk.
+11. Show this repo's MBTA case packs and calibration workflow as the proof path.
+12. Show the live health report to prove this is deployed software, not a mock.
 
 Do not position the public host as a dispatch replacement. The sharper claim is
 that Transit Sentinel is an explainable intelligence and proof layer built on
@@ -192,10 +201,11 @@ top of public transit telemetry.
 - Ingest CPU can spike during live parsing and scoring cycles. Memory and host
   health are stable, but profiling ingest cost should be part of the next
   engineering sprint.
-- The public site is intentionally status-only. A polished private-console demo
-  needs a protected deployment path or controlled local session.
-- The proof corpus is still small. More positive incidents and quiet controls
-  will make scoring claims more defensible.
+- The public site includes a live map and triage queue, but a polished
+  private-console demo needs a protected deployment path or controlled local
+  session.
+- The proof corpus has grown to 6 case packs with 16 labels, but more positive
+  incidents and quiet controls will make scoring claims more defensible.
 
 ## What To Do From Here
 
@@ -204,8 +214,8 @@ top of public transit telemetry.
 - Run `scripts/transit/live_health.py --json` on the droplet the morning of the
   meeting.
 - Keep the public host status-only.
-- Use the investor brief, architecture, stack audit, roadmap, and case-pack
-  docs as the meeting source of truth.
+- Use the investor brief, architecture, live deployment, and case-pack docs as
+  the meeting source of truth.
 - Avoid claims about non-Boston coverage until another agency is implemented
   end to end.
 

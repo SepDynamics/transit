@@ -29,6 +29,7 @@ Typical response times from the live host:
 | `/health` | ~65 ms | Direct API health check |
 | `/api/status/network` | ~24 ms | Public status endpoint, served from read model |
 | `/api/status/routes` | ~30 ms | Public route status, served from read model |
+| `/api/status/map` | ~80 ms | Public GeoJSON map payload (vehicles + corridors) |
 | `/api/transit/dashboard` | ~40 ms | Protected ops dashboard, served from read model |
 | `/api/transit/scorecard` | ~50 ms (cached) / ~500 ms (uncapped) | Cached for common limits |
 
