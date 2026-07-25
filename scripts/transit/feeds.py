@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import os
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional
 from zipfile import ZipFile
@@ -449,7 +450,12 @@ def _read_resource(source: str | Path | bytes) -> bytes:
     else:
         value = str(source)
         if value.startswith(("http://", "https://")):
-            response = requests.get(value, timeout=30)
+            headers = {}
+            if "goswift.ly" in value.lower():
+                api_key = os.environ.get("SWIFTLY_API_KEY", "").strip()
+                if api_key:
+                    headers["Authorization"] = api_key
+            response = requests.get(value, headers=headers, timeout=30)
             response.raise_for_status()
             return response.content
         path = Path(value)

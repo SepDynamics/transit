@@ -192,7 +192,10 @@ class TransitAgencyArchiveService:
         self._stop = True
 
     def _fetch_feed(self, feed: FeedTarget) -> Dict[str, Any]:
-        response = self.session.get(feed.url, timeout=self.cfg.timeout_seconds)
+        headers = self._feed_request_headers(feed.url)
+        response = self.session.get(
+            feed.url, headers=headers, timeout=self.cfg.timeout_seconds
+        )
         response.raise_for_status()
         content = response.content
         return {
@@ -259,6 +262,19 @@ class TransitAgencyArchiveService:
             "status": "reused_current_static",
             "path": str(current_path.relative_to(self.cfg.root_dir)),
         }
+
+    @staticmethod
+    def _feed_request_headers(url: str) -> Dict[str, str]:
+        """Return HTTP headers needed for a given feed URL.
+
+        Swiftly endpoints require an Authorization header with the API key.
+        """
+        headers: Dict[str, str] = {}
+        if "goswift.ly" in str(url).lower():
+            api_key = os.getenv("SWIFTLY_API_KEY", "").strip()
+            if api_key:
+                headers["Authorization"] = api_key
+        return headers
 
     def _latest_archived_feed(self, filename: str) -> Optional[Path]:
         candidates = sorted(
@@ -396,7 +412,11 @@ def _atomic_write(path: Path, content: bytes, *, binary: bool) -> None:
     if binary:
         tmp_path.write_bytes(content)
     else:
-        tmp_path.write_text(content.decode("utf-8"), encoding="utf-8")
+        try:
+            tmp_path.write_text(content.decode("utf-8"), encoding="utf-8")
+        except UnicodeDecodeError:
+            # Content is binary despite text mode hint; write as binary
+            tmp_path.write_bytes(content)
     tmp_path.replace(path)
 
 

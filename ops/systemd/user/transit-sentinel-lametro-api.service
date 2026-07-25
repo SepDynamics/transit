@@ -1,0 +1,17 @@
+[Unit]
+Description=Transit Sentinel LA Metro API
+After=network-online.target transit-sentinel-lametro-ingest.service
+Wants=network-online.target transit-sentinel-lametro-ingest.service
+PartOf=transit-sentinel-lametro-live.target
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/transit-sentinel/transit-sentinel-lametro.env
+ExecStart=/usr/bin/env bash -lc 'cd "$TRANSIT_SENTINEL_HOME" && exec "${PYTHON_BIN:-python3}" scripts/transit/api.py --redis "${VALKEY_URL}" --host "${TRANSIT_API_HOST:-127.0.0.1}" --port "${TRANSIT_API_PORT:-8001}" --system-name "${TRANSIT_SYSTEM_NAME:-LA Metro}"'
+Restart=always
+RestartSec=5
+TimeoutStopSec=20
+KillMode=mixed
+
+[Install]
+WantedBy=transit-sentinel-lametro-live.target

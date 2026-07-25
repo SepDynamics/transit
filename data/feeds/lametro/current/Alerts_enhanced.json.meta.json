@@ -1,0 +1,14 @@
+{
+  "captured_at": "2026-07-24T23:57:23.998000+00:00",
+  "content_length": 30733,
+  "content_type": "application/octet-stream",
+  "etag": "W/\"780d-uQu+F+hXLfJtnDy8Em4NhWdXCAg\"",
+  "filename": "Alerts_enhanced.json",
+  "last_modified": null,
+  "name": "alerts",
+  "path": "current/Alerts_enhanced.json",
+  "sha256": "5ea0dcff2b26a796818ee61cafb08ff184831f0453fd744d08efa8a809023159",
+  "status": "current",
+  "timestamp_ms": 1784937443998,
+  "url": "https://api.goswift.ly/real-time/lametro/gtfs-rt-alerts"
+}

@@ -64,6 +64,22 @@ TRANSIT_AGENCY_ADAPTERS: Dict[str, TransitAgencyAdapter] = {
         alerts_url="https://cdn.mbta.com/realtime/Alerts_enhanced.json",
         source_name="Massachusetts Bay Transportation Authority",
     ),
+    "lametro": TransitAgencyAdapter(
+        key="lametro",
+        system_name="LA Metro",
+        timezone_name="America/Los_Angeles",
+        archive_root="data/feeds/lametro",
+        static_feed_filename="lametro_gtfs.zip",
+        # Static GTFS: LA Metro official bus + rail feed from GitLab
+        static_url="https://gitlab.com/LACMTA/gtfs_bus/raw/master/gtfs_bus.zip",
+        # Real-time GTFS-RT via Swiftly (requires Authorization header)
+        # Vehicle positions and trip updates support ?format=json;
+        # alerts only returns binary protobuf, so no ?format=json.
+        vehicle_positions_url="https://api.goswift.ly/real-time/lametro/gtfs-rt-vehicle-positions?format=json",
+        trip_updates_url="https://api.goswift.ly/real-time/lametro/gtfs-rt-trip-updates?format=json",
+        alerts_url="https://api.goswift.ly/real-time/lametro/gtfs-rt-alerts",
+        source_name="Los Angeles County Metropolitan Transportation Authority",
+    ),
 }
 
 

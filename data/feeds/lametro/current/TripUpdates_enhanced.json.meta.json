@@ -1,0 +1,14 @@
+{
+  "captured_at": "2026-07-24T23:57:23.998000+00:00",
+  "content_length": 5494170,
+  "content_type": "application/json; charset=utf-8",
+  "etag": "W/\"53d59a-7qQdetDHEips3kZwGZyildQr6Zs\"",
+  "filename": "TripUpdates_enhanced.json",
+  "last_modified": null,
+  "name": "trip_updates",
+  "path": "current/TripUpdates_enhanced.json",
+  "sha256": "92e53cdfc8764a96d38c29684e4a95aa9d33e40ad5ec7f624f59405b21f6fbf4",
+  "status": "current",
+  "timestamp_ms": 1784937443998,
+  "url": "https://api.goswift.ly/real-time/lametro/gtfs-rt-trip-updates?format=json"
+}

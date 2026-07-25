@@ -1,0 +1,17 @@
+[Unit]
+Description=Transit Sentinel LA Metro ingest loop
+After=network-online.target transit-sentinel-lametro-archive.service
+Wants=network-online.target transit-sentinel-lametro-archive.service
+PartOf=transit-sentinel-lametro-live.target
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/transit-sentinel/transit-sentinel-lametro.env
+ExecStart=/usr/bin/env bash -lc 'cd "$TRANSIT_SENTINEL_HOME" && exec "${PYTHON_BIN:-python3}" scripts/transit/ingest.py --redis "${VALKEY_URL}" --agency "${TRANSIT_AGENCY:-lametro}" --system-name "${TRANSIT_SYSTEM_NAME:-LA Metro}" --static-feed "${LAMETRO_STATIC_FEED}" --vehicle-positions-feed "${LAMETRO_VEHICLE_FEED}" --trip-updates-feed "${LAMETRO_TRIP_FEED}" --alerts-feed "${LAMETRO_ALERTS_FEED}" --interval "${TRANSIT_INGEST_INTERVAL_SECONDS:-5}" --history-retention "${TRANSIT_HISTORY_RETENTION:-720}" --stale-after-seconds "${TRANSIT_FEED_STALE_AFTER_SECONDS:-90}"'
+Restart=always
+RestartSec=5
+TimeoutStopSec=20
+KillMode=mixed
+
+[Install]
+WantedBy=transit-sentinel-lametro-live.target

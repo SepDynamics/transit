@@ -1,0 +1,7 @@
+[Unit]
+Description=Transit Sentinel LA Metro live stack
+Wants=transit-sentinel-lametro-archive.service transit-sentinel-lametro-ingest.service transit-sentinel-lametro-api.service
+After=network-online.target
+
+[Install]
+WantedBy=default.target

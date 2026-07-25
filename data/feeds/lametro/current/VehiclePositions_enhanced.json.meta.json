@@ -1,0 +1,14 @@
+{
+  "captured_at": "2026-07-24T23:57:23.998000+00:00",
+  "content_length": 613578,
+  "content_type": "application/json; charset=utf-8",
+  "etag": "W/\"95cca-hU7V9W6O4Ru6mgbgrOq2X9H6HFY\"",
+  "filename": "VehiclePositions_enhanced.json",
+  "last_modified": null,
+  "name": "vehicle_positions",
+  "path": "current/VehiclePositions_enhanced.json",
+  "sha256": "420af9d5311245b2ab9751b815ae6c68a304699403738b5a0d5411dd0a7bd5d6",
+  "status": "current",
+  "timestamp_ms": 1784937443998,
+  "url": "https://api.goswift.ly/real-time/lametro/gtfs-rt-vehicle-positions?format=json"
+}
