@@ -196,7 +196,7 @@ export default function StatusPage() {
           <div className="sp-banner-inner">
             <div className="sp-banner-left">
               <span className="sp-banner-severity">{network.severity_label}</span>
-              <span className="sp-banner-subtitle">MBTA Network — Live Status</span>
+              <span className="sp-banner-subtitle">LA Metro Network - Live Status</span>
             </div>
             <div className="sp-banner-stats">
               <div className="sp-stat">
@@ -235,7 +235,7 @@ export default function StatusPage() {
             <Suspense fallback={<div className="sp-map-loading">Loading map...</div>}>
               <TransitMap
                 mapData={mapData}
-                defaultCenter={[-71.0589, 42.3601]}
+                defaultCenter={[-118.2437, 34.0522]}
                 defaultZoom={11}
                 className="sp-map"
                 style={{ width: "100%", height: "100%" }}
@@ -345,7 +345,7 @@ export default function StatusPage() {
                 <span>Last updated: </span>
                 <strong>{feedAgeNow !== null ? ageString(feedAgeNow) : "unknown"}</strong>
                 {" · "}
-                <span>Source: {feedQuality.feed_status?.feed_label ?? "MBTA public feeds"}</span>
+                <span>Source: {feedQuality.feed_status?.feed_label ?? "LA Metro feeds"}</span>
               </div>
             </div>
           ) : (

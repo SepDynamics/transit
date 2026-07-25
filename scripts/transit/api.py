@@ -492,7 +492,7 @@ class TransitAPIService:
                 "alerts",
                 "Service alerts",
                 "good",
-                f"{alert_count} MBTA alerts read from the latest sample",
+                f"{alert_count} service alerts read from the latest sample",
             ),
         ]
         check_statuses = {str(check.get("status") or "unknown") for check in checks}

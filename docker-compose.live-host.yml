@@ -1,4 +1,4 @@
-# Host deployment override for live MBTA service behind Caddy.
+# Host deployment override for the LA Metro service behind Caddy.
 # Keeps app ports on loopback and disables replay/archive serving.
 services:
   valkey:

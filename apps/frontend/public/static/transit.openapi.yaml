@@ -35,7 +35,7 @@ components:
         type: string
         enum: [live, replay]
         default: live
-      description: Public status feed view. Omit for the live MBTA feed.
+      description: Public status feed view. Omit for the live LA Metro feed.
     TraceId:
       name: trace_id
       in: query

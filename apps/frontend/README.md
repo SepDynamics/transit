@@ -1,10 +1,10 @@
 # Transit Sentinel Frontend
 
-React and Vite frontend for the Boston-focused Transit Sentinel API.
+React and Vite frontend for the LA Metro Transit Sentinel API.
 
 ## Surfaces
 
-- public MBTA status page backed by `/api/status/*`
+- public LA Metro status page backed by `/api/status/*`
 - protected operations console backed by `/api/transit/dashboard`
 - lazy-loaded map view backed by `/api/transit/map`
 - corridor and vehicle drilldowns backed by `/api/transit/history`

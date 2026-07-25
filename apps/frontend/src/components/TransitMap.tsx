@@ -154,7 +154,7 @@ interface TransitMapProps {
 
 export default function TransitMap({
   mapData,
-  defaultCenter = [-71.0589, 42.3601],
+  defaultCenter = [-118.2437, 34.0522],
   defaultZoom = 11,
   className,
   style,

@@ -22,7 +22,7 @@ export default function MapSection({ mapData }: MapSectionProps) {
         <Suspense fallback={<div className="empty-state">Loading map...</div>}>
           <TransitMap
             mapData={mapData}
-            defaultCenter={[-71.0589, 42.3601]}
+            defaultCenter={[-118.2437, 34.0522]}
             defaultZoom={11}
             style={{ width: "100%", height: "480px", borderRadius: 8, overflow: "hidden" }}
           />

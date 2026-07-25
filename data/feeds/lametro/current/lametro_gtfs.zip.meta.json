@@ -1,0 +1,14 @@
+{
+  "captured_at": "2026-07-25T00:22:11.783000+00:00",
+  "content_length": 22244988,
+  "content_type": "application/octet-stream",
+  "etag": "\"8b8cb97064d3d4eeb909b53a72b657d6\"",
+  "filename": "lametro_gtfs.zip",
+  "last_modified": null,
+  "name": "static_gtfs",
+  "path": "current/lametro_gtfs.zip",
+  "sha256": "93275d4b50eb22afcfe64f3fe8fd918dfb5fa43600be2e267658e5f2719eda33",
+  "status": "current",
+  "timestamp_ms": 1784938931783,
+  "url": "https://gitlab.com/LACMTA/gtfs_bus/raw/master/gtfs_bus.zip"
+}
