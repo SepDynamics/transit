@@ -1,12 +1,13 @@
 # Transit Sentinel
 
-Transit Sentinel is a Boston-focused public-transit operations engine. It
-archives MBTA GTFS and GTFS Realtime feeds, normalizes them into rolling
+Transit Sentinel is a public-transit operational-intelligence engine. It starts
+with GTFS and GTFS-Realtime feeds, normalizes them into rolling
 corridor and vehicle state, scores service instability, and serves the result
 through an API, public status page, and protected operations console.
 
 The current public deployment is the MBTA live stack behind `sepdynamics.co`.
-This repository should describe and prove the Boston path only.
+MBTA is the continuous live proof lane. LA Metro is a local credentialed
+adapter awaiting authorized archive data and labeled case packs.
 
 For investor and partner meetings, the repo source of truth is:
 
@@ -15,6 +16,7 @@ For investor and partner meetings, the repo source of truth is:
 - [Architecture](docs/ARCHITECTURE.md) — Technical architecture, data flow, and roadmap
 - [Live Deployment](docs/LIVE_DEPLOYMENT.md) — Deployment runbook with current stack audit
 - [Uptime & Performance Summary](docs/UPTIME_SUMMARY.md) — Live host reliability, latency, and memory trends
+- [Product Positioning](docs/PRODUCT_POSITIONING.md) — Current capability boundary and agency-scale roadmap
 
 ## Current Stack
 
@@ -182,3 +184,7 @@ This repo is strongest today as a Boston public-data service-status layer, live
 operations console, and replayable MBTA proof system. It is not a dispatch
 replacement: public feeds do not include internal constraints such as crew,
 signals, supervisor assignments, or internal incident response state.
+
+See [Agency Onboarding Contract](docs/AGENCY_ONBOARDING_CONTRACT.md) and
+[Data Governance](docs/DATA_GOVERNANCE.md) before adding agency-authorized
+telemetry, ridership, asset, signal, safety, or equity data.

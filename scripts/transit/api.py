@@ -178,6 +178,39 @@ class TransitAPIService:
         ack_key = f"transit:ack:{incident_id.strip()}"
         return self.store.read_json_key(ack_key, default={})
 
+    def record_incident_feedback(
+        self,
+        incident_id: str,
+        *,
+        disposition: str,
+        cause: str = "",
+        action_taken: str = "",
+        note: str = "",
+        recorded_by: str | None = None,
+    ) -> Dict[str, Any]:
+        """Record an operator outcome without changing the advisory score."""
+        if not incident_id or not incident_id.strip():
+            return {"error": "missing_incident_id"}
+        allowed = {"acknowledged", "dismissed", "action_taken", "false_positive"}
+        if disposition not in allowed:
+            return {"error": "invalid_disposition", "allowed": sorted(allowed)}
+        payload = {
+            "incident_id": incident_id.strip(),
+            "disposition": disposition,
+            "cause": str(cause or "").strip(),
+            "action_taken": str(action_taken or "").strip(),
+            "note": str(note or "").strip(),
+            "recorded_at": isoformat_ms(),
+            "recorded_by": str(recorded_by or ""),
+        }
+        key = f"transit:feedback:{payload['incident_id']}"
+        existing = self.store.read_json_key(key, default={})
+        entries = list(existing.get("entries") or []) if isinstance(existing, dict) else []
+        entries.append(payload)
+        result = {"incident_id": payload["incident_id"], "entries": entries[-100:]}
+        self.store.write_status(key, result)
+        return result
+
     # ---------------------------------------------------------------------------
     # Audit trail
     # ---------------------------------------------------------------------------
@@ -1448,6 +1481,29 @@ class TransitAPIHandler(BaseHTTPRequestHandler):
                 acknowledged_by=str(token or ""),
             )
             self._send_json(result)
+            return
+
+        if parsed.path == "/api/transit/incidents/feedback":
+            ok, token, _role = self._require_role(ROLE_OPERATOR)
+            if not ok:
+                return
+            body_raw = self.rfile.read(content_length) if content_length else b"{}"
+            try:
+                body = json.loads(body_raw.decode("utf-8"))
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                self._send_json({"error": "invalid_json"}, status=400)
+                return
+            incident_id = str(body.get("incident_id") or "").strip()
+            disposition = str(body.get("disposition") or "").strip().lower()
+            result = self.svc.record_incident_feedback(
+                incident_id,
+                disposition=disposition,
+                cause=str(body.get("cause") or ""),
+                action_taken=str(body.get("action_taken") or ""),
+                note=str(body.get("note") or ""),
+                recorded_by=str(token or ""),
+            )
+            self._send_json(result, status=400 if result.get("error") else 200)
             return
 
         # Default: 404 for any other POST

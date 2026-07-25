@@ -52,6 +52,7 @@ services:
       TRANSIT_READ_MODEL_SCORECARD_LIMIT: "60"
       TRANSIT_READ_MODEL_TRENDS_LIMIT: "6"
       TRANSIT_READ_MODEL_TRENDS_WINDOW: "24"
+      TRANSIT_EVIDENCE_ROOT: /app/data/evidence
     volumes:
       - ./scripts:/app/scripts:ro
       - ./src:/app/src:ro

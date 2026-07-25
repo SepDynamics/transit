@@ -23,6 +23,10 @@ This file is the single deployment reference and includes the current stack audi
   - frontend nginx: `127.0.0.1:8080`
 - replay disabled on the live host with `TRANSIT_REPLAY_ENABLED=0`
 
+Docker Compose is the sole production application runtime. The legacy
+`ops/systemd/` material is backend-only recovery reference and must not run
+alongside the Compose `archive`, `ingest`, or `api` services.
+
 The live host is not a seeded demo environment. It shows current MBTA public
 feed state at production-like scale.
 
@@ -214,6 +218,7 @@ From the host checkout:
 cd ~/transit
 docker compose -f docker-compose.transit.yml -f docker-compose.live-host.yml --profile demo stop api-demo frontend-demo
 docker compose -f docker-compose.transit.yml -f docker-compose.live-host.yml up -d --build valkey archive ingest api frontend
+make transit-smoke ARGS="--base-url http://127.0.0.1:8000"
 ```
 
 Ensure the containers can write feed and log paths:

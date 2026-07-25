@@ -15,23 +15,5 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-          cache-dependency-path: apps/frontend/package-lock.json
-
-      - name: Install redis-server
-        run: sudo apt-get update && sudo apt-get install -y redis-server
-
-      - name: Install Python dependencies
-        run: make install
-
-      - name: Run transit checks
-        run: make check
+      - name: Run reproducible transit checks
+        run: make ci-check

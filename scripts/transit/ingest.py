@@ -19,6 +19,7 @@ if __package__ in (None, ""):
 from scripts.shared.runtime import isoformat_ms
 from scripts.transit.agencies import default_transit_agency_key, get_transit_agency_adapter
 from scripts.transit.domain import TransitRuntimeConfig, TransitSnapshotService
+from scripts.transit.evidence import EvidenceArchive
 from scripts.transit.store import TransitStore
 
 logger = logging.getLogger("transit-ingest")
@@ -36,6 +37,7 @@ class TransitIngestConfig:
     read_model_trends_limit: int = 6
     read_model_trends_window: int = 24
     profile_enabled: bool = False
+    evidence_root: Optional[Path] = None
 
 
 class TransitIngestService:
@@ -43,6 +45,9 @@ class TransitIngestService:
         self.cfg = config
         self.store = store or TransitStore(config.redis_url)
         self.snapshot_service = TransitSnapshotService(config.runtime)
+        self.evidence_archive = (
+            EvidenceArchive(config.evidence_root) if config.evidence_root else None
+        )
         self._stop = False
         self._last_history_write_at = 0.0
         self._read_model_rollups_ready = False
@@ -136,6 +141,19 @@ class TransitIngestService:
                 elif self._read_model_rollups_ready:
                     self._read_model_rollups_ready = True
         mark_stage("read_models")
+        manifest = _load_current_manifest(self.cfg.runtime.static_feed)
+        evidence_status: Dict[str, Any] = {"enabled": bool(self.evidence_archive)}
+        if self.evidence_archive and write_history:
+            try:
+                evidence_path = self.evidence_archive.append_snapshot(
+                    payload,
+                    agency_key=self.cfg.runtime.agency_key,
+                    archive_manifest=manifest,
+                )
+                evidence_status.update({"status": "ok", "path": str(evidence_path)})
+            except Exception as exc:
+                logger.exception("failed to write durable evidence snapshot")
+                evidence_status.update({"status": "error", "error": str(exc)})
         status = {
             "system_name": self.cfg.runtime.system_name,
             "agency_key": self.cfg.runtime.agency_key,
@@ -144,8 +162,8 @@ class TransitIngestService:
             "feed_status": payload.get("feed_status") or {},
             "errors": list(payload.get("errors") or []),
             "read_models": read_model_status,
+            "durable_evidence": evidence_status,
         }
-        manifest = _load_current_manifest(self.cfg.runtime.static_feed)
         if manifest:
             status["archive_manifest"] = manifest
         if self.cfg.profile_enabled:
@@ -222,6 +240,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=_bool_env("TRANSIT_INGEST_PROFILE", False),
         help="record per-stage wall and CPU timings in ingest status and logs",
     )
+    parser.add_argument(
+        "--evidence-root",
+        default=os.getenv("TRANSIT_EVIDENCE_ROOT", "data/evidence"),
+        help="durable JSONL evidence root; set empty to disable",
+    )
     parser.add_argument("--agency", default=os.getenv("TRANSIT_AGENCY", adapter.key))
     parser.add_argument("--system-name", default=os.getenv("TRANSIT_SYSTEM_NAME", adapter.system_name))
     parser.add_argument("--static-feed", default=os.getenv("TRANSIT_GTFS_STATIC_PATH", default_feed_paths["static_gtfs"]))
@@ -258,6 +281,7 @@ def main() -> int:
         read_model_trends_limit=max(1, int(args.read_model_trends_limit)),
         read_model_trends_window=max(1, int(args.read_model_trends_window)),
         profile_enabled=bool(args.profile),
+        evidence_root=Path(args.evidence_root).expanduser() if str(args.evidence_root).strip() else None,
         runtime=TransitRuntimeConfig(
             system_name=str(args.system_name or adapter.system_name),
             agency_key=adapter.key,

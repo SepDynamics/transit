@@ -25,6 +25,7 @@ from scripts.transit.agencies import (
     default_transit_agency_key,
     get_transit_agency_adapter,
 )
+from scripts.transit.feeds import validate_gtfs_realtime_payload
 
 logger = logging.getLogger("transit-archive")
 
@@ -137,7 +138,20 @@ class TransitAgencyArchiveService:
                         )
                     )
                 continue
-            fetched = self._fetch_feed(feed)
+            try:
+                fetched = self._fetch_feed(feed)
+                self._validate_feed(feed, fetched)
+            except Exception as exc:
+                manifest_feeds.append(
+                    self._preserve_previous_feed(feed, current_dir, timestamp_ms, exc)
+                )
+                logger.warning(
+                    "rejected %s feed for agency=%s; previous good state preserved: %s",
+                    feed.name,
+                    self.cfg.agency_key,
+                    exc,
+                )
+                continue
             current_path = current_dir / feed.filename
             _atomic_write(current_path, fetched["content"], binary=feed.binary)
             if snapshot_dir is not None:
@@ -158,6 +172,7 @@ class TransitAgencyArchiveService:
                 "last_modified": fetched["last_modified"],
                 "content_type": fetched["content_type"],
                 "content_length": fetched["content_length"],
+                "content_encoding": fetched["content_encoding"],
                 "status": status,
                 "path": str(feed_path.relative_to(self.cfg.root_dir)),
             }
@@ -193,9 +208,10 @@ class TransitAgencyArchiveService:
 
     def _fetch_feed(self, feed: FeedTarget) -> Dict[str, Any]:
         headers = self._feed_request_headers(feed.url)
-        response = self.session.get(
-            feed.url, headers=headers, timeout=self.cfg.timeout_seconds
-        )
+        request_kwargs: Dict[str, Any] = {"timeout": self.cfg.timeout_seconds}
+        if headers:
+            request_kwargs["headers"] = headers
+        response = self.session.get(feed.url, **request_kwargs)
         response.raise_for_status()
         content = response.content
         return {
@@ -205,6 +221,38 @@ class TransitAgencyArchiveService:
             "last_modified": response.headers.get("Last-Modified"),
             "content_type": response.headers.get("Content-Type"),
             "content_length": len(content),
+            "content_encoding": response.headers.get("Content-Encoding"),
+        }
+
+    def _validate_feed(self, feed: FeedTarget, fetched: Dict[str, Any]) -> None:
+        content = bytes(fetched["content"])
+        if not content:
+            raise ValueError("empty response")
+        if feed.static:
+            if not content.startswith(b"PK\x03\x04"):
+                raise ValueError("static GTFS response is not a zip archive")
+            return
+        validate_gtfs_realtime_payload(
+            content,
+            content_type=fetched.get("content_type"),
+            content_encoding=fetched.get("content_encoding"),
+        )
+
+    def _preserve_previous_feed(
+        self, feed: FeedTarget, current_dir: Path, timestamp_ms: int, exc: Exception
+    ) -> Dict[str, Any]:
+        current_path = current_dir / feed.filename
+        previous_meta = _read_json(current_dir / f"{feed.filename}.meta.json")
+        return {
+            "name": feed.name,
+            "url": feed.url,
+            "filename": feed.filename,
+            "captured_at": isoformat_ms(timestamp_ms),
+            "timestamp_ms": timestamp_ms,
+            "status": "degraded_preserved" if current_path.exists() else "failed_no_previous",
+            "path": str(current_path.relative_to(self.cfg.root_dir)) if current_path.exists() else None,
+            "previous_sha256": previous_meta.get("sha256"),
+            "error": str(exc),
         }
 
     def _should_refresh_static(self, current_path: Path, timestamp_ms: int) -> bool:
@@ -425,6 +473,14 @@ def _write_json(path: Path, payload: Dict[str, Any]) -> None:
     tmp_path = path.with_suffix(path.suffix + ".tmp")
     tmp_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
     tmp_path.replace(path)
+
+
+def _read_json(path: Path) -> Dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+        return value if isinstance(value, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
 
 
 def _optional_url(value: str | None) -> Optional[str]:

@@ -1,8 +1,16 @@
 import json
+import gzip
 from io import BytesIO
 from zipfile import ZipFile
 
-from scripts.transit.feeds import load_gtfs_catalog, merge_realtime_bundles, normalize_gtfs_realtime_payload
+import pytest
+
+from scripts.transit.feeds import (
+    load_gtfs_catalog,
+    merge_realtime_bundles,
+    normalize_gtfs_realtime_payload,
+    parse_gtfs_realtime_payload,
+)
 
 
 def test_load_gtfs_catalog_builds_route_and_schedule_indexes():
@@ -171,3 +179,11 @@ def test_normalize_gtfs_rt_payloads_extracts_vehicles_trip_updates_and_alerts():
     assert merged.trip_updates[0].stop_time_updates[0].arrival_time_unix is None
     assert merged.alerts[0].route_ids == ["Red"]
     assert merged.alerts[0].header_text == "Red Line delays"
+
+
+def test_gtfs_rt_parser_accepts_gzip_json_and_rejects_empty_payloads():
+    raw = gzip.compress(b'{"header":{"timestamp":1710000100},"entity":[]}')
+
+    assert parse_gtfs_realtime_payload(raw, content_encoding="gzip")["entity"] == []
+    with pytest.raises(ValueError, match="empty"):
+        parse_gtfs_realtime_payload(b"")

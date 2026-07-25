@@ -175,3 +175,39 @@ def test_mbta_archive_service_can_refresh_current_without_snapshot_archive(
     assert (current_dir / "VehiclePositions_enhanced.json").exists()
     assert not (tmp_path / "archive").exists()
     assert all(row["status"] == "current" for row in manifest["feeds"])
+
+
+def test_archive_rejects_bad_realtime_response_without_replacing_previous_state(tmp_path, monkeypatch):
+    monkeypatch.setattr("time.time", lambda: 1_710_000_160)
+    current_dir = tmp_path / "current"
+    current_dir.mkdir(parents=True)
+    previous = b'{"header":{"timestamp":1710000000},"entity":[]}'
+    (current_dir / "Alerts_enhanced.json").write_bytes(previous)
+    (current_dir / "Alerts_enhanced.json.meta.json").write_text(
+        json.dumps({"sha256": "previous-good"}), encoding="utf-8"
+    )
+    session = _FakeSession(
+        {
+            "https://example.test/gtfs.zip": _FakeResponse(b"PK\x03\x04fake-zip"),
+            "https://example.test/vehicles.json": _FakeResponse(b'{"entity":[]}'),
+            "https://example.test/trips.json": _FakeResponse(b'{"entity":[]}'),
+            "https://example.test/alerts.json": _FakeResponse(b"<html>gateway error</html>"),
+        }
+    )
+    service = MBTAArchiveService(
+        MBTAArchiveConfig(
+            root_dir=tmp_path,
+            static_url="https://example.test/gtfs.zip",
+            vehicle_positions_url="https://example.test/vehicles.json",
+            trip_updates_url="https://example.test/trips.json",
+            alerts_url="https://example.test/alerts.json",
+        ),
+        session=session,
+    )
+
+    manifest = service.run_once()
+
+    alerts = next(row for row in manifest["feeds"] if row["name"] == "alerts")
+    assert alerts["status"] == "degraded_preserved"
+    assert alerts["previous_sha256"] == "previous-good"
+    assert (current_dir / "Alerts_enhanced.json").read_bytes() == previous

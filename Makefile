@@ -1,4 +1,4 @@
-.PHONY: install frontend-install frontend-typecheck frontend-build build-manifold-engine test test-all test-transit check check-all check-transit check-transit-case-packs clean transit-archive transit-mbta-archive transit-ingest transit-replay transit-api transit-api-parity transit-live-health transit-prune-history transit-history-report transit-calibration-report transit-calibration-summary transit-benchmark-artifacts transit-demo-seed transit-notify transit-proof-window
+.PHONY: install frontend-install frontend-typecheck frontend-build build-manifold-engine test test-all test-transit check check-all ci-check check-transit check-transit-case-packs clean transit-archive transit-mbta-archive transit-ingest transit-replay transit-api transit-api-parity transit-live-health transit-prune-history transit-history-report transit-calibration-report transit-calibration-summary transit-benchmark-artifacts transit-demo-seed transit-notify transit-proof-window transit-smoke transit-build-baselines
 
 PYTHON ?= python3
 PIP ?= $(PYTHON) -m pip
@@ -37,6 +37,9 @@ test-transit:
 check: check-transit
 
 check-all: test-all frontend-typecheck frontend-build
+
+ci-check:
+	docker compose -f docker-compose.ci.yml up --build --abort-on-container-exit --exit-code-from check check
 
 check-transit: test-transit check-transit-case-packs frontend-typecheck frontend-build
 
@@ -87,6 +90,12 @@ transit-notify:
 
 transit-proof-window:
 	@PYTHONPATH=. $(PYTHON) scripts/transit/proof_windows.py $(ARGS)
+
+transit-smoke:
+	@PYTHONPATH=. $(PYTHON) scripts/transit/smoke.py $(ARGS)
+
+transit-build-baselines:
+	@PYTHONPATH=. $(PYTHON) scripts/transit/build_baselines.py $(ARGS)
 
 clean:
 	find . -type d -name '__pycache__' -prune -exec rm -rf {} +

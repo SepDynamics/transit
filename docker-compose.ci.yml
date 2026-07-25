@@ -1,0 +1,22 @@
+services:
+  valkey:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+
+  check:
+    build:
+      context: .
+      dockerfile: Dockerfile.ci
+    environment:
+      VALKEY_URL: redis://valkey:6379/0
+      PYTHONPATH: /app
+    depends_on:
+      valkey:
+        condition: service_healthy
+    volumes:
+      - ./data:/app/data:ro
+    command: ["sh", "-c", "python3 -m pytest tests -q && cd apps/frontend && npm run typecheck && npm run build"]

@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import csv
+import gzip
 import io
 import json
 import os
+import zlib
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional
 from zipfile import ZipFile
@@ -174,7 +176,7 @@ def load_gtfs_realtime_resource(
         payload: Any = source
     else:
         raw = _read_resource(source)
-        payload = _parse_realtime_payload(raw)
+        payload = parse_gtfs_realtime_payload(raw)
     bundle = normalize_gtfs_realtime_payload(
         payload,
         feed_label=feed_label,
@@ -470,10 +472,16 @@ def _coerce_path(source: str | Path | bytes) -> Optional[Path]:
     return source if isinstance(source, Path) else Path(str(source))
 
 
-def _parse_realtime_payload(raw: bytes) -> Mapping[str, Any]:
+def parse_gtfs_realtime_payload(
+    raw: bytes, *, content_type: str | None = None, content_encoding: str | None = None
+) -> Mapping[str, Any]:
+    """Parse a GTFS-RT JSON or protobuf response without trusting its filename."""
+    raw = _decode_transport_content(raw, content_encoding=content_encoding)
+    if not raw.strip():
+        raise ValueError("GTFS-RT payload is empty")
     try:
         return json.loads(raw.decode("utf-8"))
-    except json.JSONDecodeError:
+    except (UnicodeDecodeError, json.JSONDecodeError):
         try:
             from google.protobuf.json_format import MessageToDict  # type: ignore
             from google.transit import gtfs_realtime_pb2  # type: ignore
@@ -485,8 +493,37 @@ def _parse_realtime_payload(raw: bytes) -> Mapping[str, Any]:
             ) from exc
 
         message = gtfs_realtime_pb2.FeedMessage()
-        message.ParseFromString(raw)
+        try:
+            message.ParseFromString(raw)
+        except Exception as exc:
+            declared = f" (content-type {content_type})" if content_type else ""
+            raise ValueError(f"invalid GTFS-RT JSON or protobuf payload{declared}") from exc
+        if not message.IsInitialized():
+            raise ValueError("incomplete GTFS-RT protobuf payload")
         return MessageToDict(message, preserving_proto_field_name=True)
+
+
+def validate_gtfs_realtime_payload(
+    raw: bytes, *, content_type: str | None = None, content_encoding: str | None = None
+) -> None:
+    """Raise ``ValueError`` unless a GTFS-RT response is usable."""
+    payload = parse_gtfs_realtime_payload(
+        raw, content_type=content_type, content_encoding=content_encoding
+    )
+    if not isinstance(payload, Mapping) or not isinstance(payload.get("entity", []), list):
+        raise ValueError("GTFS-RT payload has no entity list")
+
+
+def _decode_transport_content(raw: bytes, *, content_encoding: str | None) -> bytes:
+    encoding = str(content_encoding or "").lower().strip()
+    try:
+        if "gzip" in encoding or raw[:2] == b"\x1f\x8b":
+            return gzip.decompress(raw)
+        if "deflate" in encoding:
+            return zlib.decompress(raw)
+    except (OSError, zlib.error) as exc:
+        raise ValueError(f"cannot decompress GTFS-RT payload ({encoding or 'gzip'})") from exc
+    return raw
 
 
 def _field(mapping: Mapping[str, Any], *keys: str) -> Any:
