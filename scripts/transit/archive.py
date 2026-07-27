@@ -247,7 +247,6 @@ class TransitAgencyArchiveService:
         validate_gtfs_realtime_payload(
             content,
             content_type=fetched.get("content_type"),
-            content_encoding=fetched.get("content_encoding"),
         )
 
     def _preserve_previous_feed(

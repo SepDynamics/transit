@@ -181,6 +181,39 @@ def test_mbta_archive_service_can_refresh_current_without_snapshot_archive(
     assert all(row["status"] == "current" for row in manifest["feeds"])
 
 
+def test_archive_accepts_requests_decoded_gzip_realtime_response(tmp_path, monkeypatch):
+    """requests has already decompressed response.content despite this header."""
+    monkeypatch.setattr("time.time", lambda: 1_710_000_160)
+    session = _FakeSession(
+        {
+            "https://example.test/gtfs.zip": _FakeResponse(b"PK\x03\x04fake-zip"),
+            "https://example.test/vehicles.json": _FakeResponse(
+                b'{"entity":[{"id":"v1"}]}', headers={"Content-Encoding": "gzip"}
+            ),
+            "https://example.test/trips.json": _FakeResponse(
+                b'{"entity":[]}', headers={"Content-Encoding": "gzip"}
+            ),
+            "https://example.test/alerts.json": _FakeResponse(
+                b'{"entity":[]}', headers={"Content-Encoding": "gzip"}
+            ),
+        }
+    )
+    service = MBTAArchiveService(
+        MBTAArchiveConfig(
+            root_dir=tmp_path,
+            static_url="https://example.test/gtfs.zip",
+            vehicle_positions_url="https://example.test/vehicles.json",
+            trip_updates_url="https://example.test/trips.json",
+            alerts_url="https://example.test/alerts.json",
+        ),
+        session=session,
+    )
+
+    manifest = service.run_once()
+
+    assert all(row["status"] == "archived" for row in manifest["feeds"])
+
+
 def test_archive_rejects_bad_realtime_response_without_replacing_previous_state(tmp_path, monkeypatch):
     monkeypatch.setattr("time.time", lambda: 1_710_000_160)
     current_dir = tmp_path / "current"
