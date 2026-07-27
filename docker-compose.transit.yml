@@ -26,6 +26,7 @@ services:
     environment:
       PYTHONPATH: /app
       TRANSIT_ARCHIVE_INTERVAL_SECONDS: "30"
+      TRANSIT_ARCHIVE_RETENTION_DAYS: "${TRANSIT_ARCHIVE_RETENTION_DAYS:-90}"
     volumes:
       - ./scripts:/app/scripts:ro
       - ./src:/app/src:ro
@@ -53,6 +54,7 @@ services:
       TRANSIT_READ_MODEL_TRENDS_LIMIT: "6"
       TRANSIT_READ_MODEL_TRENDS_WINDOW: "24"
       TRANSIT_EVIDENCE_ROOT: /app/data/evidence
+      TRANSIT_EVIDENCE_RETENTION_DAYS: "${TRANSIT_EVIDENCE_RETENTION_DAYS:-90}"
     volumes:
       - ./scripts:/app/scripts:ro
       - ./src:/app/src:ro
@@ -82,10 +84,12 @@ services:
       TRANSIT_API_MAX_CONCURRENT_REQUESTS: "8"
       TRANSIT_API_REQUIRE_AUTH: "${TRANSIT_API_REQUIRE_AUTH:-0}"
       TRANSIT_API_TOKENS: "${TRANSIT_API_TOKENS:-}"
+      TRANSIT_ADVISORY_TOPOLOGY_PATH: "${TRANSIT_ADVISORY_TOPOLOGY_PATH:-}"
       PYTHONPATH: /app
     volumes:
       - ./scripts:/app/scripts:ro
       - ./src:/app/src:ro
+      - ./data:/app/data:ro
       - ./logs/transit:/app/logs
     depends_on:
       valkey:
@@ -119,10 +123,12 @@ services:
       TRANSIT_API_MAX_CONCURRENT_REQUESTS: "8"
       TRANSIT_API_REQUIRE_AUTH: "${TRANSIT_API_REQUIRE_AUTH:-0}"
       TRANSIT_API_TOKENS: "${TRANSIT_API_TOKENS:-}"
+      TRANSIT_ADVISORY_TOPOLOGY_PATH: "${TRANSIT_ADVISORY_TOPOLOGY_PATH:-}"
       PYTHONPATH: /app
     volumes:
       - ./scripts:/app/scripts:ro
       - ./src:/app/src:ro
+      - ./data:/app/data:ro
       - ./logs/transit:/app/logs
     depends_on:
       valkey:

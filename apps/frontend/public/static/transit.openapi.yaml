@@ -6,7 +6,8 @@ info:
     HTTP API for Transit Sentinel live public status and frontend-consumed
     operations surfaces. Public /api/status/* endpoints are open. Operations
     endpoints under /api/transit/* require bearer authentication when
-    TRANSIT_API_REQUIRE_AUTH=1 is set.
+    TRANSIT_API_REQUIRE_AUTH=1 is set. The alternative-advisories operator
+    preview always requires an explicitly registered operator or admin token.
 servers:
   - url: http://localhost:8000
 tags:
@@ -74,6 +75,39 @@ components:
       schema:
         type: string
       description: Corridor or vehicle entity id for history lookup.
+    AdvisoryOriginStopId:
+      name: origin_stop_id
+      in: query
+      required: true
+      schema:
+        type: string
+        minLength: 1
+      description: Static GTFS stop id where the evaluated journey begins.
+    AdvisoryDestinationStopId:
+      name: destination_stop_id
+      in: query
+      required: true
+      schema:
+        type: string
+        minLength: 1
+      description: Static GTFS stop id where the evaluated journey ends.
+    AdvisoryDisruptedRouteId:
+      name: disrupted_route_id
+      in: query
+      required: true
+      schema:
+        type: string
+        minLength: 1
+      description: Route currently believed to be disrupted.
+    AdvisoryDirectionId:
+      name: direction_id
+      in: query
+      required: false
+      schema:
+        type: integer
+      description: >
+        GTFS direction id. May be omitted only when the configured topology
+        identifies one unambiguous direction (including a route-level null direction).
   schemas:
     JsonObject:
       type: object
@@ -1527,6 +1561,178 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PublicScorecardCorridor"
+    AdvisoryProductBoundary:
+      type: object
+      additionalProperties: false
+      required: [advisory_only, infers_cause, guarantees_arrival, issues_dispatch_instructions, statement]
+      properties:
+        advisory_only:
+          type: boolean
+          enum: [true]
+        infers_cause:
+          type: boolean
+          enum: [false]
+        guarantees_arrival:
+          type: boolean
+          enum: [false]
+        issues_dispatch_instructions:
+          type: boolean
+          enum: [false]
+        statement:
+          type: string
+    AdvisoryLeg:
+      type: object
+      additionalProperties: false
+      required: [kind, from_stop_id, to_stop_id, departure_time_ms, arrival_time_ms, duration_seconds, route_id, trip_id, direction_id, realtime_coverage, transfer_source]
+      properties:
+        kind:
+          type: string
+          enum: [ride, walk, transfer]
+        from_stop_id:
+          type: string
+        to_stop_id:
+          type: string
+        departure_time_ms:
+          type: integer
+          nullable: true
+        arrival_time_ms:
+          type: integer
+          nullable: true
+        duration_seconds:
+          type: integer
+          minimum: 0
+        route_id:
+          type: string
+          nullable: true
+        trip_id:
+          type: string
+          nullable: true
+        direction_id:
+          type: integer
+          nullable: true
+        realtime_coverage:
+          type: number
+          minimum: 0
+          maximum: 1
+          nullable: true
+        transfer_source:
+          type: string
+          nullable: true
+    AdvisoryEvidence:
+      type: object
+      additionalProperties: false
+      required: [kind, details]
+      properties:
+        kind:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+    AlternativeAdvisory:
+      type: object
+      additionalProperties: false
+      required: [disrupted_route_id, origin_stop_id, destination_stop_id, route_ids, estimated_arrival_time_ms, baseline_arrival_time_ms, expected_time_saved_seconds, total_walking_seconds, total_walking_meters, total_transfer_seconds, confidence, confidence_label, expires_at_ms, summary, explanation, legs, evidence]
+      properties:
+        disrupted_route_id:
+          type: string
+        origin_stop_id:
+          type: string
+        destination_stop_id:
+          type: string
+        route_ids:
+          type: array
+          items:
+            type: string
+        estimated_arrival_time_ms:
+          type: integer
+        baseline_arrival_time_ms:
+          type: integer
+        expected_time_saved_seconds:
+          type: integer
+        total_walking_seconds:
+          type: integer
+          minimum: 0
+        total_walking_meters:
+          type: number
+          minimum: 0
+          nullable: true
+        total_transfer_seconds:
+          type: integer
+          minimum: 0
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        confidence_label:
+          type: string
+          enum: [low, medium, high]
+        expires_at_ms:
+          type: integer
+        summary:
+          type: string
+        explanation:
+          type: string
+        legs:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdvisoryLeg"
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdvisoryEvidence"
+    AlternativeAdvisoryDecision:
+      type: object
+      additionalProperties: false
+      required: [status, generated_at_ms, advisories, suppression_reasons, evaluated_candidate_count, baseline_arrival_time_ms, release_stage, resolved_direction_id, product_boundary]
+      properties:
+        status:
+          type: string
+          enum: [published, suppressed, unavailable]
+        generated_at_ms:
+          type: integer
+        advisories:
+          type: array
+          items:
+            $ref: "#/components/schemas/AlternativeAdvisory"
+        suppression_reasons:
+          type: array
+          items:
+            type: string
+        evaluated_candidate_count:
+          type: integer
+          minimum: 0
+        baseline_arrival_time_ms:
+          type: integer
+          nullable: true
+        release_stage:
+          type: string
+          enum: [operator_preview]
+        resolved_direction_id:
+          type: integer
+          nullable: true
+        product_boundary:
+          $ref: "#/components/schemas/AdvisoryProductBoundary"
+    AlternativeAdvisoryRequestError:
+      type: object
+      additionalProperties: false
+      required: [status, error, message, release_stage, product_boundary]
+      properties:
+        status:
+          type: string
+          enum: [invalid_request]
+        error:
+          type: string
+        message:
+          type: string
+        release_stage:
+          type: string
+          enum: [operator_preview]
+        product_boundary:
+          $ref: "#/components/schemas/AdvisoryProductBoundary"
+        missing_parameters:
+          type: array
+          items:
+            type: string
     IncidentAckPayload:
       type: object
       additionalProperties: true
@@ -1839,6 +2045,46 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TransitRegimeResponse"
+  /api/transit/alternative-advisories:
+    get:
+      tags: [Operations]
+      summary: Evaluate stop-scoped alternative service
+      description: >
+        Protected operator-preview evaluation using the configured compact
+        transit topology, latest live stop predictions, and direction-specific
+        route health. This endpoint is not part of the public /api/status API
+        and always requires a bearer token explicitly registered with operator
+        or admin role, regardless of TRANSIT_API_REQUIRE_AUTH.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AdvisoryOriginStopId"
+        - $ref: "#/components/parameters/AdvisoryDestinationStopId"
+        - $ref: "#/components/parameters/AdvisoryDisruptedRouteId"
+        - $ref: "#/components/parameters/AdvisoryDirectionId"
+      responses:
+        "200":
+          description: A deterministic published or suppressed advisory decision.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlternativeAdvisoryDecision"
+        "400":
+          description: Missing, invalid, unknown, or directionally ambiguous request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlternativeAdvisoryRequestError"
+        "401":
+          description: >
+            No token registry, missing or unknown bearer token, or a registered
+            role below operator. This endpoint always fails closed.
+        "503":
+          description: The topology or current live evidence is unavailable or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlternativeAdvisoryDecision"
   /api/transit/incidents:
     get:
       tags: [Operations]

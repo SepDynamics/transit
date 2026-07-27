@@ -1,4 +1,5 @@
 .PHONY: install frontend-install frontend-typecheck frontend-build build-manifold-engine test test-all test-transit check check-all ci-check check-transit check-transit-case-packs clean transit-archive transit-mbta-archive transit-ingest transit-replay transit-api transit-api-parity transit-live-health transit-prune-history transit-history-report transit-calibration-report transit-calibration-summary transit-benchmark-artifacts transit-demo-seed transit-notify transit-proof-window transit-smoke transit-build-baselines
+.PHONY: transit-compile-topology
 
 PYTHON ?= python3
 PIP ?= $(PYTHON) -m pip
@@ -96,6 +97,9 @@ transit-smoke:
 
 transit-build-baselines:
 	@PYTHONPATH=. $(PYTHON) scripts/transit/build_baselines.py $(ARGS)
+
+transit-compile-topology:
+	@PYTHONPATH=. $(PYTHON) scripts/transit/compile_topology.py $(ARGS)
 
 clean:
 	find . -type d -name '__pycache__' -prune -exec rm -rf {} +

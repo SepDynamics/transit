@@ -38,7 +38,15 @@ from scripts.transit.transit_types import (
     TransitVehicleSnapshot,
 )
 
-SNAPSHOT_PARTS = ("health", "entities", "regimes", "incidents", "feed_status", "errors")
+SNAPSHOT_PARTS = (
+    "health",
+    "entities",
+    "regimes",
+    "incidents",
+    "feed_status",
+    "errors",
+    "prediction_evidence",
+)
 LIVE_READ_MODEL_PARTS = ("scorecard", "trends", "dashboard", "status:network")
 
 
@@ -136,6 +144,9 @@ class TransitStore:
         incidents = copy.deepcopy(dict(payload.get("incidents") or {}))
         feed_status = dict(payload.get("feed_status") or {})
         errors = list(payload.get("errors") or [])
+        prediction_evidence = copy.deepcopy(
+            dict(payload.get("prediction_evidence") or {})
+        )
         snapshot_source = str(source or self._infer_snapshot_source(payload) or "live")
         snapshot_trace_id = (
             str(trace_id or self._infer_snapshot_trace_id(payload) or "").strip()
@@ -182,6 +193,10 @@ class TransitStore:
             pipe.set("transit:incidents:last", self._dumps(incidents))
             pipe.set("transit:feed_status:last", self._dumps(feed_status))
             pipe.set("transit:errors:last", self._dumps({"errors": errors}))
+            pipe.set(
+                "transit:prediction_evidence:last",
+                self._dumps(prediction_evidence),
+            )
 
             self._write_latest_snapshot_part(
                 pipe,
@@ -231,6 +246,14 @@ class TransitStore:
                 trace_id=snapshot_trace_id,
                 timestamp_ms=snapshot_timestamp_ms,
             )
+            self._write_latest_snapshot_part(
+                pipe,
+                "prediction_evidence",
+                prediction_evidence,
+                source=snapshot_source,
+                trace_id=snapshot_trace_id,
+                timestamp_ms=snapshot_timestamp_ms,
+            )
             if configured_feeds is not None:
                 pipe.set(
                     self.configured_feeds_key(), self._dumps(dict(configured_feeds))
@@ -252,6 +275,7 @@ class TransitStore:
             "incidents": copy.deepcopy(incidents),
             "feed_status": copy.deepcopy(feed_status),
             "errors": {"errors": list(errors)},
+            "prediction_evidence": copy.deepcopy(prediction_evidence),
         }
 
         if not write_history:
@@ -718,6 +742,18 @@ class TransitStore:
             "trace_id": resolved_trace_id,
             "incidents": incidents,
         }
+
+    def prediction_evidence(
+        self, *, scope: str = "all", trace_id: str | None = None
+    ) -> Dict[str, Any]:
+        """Return the latest compact stop-prediction evidence record."""
+
+        return self._read_latest_snapshot_part(
+            "prediction_evidence",
+            scope=scope,
+            trace_id=trace_id,
+            default={},
+        )
 
     def sources(self) -> Dict[str, Any]:
         replay_enabled = self._replay_enabled()

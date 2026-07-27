@@ -95,3 +95,4 @@ apps/frontend/dist/
 output/
 data/
 .*.swp
+transit-sentinel-*.env

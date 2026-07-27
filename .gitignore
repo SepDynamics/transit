@@ -19,6 +19,7 @@ output/
 .env.*
 **/.env
 **/.env.*
+transit-sentinel-*.env
 OANDA.env
 
 .DS_Store

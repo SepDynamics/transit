@@ -38,6 +38,7 @@ class TransitIngestConfig:
     read_model_trends_window: int = 24
     profile_enabled: bool = False
     evidence_root: Optional[Path] = None
+    evidence_retention_days: int = 0
 
 
 class TransitIngestService:
@@ -46,7 +47,12 @@ class TransitIngestService:
         self.store = store or TransitStore(config.redis_url)
         self.snapshot_service = TransitSnapshotService(config.runtime)
         self.evidence_archive = (
-            EvidenceArchive(config.evidence_root) if config.evidence_root else None
+            EvidenceArchive(
+                config.evidence_root,
+                retention_days=config.evidence_retention_days,
+            )
+            if config.evidence_root
+            else None
         )
         self._stop = False
         self._last_history_write_at = 0.0
@@ -142,7 +148,10 @@ class TransitIngestService:
                     self._read_model_rollups_ready = True
         mark_stage("read_models")
         manifest = _load_current_manifest(self.cfg.runtime.static_feed)
-        evidence_status: Dict[str, Any] = {"enabled": bool(self.evidence_archive)}
+        evidence_status: Dict[str, Any] = {
+            "enabled": bool(self.evidence_archive),
+            "retention_days": self.cfg.evidence_retention_days,
+        }
         if self.evidence_archive and write_history:
             try:
                 evidence_path = self.evidence_archive.append_snapshot(
@@ -150,7 +159,13 @@ class TransitIngestService:
                     agency_key=self.cfg.runtime.agency_key,
                     archive_manifest=manifest,
                 )
-                evidence_status.update({"status": "ok", "path": str(evidence_path)})
+                evidence_status.update(
+                    {
+                        "status": "ok",
+                        "path": str(evidence_path),
+                        "retention": self.evidence_archive.last_retention_report,
+                    }
+                )
             except Exception as exc:
                 logger.exception("failed to write durable evidence snapshot")
                 evidence_status.update({"status": "error", "error": str(exc)})
@@ -245,6 +260,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=os.getenv("TRANSIT_EVIDENCE_ROOT", "data/evidence"),
         help="durable JSONL evidence root; set empty to disable",
     )
+    parser.add_argument(
+        "--evidence-retention-days",
+        type=int,
+        default=int(os.getenv("TRANSIT_EVIDENCE_RETENTION_DAYS", "0")),
+        help="delete durable evidence date partitions older than this many days; 0 disables pruning",
+    )
     parser.add_argument("--agency", default=os.getenv("TRANSIT_AGENCY", adapter.key))
     parser.add_argument("--system-name", default=os.getenv("TRANSIT_SYSTEM_NAME", adapter.system_name))
     parser.add_argument("--static-feed", default=os.getenv("TRANSIT_GTFS_STATIC_PATH", default_feed_paths["static_gtfs"]))
@@ -282,6 +303,7 @@ def main() -> int:
         read_model_trends_window=max(1, int(args.read_model_trends_window)),
         profile_enabled=bool(args.profile),
         evidence_root=Path(args.evidence_root).expanduser() if str(args.evidence_root).strip() else None,
+        evidence_retention_days=max(0, int(args.evidence_retention_days)),
         runtime=TransitRuntimeConfig(
             system_name=str(args.system_name or adapter.system_name),
             agency_key=adapter.key,

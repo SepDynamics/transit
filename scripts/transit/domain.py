@@ -24,6 +24,7 @@ from scripts.transit.feeds import (
     load_gtfs_realtime_resource,
     merge_realtime_bundles,
 )
+from scripts.transit.prediction_evidence import build_prediction_evidence
 from scripts.transit.transit_types import (
     GTFSStaticCatalog,
     TransitAlertObservation,
@@ -548,9 +549,23 @@ class TransitSnapshotService:
             incidents=route_incidents,
             feed_status=feed_status,
         )
+        trip_update_feed_timestamps = [
+            row.timestamp_ms for row in bundle.trip_updates if row.timestamp_ms > 0
+        ]
+        prediction_evidence = build_prediction_evidence(
+            catalog,
+            deduped_trip_updates,
+            agency_key=self.cfg.agency_key,
+            snapshot_timestamp_ms=snapshot_now_ms,
+            feed_timestamp_ms=max(trip_update_feed_timestamps)
+            if trip_update_feed_timestamps
+            else None,
+            timezone_name=self.cfg.feed_timezone,
+        )
         payload = {
             "errors": errors,
             "feed_status": feed_status,
+            "prediction_evidence": prediction_evidence,
             "health": health,
             "entities": {
                 "generated_at": isoformat_ms(),
@@ -2230,6 +2245,9 @@ def _gtfs_load_options() -> Dict[str, bool]:
         "include_stops": _env_flag("TRANSIT_GTFS_LOAD_STOPS", default=not lightweight),
         "include_stop_times": _env_flag(
             "TRANSIT_GTFS_LOAD_STOP_TIMES", default=not lightweight
+        ),
+        "include_transfers": _env_flag(
+            "TRANSIT_GTFS_LOAD_TRANSFERS", default=not lightweight
         ),
         "include_calendar": _env_flag(
             "TRANSIT_GTFS_LOAD_CALENDAR", default=not lightweight

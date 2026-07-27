@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import logging
+import math
 import os
 import signal
 import sys
@@ -16,7 +17,7 @@ from collections import OrderedDict
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Mapping
 from urllib.parse import parse_qs, urlparse
 
 if __package__ in (None, ""):
@@ -33,7 +34,14 @@ from scripts.transit.auth import (
     ROLE_VIEWER,
     check_auth,
     read_audit_trail,
-    write_audit_event,
+    role_can,
+)
+from scripts.transit.advisory import (
+    AdvisoryRequest,
+    AlternativeServiceAdvisor,
+    RouteHealth,
+    TransitTopology,
+    load_transit_topology,
 )
 from scripts.transit.severity import (
     SEVERITY_LABELS,
@@ -47,6 +55,29 @@ from scripts.transit.store import TransitStore
 logger = logging.getLogger("transit-api")
 
 
+ADVISORY_RELEASE_STAGE = "operator_preview"
+ADVISORY_PRODUCT_BOUNDARY: Dict[str, Any] = {
+    "advisory_only": True,
+    "infers_cause": False,
+    "guarantees_arrival": False,
+    "issues_dispatch_instructions": False,
+    "statement": (
+        "Operator preview only: this is an advisory based on public transit telemetry. "
+        "It does not infer a mechanical or traffic cause, guarantee arrival, or issue "
+        "vehicle reroute or dispatch instructions."
+    ),
+}
+
+
+class AdvisoryRequestError(ValueError):
+    """A caller-correctable advisory request error."""
+
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
+
+
 class TransitAPIService:
     def __init__(
         self,
@@ -54,9 +85,20 @@ class TransitAPIService:
         *,
         system_name: str = "MBTA",
         store: TransitStore | None = None,
+        advisory_topology_path: str | Path | None = None,
     ) -> None:
         self.system_name = system_name
         self.store = store or TransitStore(redis_url)
+        configured_topology_path = (
+            advisory_topology_path
+            if advisory_topology_path is not None
+            else os.getenv("TRANSIT_ADVISORY_TOPOLOGY_PATH", "")
+        )
+        self._advisory_topology_path = str(configured_topology_path or "").strip()
+        self._advisory_topology: TransitTopology | None = None
+        self._advisory_topology_attempted = False
+        self._advisory_topology_error: str | None = None
+        self._advisory_topology_lock = threading.Lock()
         self._cache_ttl = _float_env("TRANSIT_API_CACHE_TTL_SECONDS", 5.0)
         self._cache_max_entries = _int_env("TRANSIT_API_CACHE_MAX_ENTRIES", 32)
         self._scorecard_cache_ttl = _float_env(
@@ -246,6 +288,254 @@ class TransitAPIService:
             ("regimes", scope, trace_id),
             lambda: self.store.regimes(scope=scope, trace_id=trace_id),
         )
+
+    def transit_alternative_advisories(
+        self,
+        *,
+        origin_stop_id: str,
+        destination_stop_id: str,
+        disrupted_route_id: str,
+        direction_id: int | None = None,
+        requested_at_ms: int | None = None,
+    ) -> Dict[str, Any]:
+        """Evaluate a stop-scoped alternative for the protected operator preview."""
+
+        generated_at_ms = (
+            int(time.time() * 1000)
+            if requested_at_ms is None
+            else int(requested_at_ms)
+        )
+        topology = self._load_advisory_topology()
+        if topology is None:
+            return self._advisory_unavailable_payload(
+                generated_at_ms,
+                self._advisory_topology_error or "topology_unavailable",
+            )
+
+        resolved_direction_id = self._resolve_advisory_direction(
+            topology,
+            origin_stop_id=origin_stop_id,
+            destination_stop_id=destination_stop_id,
+            disrupted_route_id=disrupted_route_id,
+            direction_id=direction_id,
+        )
+
+        try:
+            prediction_evidence = self.store.prediction_evidence(scope="live")
+            regimes_payload = self.store.regimes(scope="live")
+        except Exception as exc:  # pragma: no cover - depends on backing store failure
+            logger.warning("advisory live evidence unavailable: %s", exc)
+            return self._advisory_unavailable_payload(
+                generated_at_ms,
+                "live_evidence_unavailable",
+                direction_id=resolved_direction_id,
+            )
+
+        route_health = self._directional_route_health(regimes_payload)
+        advisor = AlternativeServiceAdvisor(topology)
+        request = AdvisoryRequest(
+            origin_stop_id=origin_stop_id,
+            destination_stop_id=destination_stop_id,
+            disrupted_route_id=disrupted_route_id,
+            requested_at_ms=generated_at_ms,
+            direction_id=resolved_direction_id,
+        )
+        try:
+            decision = advisor.recommend(request, prediction_evidence, route_health)
+        except (TypeError, ValueError) as exc:
+            logger.warning("advisory evidence could not be evaluated: %s", exc)
+            return self._advisory_unavailable_payload(
+                generated_at_ms,
+                "invalid_live_evidence",
+                direction_id=resolved_direction_id,
+            )
+
+        return {
+            **decision.to_json(),
+            "release_stage": ADVISORY_RELEASE_STAGE,
+            "resolved_direction_id": resolved_direction_id,
+            "product_boundary": dict(ADVISORY_PRODUCT_BOUNDARY),
+        }
+
+    def _load_advisory_topology(self) -> TransitTopology | None:
+        """Load the compact topology at most once for this API process."""
+
+        if self._advisory_topology_attempted:
+            return self._advisory_topology
+        with self._advisory_topology_lock:
+            if self._advisory_topology_attempted:
+                return self._advisory_topology
+            self._advisory_topology_attempted = True
+            if not self._advisory_topology_path:
+                self._advisory_topology_error = "topology_not_configured"
+                return None
+            try:
+                self._advisory_topology = load_transit_topology(
+                    self._advisory_topology_path
+                )
+            except FileNotFoundError:
+                self._advisory_topology_error = "topology_not_found"
+                logger.warning(
+                    "advisory topology not found: %s", self._advisory_topology_path
+                )
+            except (OSError, TypeError, ValueError, json.JSONDecodeError) as exc:
+                self._advisory_topology_error = "topology_invalid"
+                logger.warning(
+                    "advisory topology is invalid at %s: %s",
+                    self._advisory_topology_path,
+                    exc,
+                )
+            return self._advisory_topology
+
+    @staticmethod
+    def _resolve_advisory_direction(
+        topology: TransitTopology,
+        *,
+        origin_stop_id: str,
+        destination_stop_id: str,
+        disrupted_route_id: str,
+        direction_id: int | None,
+    ) -> int | None:
+        if origin_stop_id not in topology.stops:
+            raise AdvisoryRequestError(
+                "unknown_origin_stop", "origin_stop_id is not present in the topology"
+            )
+        if destination_stop_id not in topology.stops:
+            raise AdvisoryRequestError(
+                "unknown_destination_stop",
+                "destination_stop_id is not present in the topology",
+            )
+        if origin_stop_id == destination_stop_id:
+            raise AdvisoryRequestError(
+                "origin_matches_destination",
+                "origin_stop_id and destination_stop_id must differ",
+            )
+
+        route_paths = [
+            path
+            for path in topology.trip_paths.values()
+            if path.route_id == disrupted_route_id
+        ]
+        if not route_paths:
+            raise AdvisoryRequestError(
+                "unknown_disrupted_route",
+                "disrupted_route_id is not present in the topology",
+            )
+
+        candidate_directions: set[int | None] = set()
+        for path in route_paths:
+            origin_indexes = [
+                index
+                for index, stop in enumerate(path.stops)
+                if stop.stop_id == origin_stop_id
+            ]
+            destination_indexes = [
+                index
+                for index, stop in enumerate(path.stops)
+                if stop.stop_id == destination_stop_id
+            ]
+            if any(
+                origin_index < destination_index
+                for origin_index in origin_indexes
+                for destination_index in destination_indexes
+            ):
+                candidate_directions.add(path.direction_id)
+
+        if not candidate_directions:
+            raise AdvisoryRequestError(
+                "route_does_not_serve_journey",
+                "the disrupted route does not serve the requested stops in that order",
+            )
+        if direction_id is not None:
+            if direction_id not in candidate_directions:
+                raise AdvisoryRequestError(
+                    "direction_does_not_serve_journey",
+                    "direction_id does not serve the requested stops in that order",
+                )
+            return direction_id
+        if len(candidate_directions) != 1:
+            raise AdvisoryRequestError(
+                "ambiguous_direction",
+                "direction_id is required because the topology cannot infer one unambiguously",
+            )
+        return next(iter(candidate_directions))
+
+    @staticmethod
+    def _directional_route_health(
+        regimes_payload: Mapping[str, Any],
+    ) -> Dict[tuple[str, int | None], RouteHealth]:
+        """Translate current corridor regimes without crossing direction boundaries."""
+
+        output: Dict[tuple[str, int | None], RouteHealth] = {}
+        rows = regimes_payload.get("regimes") or []
+        if not isinstance(rows, list):
+            return output
+        for row in rows:
+            if not isinstance(row, Mapping):
+                continue
+            route_id = str(row.get("route_id") or "").strip()
+            metrics = row.get("metrics")
+            metrics = metrics if isinstance(metrics, Mapping) else {}
+            raw_direction = row.get("direction_id")
+            if raw_direction in (None, ""):
+                raw_direction = metrics.get("direction_id")
+            try:
+                disruption_score = float(
+                    row.get("hazard")
+                    if row.get("hazard") is not None
+                    else row.get("hazard_score")
+                )
+                confidence = float(row.get("confidence"))
+                observed_at_ms = int(row.get("timestamp_ms"))
+            except (TypeError, ValueError):
+                continue
+            try:
+                parsed_direction = (
+                    None if raw_direction in (None, "") else int(raw_direction)
+                )
+            except (TypeError, ValueError):
+                continue
+            if (
+                not route_id
+                or not math.isfinite(disruption_score)
+                or not math.isfinite(confidence)
+                or not 0.0 <= disruption_score <= 1.0
+                or not 0.0 <= confidence <= 1.0
+                or observed_at_ms <= 0
+            ):
+                continue
+            key = (route_id, parsed_direction)
+            candidate = RouteHealth(
+                route_id=route_id,
+                disruption_score=disruption_score,
+                confidence=confidence,
+                observed_at_ms=observed_at_ms,
+                regime=str(row.get("regime") or ""),
+                direction_id=parsed_direction,
+            )
+            current = output.get(key)
+            if current is None or candidate.observed_at_ms > current.observed_at_ms:
+                output[key] = candidate
+        return output
+
+    @staticmethod
+    def _advisory_unavailable_payload(
+        generated_at_ms: int,
+        reason: str,
+        *,
+        direction_id: int | None = None,
+    ) -> Dict[str, Any]:
+        return {
+            "status": "unavailable",
+            "generated_at_ms": generated_at_ms,
+            "advisories": [],
+            "suppression_reasons": [reason],
+            "evaluated_candidate_count": 0,
+            "baseline_arrival_time_ms": None,
+            "release_stage": ADVISORY_RELEASE_STAGE,
+            "resolved_direction_id": direction_id,
+            "product_boundary": dict(ADVISORY_PRODUCT_BOUNDARY),
+        }
 
     def transit_incidents(
         self, *, scope: str = "all", trace_id: str | None = None
@@ -1203,6 +1493,21 @@ def _number_or_zero(value: Any) -> float:
     return 0.0
 
 
+def _advisory_request_error_payload(
+    code: str,
+    message: str,
+    **details: Any,
+) -> Dict[str, Any]:
+    return {
+        "status": "invalid_request",
+        "error": code,
+        "message": message,
+        "release_stage": ADVISORY_RELEASE_STAGE,
+        "product_boundary": dict(ADVISORY_PRODUCT_BOUNDARY),
+        **details,
+    }
+
+
 class TransitAPIHandler(BaseHTTPRequestHandler):
     server_version = "TransitSentinel/1.0"
 
@@ -1291,6 +1596,32 @@ class TransitAPIHandler(BaseHTTPRequestHandler):
             )
         return ok, token, role
 
+    def _require_operator_preview_token(
+        self,
+    ) -> tuple[bool, str | None, str | None]:
+        """Require an explicitly registered operator/admin bearer token.
+
+        Existing operations endpoints retain their optional-auth compatibility
+        behavior. This preview remains closed when authentication is globally
+        optional or no token registry is configured.
+        """
+
+        auth_header = self._get_bearer_token()
+        ok, token, role = check_auth(auth_header, required_role=ROLE_OPERATOR)
+        authorized = bool(
+            ok and token and role and role_can(str(role), ROLE_OPERATOR)
+        )
+        if not authorized:
+            self._send_json(
+                {
+                    "error": "unauthorized",
+                    "required_role": ROLE_OPERATOR,
+                    "authentication_required": True,
+                },
+                status=401,
+            )
+        return authorized, token, role
+
     def do_GET(self) -> None:  # pragma: no cover - exercised via integration tests
         # Check request size limit (1MB max for query string and headers)
         # Note: For GET requests, body size is typically 0, but we still check headers
@@ -1370,6 +1701,62 @@ class TransitAPIHandler(BaseHTTPRequestHandler):
                 )
                 return
             self._send_json({"error": "not_found"}, status=404)
+            return
+
+        # Alternative-service advice is an operator preview, not a public
+        # /api/status surface and not a viewer-level operations read.
+        if parsed.path == "/api/transit/alternative-advisories":
+            ok, _token, _role = self._require_operator_preview_token()
+            if not ok:
+                return
+            required_values = {
+                name: str((params.get(name) or [""])[0]).strip()
+                for name in (
+                    "origin_stop_id",
+                    "destination_stop_id",
+                    "disrupted_route_id",
+                )
+            }
+            missing = [name for name, value in required_values.items() if not value]
+            if missing:
+                self._send_json(
+                    _advisory_request_error_payload(
+                        "missing_query_parameter",
+                        "required query parameters are missing",
+                        missing_parameters=missing,
+                    ),
+                    status=400,
+                )
+                return
+            direction_id: int | None = None
+            if "direction_id" in params:
+                raw_direction_id = str((params.get("direction_id") or [""])[0]).strip()
+                try:
+                    direction_id = int(raw_direction_id)
+                except ValueError:
+                    self._send_json(
+                        _advisory_request_error_payload(
+                            "invalid_direction_id", "direction_id must be an integer"
+                        ),
+                        status=400,
+                    )
+                    return
+            try:
+                payload = self.svc.transit_alternative_advisories(
+                    origin_stop_id=required_values["origin_stop_id"],
+                    destination_stop_id=required_values["destination_stop_id"],
+                    disrupted_route_id=required_values["disrupted_route_id"],
+                    direction_id=direction_id,
+                )
+            except AdvisoryRequestError as exc:
+                self._send_json(
+                    _advisory_request_error_payload(exc.code, exc.message), status=400
+                )
+                return
+            self._send_json(
+                payload,
+                status=503 if payload.get("status") == "unavailable" else 200,
+            )
             return
 
         # Ops endpoints require at least viewer role
@@ -1581,6 +1968,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--system-name", default=os.getenv("TRANSIT_SYSTEM_NAME", adapter.system_name)
     )
+    parser.add_argument(
+        "--advisory-topology",
+        default=os.getenv("TRANSIT_ADVISORY_TOPOLOGY_PATH", ""),
+        help=(
+            "Path to a compact compiled transit topology artifact. "
+            "Alternative advisories remain unavailable when omitted."
+        ),
+    )
     return parser
 
 
@@ -1590,7 +1985,11 @@ def main() -> int:
         format="%(asctime)s %(levelname)s %(name)s :: %(message)s",
     )
     args = build_parser().parse_args()
-    service = TransitAPIService(str(args.redis), system_name=str(args.system_name))
+    service = TransitAPIService(
+        str(args.redis),
+        system_name=str(args.system_name),
+        advisory_topology_path=str(args.advisory_topology),
+    )
     server = start_transit_http_server(
         service, host=str(args.host), port=int(args.port)
     )

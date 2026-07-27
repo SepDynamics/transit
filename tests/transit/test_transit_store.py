@@ -13,6 +13,7 @@ def test_transit_store_persists_latest_payloads_and_vehicle_history(valkey_url):
     entities = store.entities()
     regimes = store.regimes()
     incidents = store.incidents()
+    prediction_evidence = store.prediction_evidence()
     history = store.history("vehicle:1811", limit=10)
     corridor_history = store.history("route:Red:0", limit=10)
     trends = store.trends(limit=5, window=10)
@@ -24,6 +25,8 @@ def test_transit_store_persists_latest_payloads_and_vehicle_history(valkey_url):
     assert entities["vehicles"][0]["corridor_entity_id"] == "route:Red:0"
     assert regimes["regimes"][0]["entity_id"] == "route:Red:0"
     assert incidents["incidents"][0]["entity_id"] == "route:Red:0"
+    assert prediction_evidence["event_count"] == 1
+    assert prediction_evidence["events"][0]["arrival_time_unix"] == 1_710_000_160
     assert [row["delay_seconds"] for row in history["observations"]] == [90, 240]
     assert [row["hazard"] for row in history["regimes"]] == [0.42, 0.81]
     assert [row["median_delay_seconds"] for row in corridor_history["observations"]] == [90, 240]
@@ -77,12 +80,18 @@ def test_transit_store_keeps_live_and_replay_snapshots_side_by_side(valkey_url):
 
     live_entities = store.entities(scope="live")
     replay_entities = store.entities(scope="replay", trace_id="case-red")
+    live_predictions = store.prediction_evidence(scope="live")
+    replay_predictions = store.prediction_evidence(
+        scope="replay", trace_id="case-red"
+    )
     replay_history = store.history("vehicle:1811", scope="replay", trace_id="case-red", limit=10)
     replay_trends = store.trends(scope="replay", trace_id="case-red", limit=5, window=10)
     sources = store.sources()
 
     assert live_entities["vehicles"][0]["source"] == "live"
     assert replay_entities["vehicles"][0]["source"] == "replay"
+    assert live_predictions["snapshot_timestamp_ms"] == 1_710_000_100_000
+    assert replay_predictions["snapshot_timestamp_ms"] == 1_710_000_200_000
     assert replay_entities["trace_id"] == "case-red"
     assert replay_entities["vehicles"][0]["observation"]["trace_id"] == "case-red"
     assert [row["delay_seconds"] for row in replay_history["observations"]] == [300]
@@ -494,6 +503,35 @@ def _snapshot(*, timestamp_ms: int, delay_seconds: int, hazard: float, source: s
     }
     return {
         "errors": [],
+        "prediction_evidence": {
+            "schema_version": "sentinel.prediction_evidence.v1",
+            "agency_key": "mbta",
+            "snapshot_timestamp_ms": timestamp_ms,
+            "feed_timestamp_ms": timestamp_ms,
+            "trip_update_count": 1,
+            "event_count": 1,
+            "coverage": {
+                "arrival_time_count": 1,
+                "departure_time_count": 1,
+                "skipped_stop_count": 0,
+            },
+            "events": [
+                {
+                    "route_id": "Red",
+                    "trip_id": "red-1",
+                    "direction_id": 0,
+                    "stop_id": "place-davis",
+                    "stop_sequence": 2,
+                    "arrival_time_unix": int(timestamp_ms / 1000),
+                    "departure_time_unix": int(timestamp_ms / 1000),
+                    "schedule_relationship": None,
+                    "trip_update_timestamp_ms": timestamp_ms,
+                    "source": source,
+                    "collection_source": "gtfs_rt_trip_updates",
+                    "trace_id": trace_id,
+                }
+            ],
+        },
         "feed_status": {
             "feed_label": "MBTA",
             "updated_at": "2024-03-09T00:00:00+00:00",

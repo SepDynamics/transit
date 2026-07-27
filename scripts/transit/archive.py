@@ -8,10 +8,12 @@ import hashlib
 import json
 import logging
 import os
+import shutil
 import signal
 import sys
 import time
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -56,6 +58,7 @@ class TransitAgencyArchiveConfig:
     trip_updates_url: Optional[str] = None
     alerts_url: Optional[str] = None
     write_history: bool = True
+    retention_days: int = 0
 
 
 class TransitAgencyArchiveService:
@@ -195,6 +198,15 @@ class TransitAgencyArchiveService:
         if snapshot_dir is not None:
             _write_json(snapshot_dir / "manifest.json", manifest)
         _write_json(current_dir / "manifest.json", manifest)
+        if snapshot_dir is not None and self.cfg.retention_days > 0:
+            retention = prune_archive_history(
+                self.cfg.root_dir,
+                now_ms=timestamp_ms,
+                retention_days=self.cfg.retention_days,
+            )
+            manifest["retention"] = retention
+            _write_json(snapshot_dir / "manifest.json", manifest)
+            _write_json(current_dir / "manifest.json", manifest)
         logger.info(
             "refreshed transit feeds for agency=%s with %d feed results history=%s",
             self.cfg.agency_key,
@@ -366,6 +378,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Refresh only current feed files and skip timestamped archive windows",
     )
     parser.add_argument(
+        "--retention-days",
+        type=int,
+        default=int(os.getenv("TRANSIT_ARCHIVE_RETENTION_DAYS", "0")),
+        help=(
+            "delete timestamped snapshots older than this many days after a "
+            "successful history capture; 0 disables pruning"
+        ),
+    )
+    parser.add_argument(
         "--system-name", default=os.getenv("TRANSIT_SYSTEM_NAME", adapter.system_name)
     )
     parser.add_argument(
@@ -437,6 +458,7 @@ def main() -> int:
         trip_updates_url=_optional_url(args.trip_updates_url),
         alerts_url=_optional_url(args.alerts_url),
         write_history=not bool(args.current_only),
+        retention_days=max(0, int(args.retention_days)),
     )
     service = TransitAgencyArchiveService(cfg)
 
@@ -490,6 +512,127 @@ def _optional_url(value: str | None) -> Optional[str]:
 
 def _truthy_env(name: str) -> bool:
     return str(os.getenv(name, "")).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def prune_archive_history(
+    root_dir: str | Path,
+    *,
+    now_ms: int,
+    retention_days: int,
+) -> Dict[str, Any]:
+    """Delete expired timestamped snapshots without breaking retained manifests.
+
+    Static GTFS files are intentionally reused across snapshot directories.  An
+    otherwise-expired directory remains protected while a retained manifest
+    references a file inside it.  This keeps every retained replay window
+    resolvable and limits the exception to static-feed anchor snapshots.
+    """
+
+    retention_days = max(0, int(retention_days))
+    cutoff_ms = int(now_ms) - (retention_days * 24 * 60 * 60 * 1000)
+    report: Dict[str, Any] = {
+        "enabled": retention_days > 0,
+        "retention_days": retention_days,
+        "cutoff_at": isoformat_ms(cutoff_ms),
+        "snapshots_examined": 0,
+        "snapshots_deleted": 0,
+        "snapshots_protected_by_reference": 0,
+    }
+    if retention_days <= 0:
+        return report
+
+    resolved_root = Path(root_dir).expanduser().resolve()
+    archive_root = resolved_root / "archive"
+    if not archive_root.is_dir():
+        return report
+
+    snapshots: List[tuple[Path, int]] = []
+    for candidate in archive_root.glob("*/*/*/*"):
+        if candidate.is_symlink() or not candidate.is_dir():
+            continue
+        timestamp_ms = _snapshot_path_timestamp_ms(candidate, archive_root)
+        if timestamp_ms is not None:
+            snapshots.append((candidate, timestamp_ms))
+    report["snapshots_examined"] = len(snapshots)
+
+    retained_dirs = {
+        path.resolve() for path, timestamp_ms in snapshots if timestamp_ms >= cutoff_ms
+    }
+    protected_dirs: set[Path] = set()
+    for snapshot_dir in retained_dirs:
+        manifest = _read_json(snapshot_dir / "manifest.json")
+        feeds = manifest.get("feeds")
+        if not isinstance(feeds, list):
+            continue
+        for row in feeds:
+            if not isinstance(row, dict):
+                continue
+            referenced_dir = _referenced_snapshot_dir(
+                row.get("path"),
+                root_dir=resolved_root,
+                archive_root=archive_root,
+            )
+            if referenced_dir is not None:
+                protected_dirs.add(referenced_dir)
+
+    expired_dirs = [
+        path
+        for path, timestamp_ms in snapshots
+        if timestamp_ms < cutoff_ms
+    ]
+    protected_expired = {
+        path.resolve() for path in expired_dirs if path.resolve() in protected_dirs
+    }
+    report["snapshots_protected_by_reference"] = len(protected_expired)
+    for snapshot_dir in expired_dirs:
+        if snapshot_dir.resolve() in protected_expired:
+            continue
+        shutil.rmtree(snapshot_dir)
+        report["snapshots_deleted"] += 1
+    return report
+
+
+def _snapshot_path_timestamp_ms(
+    snapshot_dir: Path, archive_root: Path
+) -> Optional[int]:
+    try:
+        relative = snapshot_dir.relative_to(archive_root)
+    except ValueError:
+        return None
+    if len(relative.parts) != 4:
+        return None
+    try:
+        parsed = datetime.strptime(
+            "/".join(relative.parts), "%Y/%m/%d/%H%M%SZ"
+        ).replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+    return int(parsed.timestamp() * 1000)
+
+
+def _referenced_snapshot_dir(
+    value: Any,
+    *,
+    root_dir: Path,
+    archive_root: Path,
+) -> Optional[Path]:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    relative = Path(text)
+    if relative.is_absolute() or ".." in relative.parts:
+        return None
+    referenced_path = (root_dir / relative).resolve()
+    try:
+        archive_relative = referenced_path.relative_to(archive_root)
+    except ValueError:
+        return None
+    if len(archive_relative.parts) < 5:
+        return None
+    snapshot_dir = archive_root.joinpath(*archive_relative.parts[:4])
+    if _snapshot_path_timestamp_ms(snapshot_dir, archive_root) is None:
+        return None
+    return snapshot_dir.resolve()
 
 
 if __name__ == "__main__":

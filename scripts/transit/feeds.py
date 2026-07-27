@@ -21,12 +21,14 @@ from scripts.transit.transit_types import (
     GTFSStaticCatalog,
     GTFSStop,
     GTFSStopTime,
+    GTFSTransfer,
     GTFSTrip,
     TransitAlertObservation,
     TransitRealtimeBundle,
     TransitStopTimeUpdate,
     TransitTripUpdateObservation,
     TransitVehicleObservation,
+    normalize_trip_schedule_relationship,
 )
 
 
@@ -36,6 +38,7 @@ def load_gtfs_catalog(
     feed_label: Optional[str] = None,
     include_stops: bool = True,
     include_stop_times: bool = True,
+    include_transfers: bool = True,
     include_calendar: bool = True,
     include_shapes: bool = True,
 ) -> GTFSStaticCatalog:
@@ -46,6 +49,8 @@ def load_gtfs_catalog(
         wanted_files.add("stops.txt")
     if include_stop_times:
         wanted_files.add("stop_times.txt")
+    if include_transfers:
+        wanted_files.add("transfers.txt")
     if include_calendar:
         wanted_files.add("calendar.txt")
     if include_shapes:
@@ -129,6 +134,30 @@ def load_gtfs_catalog(
     for trip_id, rows in catalog.stop_times_by_trip.items():
         rows.sort(key=lambda row: row.stop_sequence)
         catalog.stop_times_by_trip[trip_id] = rows
+
+    for row in rows_by_file.get("transfers.txt", []):
+        from_stop_id = str(row.get("from_stop_id") or "").strip()
+        to_stop_id = str(row.get("to_stop_id") or "").strip()
+        if not from_stop_id or not to_stop_id:
+            continue
+        transfer_type = _optional_int(row.get("transfer_type"))
+        min_transfer_time = _optional_int(row.get("min_transfer_time"))
+        catalog.transfers.append(
+            GTFSTransfer(
+                from_stop_id=from_stop_id,
+                to_stop_id=to_stop_id,
+                transfer_type=0 if transfer_type is None else transfer_type,
+                min_transfer_time=min_transfer_time,
+            )
+        )
+    catalog.transfers.sort(
+        key=lambda row: (
+            row.from_stop_id,
+            row.to_stop_id,
+            row.transfer_type,
+            row.min_transfer_time if row.min_transfer_time is not None else -1,
+        )
+    )
 
     for row in rows_by_file.get("calendar.txt", []):
         service = GTFSCalendarService(
@@ -386,6 +415,9 @@ def _normalize_trip_update_entity(
         direction_id=_optional_int(_field(trip, "direction_id", "directionId")),
         service_date=_string_or_none(_field(trip, "start_date", "startDate")),
         start_time=_string_or_none(_field(trip, "start_time", "startTime")),
+        schedule_relationship=normalize_trip_schedule_relationship(
+            _field(trip, "schedule_relationship", "scheduleRelationship")
+        ),
         delay_seconds=max(delays, key=lambda value: abs(value)) if delays else None,
         stop_time_updates=stop_time_updates,
         source="live",

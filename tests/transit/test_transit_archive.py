@@ -1,7 +1,11 @@
 import json
-from pathlib import Path
+from datetime import datetime, timezone
 
-from scripts.transit.archive import MBTAArchiveConfig, MBTAArchiveService
+from scripts.transit.archive import (
+    MBTAArchiveConfig,
+    MBTAArchiveService,
+    prune_archive_history,
+)
 
 
 class _FakeResponse:
@@ -211,3 +215,95 @@ def test_archive_rejects_bad_realtime_response_without_replacing_previous_state(
     assert alerts["status"] == "degraded_preserved"
     assert alerts["previous_sha256"] == "previous-good"
     assert (current_dir / "Alerts_enhanced.json").read_bytes() == previous
+
+
+def test_archive_retention_prunes_expired_snapshots_after_history_capture(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr("time.time", lambda: 1_710_000_160)
+    expired = tmp_path / "archive" / "2024" / "01" / "01" / "000000Z"
+    expired.mkdir(parents=True)
+    (expired / "manifest.json").write_text("{}", encoding="utf-8")
+    session = _FakeSession(
+        {
+            "https://example.test/gtfs.zip": _FakeResponse(b"PK\x03\x04fake-zip"),
+            "https://example.test/vehicles.json": _FakeResponse(b'{"entity":[]}'),
+            "https://example.test/trips.json": _FakeResponse(b'{"entity":[]}'),
+            "https://example.test/alerts.json": _FakeResponse(b'{"entity":[]}'),
+        }
+    )
+    service = MBTAArchiveService(
+        MBTAArchiveConfig(
+            root_dir=tmp_path,
+            retention_days=30,
+            static_url="https://example.test/gtfs.zip",
+            vehicle_positions_url="https://example.test/vehicles.json",
+            trip_updates_url="https://example.test/trips.json",
+            alerts_url="https://example.test/alerts.json",
+        ),
+        session=session,
+    )
+
+    manifest = service.run_once()
+
+    assert not expired.exists()
+    assert manifest["retention"]["retention_days"] == 30
+    assert manifest["retention"]["snapshots_deleted"] == 1
+    current_manifest = json.loads(
+        (tmp_path / "current" / "manifest.json").read_text(encoding="utf-8")
+    )
+    assert current_manifest["retention"] == manifest["retention"]
+
+
+def test_archive_retention_preserves_static_anchor_referenced_by_retained_manifest(
+    tmp_path,
+):
+    expired_unreferenced = (
+        tmp_path / "archive" / "2024" / "01" / "01" / "000000Z"
+    )
+    expired_anchor = tmp_path / "archive" / "2024" / "03" / "01" / "000000Z"
+    retained = tmp_path / "archive" / "2024" / "03" / "20" / "000000Z"
+    for directory in (expired_unreferenced, expired_anchor, retained):
+        directory.mkdir(parents=True)
+    (expired_unreferenced / "manifest.json").write_text("{}", encoding="utf-8")
+    (expired_anchor / "MBTA_GTFS.zip").write_bytes(b"PK\x03\x04static")
+    (retained / "manifest.json").write_text(
+        json.dumps(
+            {
+                "feeds": [
+                    {
+                        "name": "static_gtfs",
+                        "path": "archive/2024/03/01/000000Z/MBTA_GTFS.zip",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    now_ms = int(
+        datetime(2024, 4, 10, tzinfo=timezone.utc).timestamp() * 1000
+    )
+
+    report = prune_archive_history(
+        tmp_path,
+        now_ms=now_ms,
+        retention_days=30,
+    )
+
+    assert not expired_unreferenced.exists()
+    assert expired_anchor.exists()
+    assert (expired_anchor / "MBTA_GTFS.zip").exists()
+    assert retained.exists()
+    assert report["snapshots_deleted"] == 1
+    assert report["snapshots_protected_by_reference"] == 1
+
+
+def test_archive_retention_is_disabled_at_zero_days(tmp_path):
+    expired = tmp_path / "archive" / "2024" / "01" / "01" / "000000Z"
+    expired.mkdir(parents=True)
+
+    report = prune_archive_history(tmp_path, now_ms=1_710_000_000_000, retention_days=0)
+
+    assert expired.exists()
+    assert report["enabled"] is False
+    assert report["snapshots_deleted"] == 0

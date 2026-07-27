@@ -7,6 +7,28 @@ from typing import Any, Dict, List, Mapping, Optional
 from zoneinfo import ZoneInfo
 
 
+def normalize_trip_schedule_relationship(value: Any) -> Optional[str]:
+    """Normalize a GTFS-RT TripDescriptor relationship and preserve unknowns."""
+
+    if value in (None, ""):
+        return None
+    numeric_relationships = {
+        0: "SCHEDULED",
+        1: "ADDED",
+        2: "UNSCHEDULED",
+        3: "CANCELED",
+        5: "REPLACEMENT",
+        6: "DUPLICATED",
+        7: "DELETED",
+        8: "NEW",
+    }
+    try:
+        numeric_value = int(value)
+    except (TypeError, ValueError):
+        return str(value).strip().upper() or None
+    return numeric_relationships.get(numeric_value, str(value).strip().upper())
+
+
 def parse_gtfs_time_to_seconds(value: str | None) -> Optional[int]:
     if not value:
         return None
@@ -137,6 +159,22 @@ class GTFSStopTime:
         return parse_gtfs_time_to_seconds(self.departure_time)
 
 
+@dataclass(frozen=True)
+class GTFSTransfer:
+    """Stop-level transfer rule from ``transfers.txt``.
+
+    Route- and trip-specific transfer extensions are intentionally not modeled
+    yet.  The advisory planner can therefore use these records only as
+    stop-to-stop links and must not imply that an agency guarantees a
+    particular timed connection.
+    """
+
+    from_stop_id: str
+    to_stop_id: str
+    transfer_type: int = 0
+    min_transfer_time: Optional[int] = None
+
+
 @dataclass
 class GTFSCalendarService:
     service_id: str
@@ -166,6 +204,7 @@ class GTFSStaticCatalog:
     trips: Dict[str, GTFSTrip] = field(default_factory=dict)
     stops: Dict[str, GTFSStop] = field(default_factory=dict)
     stop_times_by_trip: Dict[str, List[GTFSStopTime]] = field(default_factory=dict)
+    transfers: List[GTFSTransfer] = field(default_factory=list)
     calendar: Dict[str, GTFSCalendarService] = field(default_factory=dict)
     shapes: Dict[str, List[GTFSShapePoint]] = field(default_factory=dict)
     _active_service_ids_cache: Dict[str, set[str]] = field(default_factory=dict, init=False, repr=False)
@@ -607,6 +646,7 @@ class TransitTripUpdateObservation:
     direction_id: Optional[int] = None
     service_date: Optional[str] = None
     start_time: Optional[str] = None
+    schedule_relationship: Optional[str] = None
     delay_seconds: Optional[int] = None
     stop_time_updates: List[TransitStopTimeUpdate] = field(default_factory=list)
     source: str = "live"

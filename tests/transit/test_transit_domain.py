@@ -1,5 +1,4 @@
 from scripts.transit.domain import TransitRuntimeConfig, TransitSnapshotService, _incident_summary
-from scripts.transit.feeds import load_gtfs_catalog, merge_realtime_bundles, normalize_gtfs_realtime_payload
 from scripts.transit.transit_types import TransitRegimeRecord
 
 
@@ -111,11 +110,20 @@ def test_transit_snapshot_derives_delay_from_scheduled_times(tmp_path, monkeypat
         )
     )
 
-    regimes = service.regimes()
+    snapshot = service.snapshot()
+    regimes = snapshot["regimes"]
 
     assert regimes["regimes"][0]["metrics"]["median_delay_seconds"] >= 180
     assert regimes["regimes"][0]["metrics"]["median_delay_seconds"] < 600
     assert regimes["regimes"][0]["regime"] == "bunching_onset"
+    prediction_evidence = snapshot["prediction_evidence"]
+    assert prediction_evidence["trip_update_count"] == 3
+    assert prediction_evidence["event_count"] == 3
+    assert prediction_evidence["feed_timestamp_ms"] == 1_710_000_100_000
+    assert all(
+        row["arrival_time_source"] == "gtfs_rt_time"
+        for row in prediction_evidence["events"]
+    )
 
 
 def test_transit_snapshot_history_links_vehicle_to_corridor_regime(tmp_path, monkeypatch):
@@ -349,13 +357,17 @@ def test_transit_snapshot_filters_far_future_trip_updates(tmp_path, monkeypatch)
         )
     )
 
-    incidents = service.incidents()
-    regimes = service.regimes()
+    snapshot = service.snapshot()
+    incidents = snapshot["incidents"]
+    regimes = snapshot["regimes"]
 
     assert incidents["incidents"] == []
     assert regimes["regimes"][0]["regime"] == "healthy"
     assert regimes["regimes"][0]["metrics"]["trip_update_count"] == 1
     assert regimes["regimes"][0]["metrics"]["median_delay_seconds"] == 60
+    assert snapshot["prediction_evidence"]["trip_update_count"] == 1
+    assert snapshot["prediction_evidence"]["event_count"] == 1
+    assert snapshot["prediction_evidence"]["events"][0]["trip_id"] == "bus-now"
 
 
 def test_transit_snapshot_dedupes_trip_chain_updates(tmp_path, monkeypatch):
@@ -381,13 +393,16 @@ def test_transit_snapshot_dedupes_trip_chain_updates(tmp_path, monkeypatch):
         )
     )
 
-    incidents = service.incidents()
-    regimes = service.regimes()
+    snapshot = service.snapshot()
+    incidents = snapshot["incidents"]
+    regimes = snapshot["regimes"]
 
     assert incidents["incidents"] == []
     assert regimes["regimes"][0]["regime"] == "healthy"
     assert regimes["regimes"][0]["metrics"]["trip_update_count"] == 1
     assert regimes["regimes"][0]["metrics"]["median_delay_seconds"] == 600
+    assert snapshot["prediction_evidence"]["trip_update_count"] == 1
+    assert snapshot["prediction_evidence"]["event_count"] == 1
 
 
 def test_transit_snapshot_suppresses_inactive_alert_only_route(tmp_path):

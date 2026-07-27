@@ -87,6 +87,30 @@ def test_transit_ingest_reuses_rollup_read_models_between_history_writes():
     assert store.status_writes[-1]["profile"]["stages"]
 
 
+def test_transit_ingest_reports_durable_evidence_retention(tmp_path):
+    store = _FakeIngestStore()
+    service = TransitIngestService(
+        TransitIngestConfig(
+            redis_url="redis://unused/0",
+            interval_seconds=5,
+            history_retention=120,
+            evidence_root=tmp_path / "evidence",
+            evidence_retention_days=90,
+            runtime=TransitRuntimeConfig(system_name="MBTA", agency_key="mbta"),
+        ),
+        store=store,
+    )
+    service.snapshot_service = _FakeSnapshotService()
+
+    service.run_once()
+
+    durable = store.status_writes[-1]["durable_evidence"]
+    assert durable["status"] == "ok"
+    assert durable["retention_days"] == 90
+    assert durable["retention"]["enabled"] is True
+    assert durable["retention"]["retention_days"] == 90
+
+
 class _FakeSnapshotService:
     def snapshot(self):
         return {

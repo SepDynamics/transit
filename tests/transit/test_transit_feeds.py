@@ -1,4 +1,3 @@
-import json
 import gzip
 from io import BytesIO
 from zipfile import ZipFile
@@ -41,6 +40,12 @@ def test_load_gtfs_catalog_builds_route_and_schedule_indexes():
             "red-2,08:10:00,08:10:00,place-alfcl,1\n"
             "red-2,08:14:00,08:14:30,place-davis,2\n",
         )
+        archive.writestr(
+            "transfers.txt",
+            "from_stop_id,to_stop_id,transfer_type,min_transfer_time\n"
+            "place-davis,place-porter,2,240\n"
+            ",place-invalid,0,\n",
+        )
 
     catalog = load_gtfs_catalog(payload.getvalue(), feed_label="mbta")
 
@@ -49,6 +54,11 @@ def test_load_gtfs_catalog_builds_route_and_schedule_indexes():
     assert catalog.trip_label("red-1") == "Red Red Line to Alewife"
     assert catalog.scheduled_headway_seconds("Red", 0) == 600
     assert [row.stop_id for row in catalog.route_stop_times("Red", 0)[:2]] == ["place-alfcl", "place-davis"]
+    assert len(catalog.transfers) == 1
+    assert catalog.transfers[0].from_stop_id == "place-davis"
+    assert catalog.transfers[0].to_stop_id == "place-porter"
+    assert catalog.transfers[0].transfer_type == 2
+    assert catalog.transfers[0].min_transfer_time == 240
 
 
 def test_load_gtfs_catalog_can_skip_heavy_static_indexes():
@@ -90,6 +100,7 @@ def test_load_gtfs_catalog_can_skip_heavy_static_indexes():
         feed_label="mbta",
         include_stops=False,
         include_stop_times=False,
+        include_transfers=False,
         include_calendar=False,
         include_shapes=False,
     )
@@ -98,6 +109,7 @@ def test_load_gtfs_catalog_can_skip_heavy_static_indexes():
     assert catalog.trip_route_id("red-1") == "Red"
     assert catalog.stops == {}
     assert catalog.stop_times_by_trip == {}
+    assert catalog.transfers == []
     assert catalog.calendar == {}
     assert catalog.shapes == {}
 
@@ -176,6 +188,7 @@ def test_normalize_gtfs_rt_payloads_extracts_vehicles_trip_updates_and_alerts():
     assert merged.vehicles[0].vehicle_id == "1811"
     assert merged.vehicles[0].service_date is None
     assert merged.trip_updates[0].delay_seconds == 240
+    assert merged.trip_updates[0].schedule_relationship is None
     assert merged.trip_updates[0].stop_time_updates[0].arrival_time_unix is None
     assert merged.alerts[0].route_ids == ["Red"]
     assert merged.alerts[0].header_text == "Red Line delays"
@@ -187,3 +200,40 @@ def test_gtfs_rt_parser_accepts_gzip_json_and_rejects_empty_payloads():
     assert parse_gtfs_realtime_payload(raw, content_encoding="gzip")["entity"] == []
     with pytest.raises(ValueError, match="empty"):
         parse_gtfs_realtime_payload(b"")
+
+
+@pytest.mark.parametrize(
+    ("raw_relationship", "expected_relationship"),
+    [
+        ("CANCELED", "CANCELED"),
+        (7, "DELETED"),
+        ("replacement", "REPLACEMENT"),
+        (6, "DUPLICATED"),
+        (8, "NEW"),
+    ],
+)
+def test_trip_descriptor_schedule_relationship_is_retained_and_normalized(
+    raw_relationship, expected_relationship
+):
+    bundle = normalize_gtfs_realtime_payload(
+        {
+            "header": {"timestamp": 1_710_000_100},
+            "entity": [
+                {
+                    "id": "trip-1",
+                    "trip_update": {
+                        "trip": {
+                            "route_id": "Red",
+                            "trip_id": "red-1",
+                            "schedule_relationship": raw_relationship,
+                        }
+                    },
+                }
+            ],
+        },
+        feed_label="trip_updates",
+        collection_source="gtfs_rt_trip_updates",
+        payload_type="trip_updates",
+    )
+
+    assert bundle.trip_updates[0].schedule_relationship == expected_relationship

@@ -178,6 +178,13 @@ Generate MBTA benchmark artifacts:
 make transit-benchmark-artifacts ARGS="--archive-root data/case-packs/mbta --labels data/case-packs/mbta --artifact-name mbta-suite"
 ```
 
+Compile a static GTFS zip or directory into an atomic, deterministic advisory
+topology artifact (`stop_times.txt` must be grouped by trip and stop sequence):
+
+```bash
+make transit-compile-topology ARGS="data/feeds/agency/gtfs.zip output/agency-topology.json.gz --feed-label agency --max-nearby-walk-meters 250 --walking-speed-mps 1.2"
+```
+
 ## Product Boundary
 
 This repo is strongest today as a Boston public-data service-status layer, live

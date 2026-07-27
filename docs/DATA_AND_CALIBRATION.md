@@ -27,11 +27,53 @@ Capture MBTA once:
 make transit-mbta-archive ARGS="--once"
 ```
 
+Timestamped raw GTFS-RT capture and on-disk pruning are separate, explicit
+controls. Before enabling capture on a host, verify feed authorization and disk
+capacity, then set both a history mode and a finite retention window. For
+example, a 90-day continuous capture uses:
+
+```bash
+TRANSIT_ARCHIVE_CURRENT_ONLY=0 \
+TRANSIT_ARCHIVE_RETENTION_DAYS=90 \
+python3 scripts/transit/archive.py
+```
+
+`TRANSIT_ARCHIVE_RETENTION_DAYS` (CLI: `--retention-days`) has an application
+fallback of `0`, which disables deletion; the standard Compose stack explicitly
+sets an environment-overridable 90-day window. Pruning only runs after a
+successful timestamped capture, so the live-host current-only override neither
+captures nor prunes raw history. A static GTFS anchor snapshot remains
+protected while any retained manifest references it, so a replayable window
+can extend slightly beyond the raw cutoff by one static refresh interval.
+
 Ingest the current MBTA working set:
 
 ```bash
 make transit-ingest ARGS="--once --redis redis://localhost:6379/0"
 ```
+
+Each scored history write also emits compact `sentinel.prediction_evidence.v1`
+data into the durable operational JSONL record. It contains the already
+filtered/deduplicated trip updates as deterministic per-stop events, including
+published or schedule-plus-delay arrival/departure times, skipped stops, feed
+timestamps, and source/trace metadata. It also retains each GTFS-RT trip
+descriptor and its schedule relationship separately, so a canceled or deleted
+trip remains replayable even when the agency publishes no stop updates.
+Alternative advisories exclude canceled and deleted trips. They also fail
+closed for `REPLACEMENT`, `DUPLICATED`, `NEW`, or unknown trip relationships because
+those require feed-specific trip-linkage semantics that Sentinel does not
+infer. Keep these partitions bounded with a matching policy:
+
+```bash
+TRANSIT_EVIDENCE_RETENTION_DAYS=90 python3 scripts/transit/ingest.py
+```
+
+`TRANSIT_EVIDENCE_RETENTION_DAYS` (CLI: `--evidence-retention-days`) also has an
+application fallback of `0`; the standard Compose stack sets it to 90 days.
+When enabled, pruning removes expired `agency=<key>/date=<UTC day>` partitions
+after a successful evidence write. Back up any evidence that must outlive the
+window before rolling out this setting: the next successful write prunes older
+partitions.
 
 Import an MBTA archive window as replay:
 
