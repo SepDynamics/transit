@@ -2,7 +2,7 @@
 # Keeps app ports on loopback and disables replay/archive serving.
 services:
   valkey:
-    command: ["redis-server", "--appendonly", "no", "--save", "300", "1"]
+    command: ["redis-server", "--appendonly", "no", "--save", "300", "1", "--maxmemory", "768mb", "--maxmemory-policy", "allkeys-lru"]
     ports: !override
       - "127.0.0.1:6379:6379"
 

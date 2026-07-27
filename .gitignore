@@ -9,8 +9,9 @@ env/
 
 apps/frontend/node_modules/
 apps/frontend/dist/
-data/feeds/mbta/current/
-data/feeds/mbta/archive/
+data/feeds/*/current/
+data/feeds/*/archive/
+data/evidence/
 
 logs/
 output/
