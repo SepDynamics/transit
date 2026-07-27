@@ -46,3 +46,14 @@ def test_runtime_env_is_excluded_from_docker_build_context():
     dockerignore = (REPO_ROOT / ".dockerignore").read_text(encoding="utf-8")
 
     assert "transit-sentinel-*.env" in dockerignore.splitlines()
+
+
+def test_live_compose_is_explicitly_lametro_only():
+    live_compose = (REPO_ROOT / "docker-compose.live-host.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'TRANSIT_AGENCY: "lametro"' in live_compose
+    assert live_compose.count('TRANSIT_AGENCY: "lametro"') == 3
+    assert 'TRANSIT_SYSTEM_NAME: "LA Metro Live"' in live_compose
+    assert "MBTA Live" not in live_compose

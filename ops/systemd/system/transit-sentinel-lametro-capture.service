@@ -1,0 +1,17 @@
+[Unit]
+Description=Transit Sentinel LA Metro discovery capture
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/transit
+EnvironmentFile=/root/.config/transit-sentinel/transit-sentinel-lametro.env
+Environment=PYTHONPATH=/root/transit
+ExecStart=/usr/bin/python3 scripts/transit/lametro_capture.py --root-dir data/feeds/lametro --interval 60 --min-free-gb 3
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

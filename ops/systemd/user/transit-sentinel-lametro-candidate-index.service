@@ -1,0 +1,9 @@
+[Unit]
+Description=Build daily LA Metro case-pack candidate index
+After=transit-sentinel-lametro-pull.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/sep/transit-sentinel
+Environment=PYTHONPATH=/sep/transit-sentinel
+ExecStart=/usr/bin/python3 scripts/transit/candidate_index.py

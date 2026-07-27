@@ -1,0 +1,9 @@
+[Unit]
+Description=Bundle completed LA Metro discovery snapshots
+After=transit-sentinel-lametro-capture.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/transit
+Environment=PYTHONPATH=/root/transit
+ExecStart=/usr/bin/python3 scripts/transit/archive_bundle.py --root-dir data/feeds/lametro --min-free-gb 3

@@ -7,13 +7,20 @@ services:
       - "127.0.0.1:6379:6379"
 
   archive:
+    env_file:
+      - path: ${TRANSIT_LAMETRO_ENV_FILE:-/root/.config/transit-sentinel/transit-sentinel-lametro.env}
+        required: false
     environment:
+      TRANSIT_AGENCY: "lametro"
+      TRANSIT_SYSTEM_NAME: "LA Metro"
+      TRANSIT_ARCHIVE_ROOT: "/app/data/feeds/lametro"
       TRANSIT_ARCHIVE_CURRENT_ONLY: "1"
 
   api:
     environment:
       TRANSIT_REPLAY_ENABLED: "0"
-      TRANSIT_SYSTEM_NAME: "MBTA Live"
+      TRANSIT_AGENCY: "lametro"
+      TRANSIT_SYSTEM_NAME: "LA Metro Live"
       TRANSIT_API_CACHE_TTL_SECONDS: "15"
       TRANSIT_API_CACHE_MAX_ENTRIES: "6"
       TRANSIT_API_SCORECARD_CACHE_TTL_SECONDS: "60"
@@ -39,6 +46,12 @@ services:
 
   ingest:
     environment:
+      TRANSIT_AGENCY: "lametro"
+      TRANSIT_SYSTEM_NAME: "LA Metro"
+      TRANSIT_GTFS_STATIC_PATH: "/app/data/feeds/lametro/current/lametro_gtfs.zip"
+      TRANSIT_GTFS_RT_VEHICLE_POSITIONS_PATH: "/app/data/feeds/lametro/current/VehiclePositions_enhanced.json"
+      TRANSIT_GTFS_RT_TRIP_UPDATES_PATH: "/app/data/feeds/lametro/current/TripUpdates_enhanced.json"
+      TRANSIT_GTFS_RT_ALERTS_PATH: "/app/data/feeds/lametro/current/Alerts_enhanced.json"
       TRANSIT_GTFS_LIGHTWEIGHT: "1"
       TRANSIT_INGEST_INTERVAL_SECONDS: "20"
       TRANSIT_HISTORY_RETENTION: "120"

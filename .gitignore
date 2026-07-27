@@ -11,6 +11,11 @@ apps/frontend/node_modules/
 apps/frontend/dist/
 data/feeds/*/current/
 data/feeds/*/archive/
+data/feeds/*/transfer/
+data/case-pack-sources/lametro/incoming/
+data/case-pack-sources/lametro/extracted/
+data/case-pack-sources/lametro/catalog/
+data/case-pack-sources/lametro/promoted/
 data/evidence/
 
 logs/

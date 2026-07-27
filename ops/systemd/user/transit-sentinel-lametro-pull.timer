@@ -1,0 +1,9 @@
+[Unit]
+Description=Six-hour LA Metro discovery pull timer
+
+[Timer]
+OnCalendar=*-*-* 00,06,12,18:15:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

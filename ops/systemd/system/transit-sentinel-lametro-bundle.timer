@@ -1,0 +1,10 @@
+[Unit]
+Description=Hourly LA Metro discovery bundle timer
+
+[Timer]
+OnCalendar=*-*-* *:05:00
+RandomizedDelaySec=60
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -33,7 +33,7 @@ docker compose version >/dev/null 2>&1 || die "Docker Compose v2 is not availabl
 
 # archive and ingest run as the non-root container user (uid 999 on the
 # production image), so their bind-mounted state directories must be writable.
-mkdir -p data/feeds/mbta/current data/evidence logs/transit
+mkdir -p data/feeds/lametro/current data/evidence logs/transit
 if [ "$(id -u)" -eq 0 ]; then
   chown -R 999:999 data/feeds data/evidence logs/transit
 elif ! { [ -w data/feeds ] && [ -w data/evidence ] && [ -w logs/transit ]; }; then
@@ -44,6 +44,19 @@ fi
 
 printf '%s\n' 'Stopping any seeded-demo containers...'
 "${compose[@]}" --profile demo stop api-demo frontend-demo >/dev/null 2>&1 || true
+
+printf '%s\n' 'Asserting an LA-only live configuration...'
+"${compose[@]}" config --format json | python3 -c '
+import json, sys
+services = json.load(sys.stdin)["services"]
+for name in ("archive", "ingest", "api"):
+    agency = services[name].get("environment", {}).get("TRANSIT_AGENCY")
+    if agency != "lametro":
+        raise SystemExit(f"deploy: {name} resolved TRANSIT_AGENCY={agency!r}, expected lametro")
+system_name = services["api"].get("environment", {}).get("TRANSIT_SYSTEM_NAME", "")
+if "LA Metro" not in system_name or "MBTA" in system_name:
+    raise SystemExit(f"deploy: API system identity is not LA-only: {system_name!r}")
+'
 
 printf '%s\n' 'Building and recreating the live services...'
 "${compose[@]}" up -d --build --force-recreate --remove-orphans "${services[@]}"

@@ -1,0 +1,10 @@
+[Unit]
+Description=Pull and verify LA Metro discovery bundles
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/sep/transit-sentinel
+Environment=PYTHONPATH=/sep/transit-sentinel
+ExecStart=/usr/bin/python3 scripts/transit/pull_lametro.py --local-root data/case-pack-sources/lametro/incoming --min-free-gb 8 --remote-retention-days 3 --local-retention-days 8

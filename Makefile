@@ -1,4 +1,4 @@
-.PHONY: install frontend-install frontend-typecheck frontend-build build-manifold-engine test test-all test-transit check check-all ci-check check-transit check-transit-case-packs clean transit-archive transit-mbta-archive transit-ingest transit-replay transit-api transit-api-parity transit-live-health transit-prune-history transit-history-report transit-calibration-report transit-calibration-summary transit-benchmark-artifacts transit-demo-seed transit-notify transit-proof-window transit-smoke transit-build-baselines
+.PHONY: install frontend-install frontend-typecheck frontend-build build-manifold-engine test test-all test-transit check check-all ci-check check-transit check-transit-case-packs check-transit-case-packs-lametro clean transit-archive transit-mbta-archive transit-lametro-capture transit-lametro-bundle transit-lametro-pull transit-lametro-candidate-index transit-ingest transit-replay transit-api transit-api-parity transit-live-health transit-prune-history transit-history-report transit-calibration-report transit-calibration-summary transit-benchmark-artifacts transit-demo-seed transit-notify transit-proof-window transit-smoke transit-build-baselines
 .PHONY: transit-compile-topology
 
 PYTHON ?= python3
@@ -47,11 +47,26 @@ check-transit: test-transit check-transit-case-packs frontend-typecheck frontend
 check-transit-case-packs:
 	@PYTHONPATH=. $(PYTHON) scripts/transit/grade_calibration.py --archive-root data/case-packs/mbta --labels data/case-packs/mbta --strict
 
+check-transit-case-packs-lametro:
+	@PYTHONPATH=. $(PYTHON) scripts/transit/grade_calibration.py --archive-root data/case-packs/lametro --labels data/case-packs/lametro --strict
+
 transit-archive:
 	@PYTHONPATH=. $(PYTHON) scripts/transit/archive.py $(ARGS)
 
 transit-mbta-archive:
 	@PYTHONPATH=. $(PYTHON) scripts/transit/archive.py --agency mbta $(ARGS)
+
+transit-lametro-capture:
+	@PYTHONPATH=. $(PYTHON) scripts/transit/lametro_capture.py $(ARGS)
+
+transit-lametro-bundle:
+	@PYTHONPATH=. $(PYTHON) scripts/transit/archive_bundle.py $(ARGS)
+
+transit-lametro-pull:
+	@PYTHONPATH=. $(PYTHON) scripts/transit/pull_lametro.py $(ARGS)
+
+transit-lametro-candidate-index:
+	@PYTHONPATH=. $(PYTHON) scripts/transit/candidate_index.py $(ARGS)
 
 transit-ingest:
 	@PYTHONPATH=. $(PYTHON) scripts/transit/ingest.py $(ARGS)

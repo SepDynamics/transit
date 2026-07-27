@@ -163,3 +163,32 @@ and requires coordinated force pushes and collaborator recovery.
 This path is backend-only. It does not run the React frontend, Caddy, nginx, or
 Docker container stack. Do not rely on `npm run dev` as a durable hosted
 frontend process.
+
+## LA discovery archive
+
+The discovery lane is deliberately separate from the public Compose stack. It
+uses `lametro_capture.py` at 60-second resolution, preserving self-contained
+bus and rail inputs under `data/feeds/lametro/archive`. A 3 GiB guard stops new
+capture before the host becomes critically full. The hourly bundler validates
+each compressed tar and checksum before removing its uncompressed snapshots.
+
+Install the root-host capture units from `ops/systemd/system/`, then enable:
+
+```bash
+systemctl enable --now transit-sentinel-lametro-capture.service
+systemctl enable --now transit-sentinel-lametro-bundle.timer
+```
+
+On the archive PC, install the pull and index units from `ops/systemd/user/`,
+then enable their timers. Pulls use resumable checksum-mode rsync, require 8
+GiB free locally, validate checksums, retain remote bundles for three days and
+local bundles for eight days, and never prune an unverified bundle.
+
+```bash
+systemctl --user enable --now transit-sentinel-lametro-pull.timer
+systemctl --user enable --now transit-sentinel-lametro-candidate-index.timer
+```
+
+The installed Swiftly key must be authorized separately for both `lametro` and
+`lametro-rail`. A rail 403 is recorded as `mode_status.rail=unavailable` and is
+not treated as comprehensive LA coverage.
