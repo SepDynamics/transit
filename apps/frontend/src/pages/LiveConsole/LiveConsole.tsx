@@ -14,6 +14,7 @@ import ToolbarPanel from "./panels/ToolbarPanel";
 import TrendPanel from "./panels/TrendPanel";
 import VehicleInventory from "./panels/VehicleInventory";
 import EvidenceDrawer from "./panels/EvidenceDrawer";
+import AlternativeServicePreview from "./panels/AlternativeServicePreview";
 import "./LiveConsole.css";
 
 /** Minimal display shape shared between LineCard and HistoryEntity. */
@@ -133,6 +134,13 @@ export default function LiveConsole() {
           corridorHistory={corridorHistory}
           incidentResponse={incidentResponse}
           regimeResponse={regimeResponse}
+        />
+
+        <AlternativeServicePreview
+          lines={visibleLines}
+          scope={scope}
+          selectedCorridorId={selectedCorridorId}
+          onSelectCorridor={(id) => selectCorridor(id)}
         />
 
         <MapSection mapData={mapData} />

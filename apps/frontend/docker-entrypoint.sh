@@ -16,7 +16,7 @@ sed -i \
   -e "s#__API_URL__#${API_URL:-}#g" \
   -e "s#__API_BEARER_TOKEN__#${API_BEARER_TOKEN:-}#g" \
   -e "s#__DEMO_URL__#${DEMO_URL:-https://calendly.com/sepdynamics/15min}#g" \
-  -e "s#__OPS_CONSOLE_ENABLED__#${OPS_CONSOLE_ENABLED:-1}#g" \
+  -e "s#__OPS_CONSOLE_ENABLED__#${OPS_CONSOLE_ENABLED:-0}#g" \
   /usr/share/nginx/html/transit-sentinel-config.js
 
 TEMPLATES_DIR="/opt/nginx/templates"

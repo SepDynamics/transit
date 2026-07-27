@@ -386,6 +386,108 @@ export type TrendResponse = TransitTrendResponse;
 export type DashboardResponse = TransitDashboardResponse;
 
 // ---------------------------------------------------------------------------
+// Protected alternative-service operator preview
+// ---------------------------------------------------------------------------
+
+export interface AdvisoryProductBoundary {
+  advisory_only: boolean;
+  infers_cause: boolean;
+  guarantees_arrival: boolean;
+  issues_dispatch_instructions: boolean;
+  statement: string;
+}
+
+export interface AdvisoryStopOption {
+  stop_id: string;
+  stop_name: string;
+  sequence: number;
+  downstream_stop_ids: string[];
+}
+
+export interface AdvisoryDirectionOption {
+  direction_id: number | null;
+  label: string;
+}
+
+export interface AdvisoryOptionsResponse {
+  status: "available" | "selection_required" | "unavailable";
+  generated_at_ms: number;
+  release_stage: "operator_preview";
+  disrupted_route_id: string;
+  route_label: string | null;
+  resolved_direction_id: number | null;
+  directions: AdvisoryDirectionOption[];
+  stops: AdvisoryStopOption[];
+  suppression_reasons: string[];
+  product_boundary: AdvisoryProductBoundary;
+}
+
+export interface AdvisoryLeg {
+  kind: "ride" | "walk" | "transfer";
+  from_stop_id: string;
+  to_stop_id: string;
+  departure_time_ms: number | null;
+  arrival_time_ms: number | null;
+  duration_seconds: number;
+  route_id: string | null;
+  trip_id: string | null;
+  direction_id: number | null;
+  realtime_coverage: number | null;
+  transfer_source: string | null;
+}
+
+export interface AdvisoryEvidence {
+  kind: string;
+  details: Record<string, unknown>;
+}
+
+export interface AlternativeAdvisory {
+  disrupted_route_id: string;
+  origin_stop_id: string;
+  destination_stop_id: string;
+  route_ids: string[];
+  estimated_arrival_time_ms: number;
+  baseline_arrival_time_ms: number;
+  expected_time_saved_seconds: number;
+  total_walking_seconds: number;
+  total_walking_meters: number | null;
+  total_transfer_seconds: number;
+  confidence: number;
+  confidence_label: "low" | "medium" | "high";
+  expires_at_ms: number;
+  summary: string;
+  explanation: string;
+  legs: AdvisoryLeg[];
+  evidence: AdvisoryEvidence[];
+}
+
+export interface AlternativeAdvisoryResponse {
+  status: "published" | "suppressed" | "unavailable";
+  generated_at_ms: number;
+  origin_stop_id: string;
+  destination_stop_id: string;
+  disrupted_route_id: string;
+  advisories: AlternativeAdvisory[];
+  suppression_reasons: string[];
+  evaluated_candidate_count: number;
+  baseline_arrival_time_ms: number | null;
+  release_stage: "operator_preview";
+  resolved_direction_id: number | null;
+  product_boundary: AdvisoryProductBoundary;
+}
+
+export interface AdvisoryApiErrorResponse {
+  status: "invalid_request";
+  error: string;
+  message: string;
+  release_stage: "operator_preview";
+  product_boundary: AdvisoryProductBoundary;
+  required_role?: string;
+  authentication_required?: boolean;
+  missing_parameters?: string[];
+}
+
+// ---------------------------------------------------------------------------
 // Map endpoint types (/api/transit/map)
 // ---------------------------------------------------------------------------
 

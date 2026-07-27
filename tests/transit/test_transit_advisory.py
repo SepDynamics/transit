@@ -10,6 +10,7 @@ from scripts.transit.advisory import (
     ExplicitTransfer,
     RealtimePredictionIndex,
     RouteHealth,
+    TransitTopology,
     compile_transit_topology,
     load_transit_topology,
     save_transit_topology,
@@ -217,6 +218,17 @@ def test_topology_compiler_orders_rides_and_honors_transfer_rules(tmp_path: Path
     restored = load_transit_topology(artifact)
     assert restored.to_dict() == topology.to_dict()
     assert restored.trip_paths["a-1"].stops is restored.trip_paths["a-2"].stops
+
+
+def test_topology_artifact_rejects_pattern_without_route_id():
+    topology = compile_transit_topology(
+        _catalog({"a-1": ("A", 0, ("O", "D"))})
+    )
+    payload = topology.to_dict()
+    payload["patterns"][0].pop("route_id")
+
+    with pytest.raises(ValueError, match="missing route_id"):
+        TransitTopology.from_dict(payload)
 
 
 def test_transfer_tombstones_remove_and_prevent_directed_inferred_edges():

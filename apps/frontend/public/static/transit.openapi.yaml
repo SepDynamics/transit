@@ -1628,6 +1628,70 @@ components:
         details:
           type: object
           additionalProperties: true
+    AdvisoryDirectionOption:
+      type: object
+      additionalProperties: false
+      required: [direction_id, label]
+      properties:
+        direction_id:
+          type: integer
+          nullable: true
+        label:
+          type: string
+    AdvisoryStopOption:
+      type: object
+      additionalProperties: false
+      required: [stop_id, stop_name, sequence, downstream_stop_ids]
+      properties:
+        stop_id:
+          type: string
+        stop_name:
+          type: string
+        sequence:
+          type: integer
+          minimum: 0
+        downstream_stop_ids:
+          type: array
+          description: >
+            Stops occurring later than this stop on at least one trip pattern
+            for the resolved route and direction.
+          items:
+            type: string
+    AlternativeAdvisoryOptionsResponse:
+      type: object
+      additionalProperties: false
+      required: [status, generated_at_ms, disrupted_route_id, route_label, resolved_direction_id, directions, stops, suppression_reasons, release_stage, product_boundary]
+      properties:
+        status:
+          type: string
+          enum: [available, selection_required, unavailable]
+        generated_at_ms:
+          type: integer
+        disrupted_route_id:
+          type: string
+        route_label:
+          type: string
+          nullable: true
+        resolved_direction_id:
+          type: integer
+          nullable: true
+        directions:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdvisoryDirectionOption"
+        stops:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdvisoryStopOption"
+        suppression_reasons:
+          type: array
+          items:
+            type: string
+        release_stage:
+          type: string
+          enum: [operator_preview]
+        product_boundary:
+          $ref: "#/components/schemas/AdvisoryProductBoundary"
     AlternativeAdvisory:
       type: object
       additionalProperties: false
@@ -1683,13 +1747,19 @@ components:
     AlternativeAdvisoryDecision:
       type: object
       additionalProperties: false
-      required: [status, generated_at_ms, advisories, suppression_reasons, evaluated_candidate_count, baseline_arrival_time_ms, release_stage, resolved_direction_id, product_boundary]
+      required: [status, generated_at_ms, origin_stop_id, destination_stop_id, disrupted_route_id, advisories, suppression_reasons, evaluated_candidate_count, baseline_arrival_time_ms, release_stage, resolved_direction_id, product_boundary]
       properties:
         status:
           type: string
           enum: [published, suppressed, unavailable]
         generated_at_ms:
           type: integer
+        origin_stop_id:
+          type: string
+        destination_stop_id:
+          type: string
+        disrupted_route_id:
+          type: string
         advisories:
           type: array
           items:
@@ -2085,6 +2155,46 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AlternativeAdvisoryDecision"
+  /api/transit/alternative-advisories/options:
+    get:
+      tags: [Operations]
+      summary: List route-scoped stop choices for alternative-service preview
+      description: >
+        Protected operator-preview lookup for the configured compact transit
+        topology. It returns ordered route stops for the requested direction
+        with valid downstream stop ids and never reads live journey evidence.
+        Directionless patterns are used only when the route has no numbered
+        GTFS directions. Like advisory evaluation, this is excluded from the
+        public /api/status API and always requires a bearer token explicitly
+        registered with operator or admin role.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AdvisoryDisruptedRouteId"
+        - $ref: "#/components/parameters/AdvisoryDirectionId"
+      responses:
+        "200":
+          description: Stop choices, or a direction-selection requirement.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlternativeAdvisoryOptionsResponse"
+        "400":
+          description: Missing, invalid, or unknown route or direction input.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlternativeAdvisoryRequestError"
+        "401":
+          description: >
+            No token registry, missing or unknown bearer token, or a registered
+            role below operator. This endpoint always fails closed.
+        "503":
+          description: The configured topology is unavailable or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlternativeAdvisoryOptionsResponse"
   /api/transit/incidents:
     get:
       tags: [Operations]

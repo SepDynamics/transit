@@ -181,8 +181,10 @@ services:
     mem_limit: 192m
     environment:
       API_URL: ""
-      API_BEARER_TOKEN: "${TRANSIT_FRONTEND_API_BEARER_TOKEN:-}"
-      OPS_CONSOLE_ENABLED: "${TRANSIT_OPS_CONSOLE_ENABLED:-1}"
+      # Browser runtime config is public. Authenticate an ops host at a
+      # same-origin proxy/BFF; never place an API credential here.
+      API_BEARER_TOKEN: ""
+      OPS_CONSOLE_ENABLED: "${TRANSIT_OPS_CONSOLE_ENABLED:-0}"
       SERVER_NAME: "_"
       BACKEND_UPSTREAM: "http://api:8000"
     depends_on:
@@ -205,8 +207,8 @@ services:
     mem_limit: 192m
     environment:
       API_URL: ""
-      API_BEARER_TOKEN: "${TRANSIT_FRONTEND_API_BEARER_TOKEN:-}"
-      OPS_CONSOLE_ENABLED: "${TRANSIT_OPS_CONSOLE_ENABLED:-1}"
+      API_BEARER_TOKEN: ""
+      OPS_CONSOLE_ENABLED: "${TRANSIT_OPS_CONSOLE_ENABLED:-0}"
       SERVER_NAME: "_"
       BACKEND_UPSTREAM: "http://api-demo:8000"
     depends_on:

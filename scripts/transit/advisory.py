@@ -201,11 +201,37 @@ class TransitTopology:
         for row in payload.get("patterns", ()):
             if not isinstance(row, Mapping) or not row.get("pattern_id"):
                 continue
+            if not row.get("route_id"):
+                raise ValueError(f"missing route_id in pattern {row['pattern_id']}")
             raw_direction = row.get("direction_id")
-            patterns[str(row["pattern_id"])] = (
+            pattern_id = str(row["pattern_id"])
+            pattern_stops = tuple(
+                TripStop(**dict(stop)) for stop in row.get("stops", ())
+            )
+            previous_sequence: Optional[int] = None
+            for pattern_stop in pattern_stops:
+                if pattern_stop.stop_id not in stops:
+                    raise ValueError(
+                        f"unknown stop_id {pattern_stop.stop_id} in pattern {pattern_id}"
+                    )
+                if (
+                    isinstance(pattern_stop.stop_sequence, bool)
+                    or not isinstance(pattern_stop.stop_sequence, int)
+                    or pattern_stop.stop_sequence < 0
+                ):
+                    raise ValueError(f"invalid stop_sequence in pattern {pattern_id}")
+                if (
+                    previous_sequence is not None
+                    and pattern_stop.stop_sequence <= previous_sequence
+                ):
+                    raise ValueError(
+                        f"stop_sequence must increase in pattern {pattern_id}"
+                    )
+                previous_sequence = pattern_stop.stop_sequence
+            patterns[pattern_id] = (
                 str(row["route_id"]),
                 int(raw_direction) if raw_direction is not None else None,
-                tuple(TripStop(**dict(stop)) for stop in row.get("stops", ())),
+                pattern_stops,
             )
         trip_paths: Dict[str, TripPath] = {}
         for row in payload.get("trips", ()):

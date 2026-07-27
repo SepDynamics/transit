@@ -44,6 +44,7 @@ ADMIN_OPS_PATHS = {
 
 OPERATOR_PREVIEW_PATHS = {
     "/api/transit/alternative-advisories",
+    "/api/transit/alternative-advisories/options",
 }
 
 
@@ -57,6 +58,7 @@ def test_openapi_documents_public_and_frontend_consumed_paths():
     assert OPERATOR_PREVIEW_PATHS <= paths
     assert "TransitDashboardResponse" in spec["components"]["schemas"]
     assert "AlternativeAdvisoryDecision" in spec["components"]["schemas"]
+    assert "AlternativeAdvisoryOptionsResponse" in spec["components"]["schemas"]
 
 
 def test_openapi_marks_ops_paths_as_bearer_auth_and_public_status_open():
@@ -111,6 +113,47 @@ def test_openapi_documents_operator_preview_boundary_and_required_inputs():
     assert schemas["AlternativeAdvisory"]["properties"]["total_transfer_seconds"] == {
         "type": "integer",
         "minimum": 0,
+    }
+    assert {
+        "origin_stop_id",
+        "destination_stop_id",
+        "disrupted_route_id",
+    } <= set(schemas["AlternativeAdvisoryDecision"]["required"])
+
+
+def test_openapi_documents_operator_preview_stop_options():
+    spec = _load_spec()
+    operation = spec["paths"][
+        "/api/transit/alternative-advisories/options"
+    ]["get"]
+    parameters = [
+        spec["components"]["parameters"][row["$ref"].rsplit("/", 1)[-1]]
+        for row in operation["parameters"]
+    ]
+
+    assert [parameter["name"] for parameter in parameters] == [
+        "disrupted_route_id",
+        "direction_id",
+    ]
+    assert [parameter.get("required", False) for parameter in parameters] == [
+        True,
+        False,
+    ]
+    assert set(operation["responses"]) == {"200", "400", "401", "503"}
+    schema = spec["components"]["schemas"]["AlternativeAdvisoryOptionsResponse"]
+    assert schema["additionalProperties"] is False
+    assert schema["properties"]["status"]["enum"] == [
+        "available",
+        "selection_required",
+        "unavailable",
+    ]
+    assert schema["properties"]["stops"]["items"] == {
+        "$ref": "#/components/schemas/AdvisoryStopOption"
+    }
+    stop_schema = spec["components"]["schemas"]["AdvisoryStopOption"]
+    assert "downstream_stop_ids" in stop_schema["required"]
+    assert stop_schema["properties"]["downstream_stop_ids"]["items"] == {
+        "type": "string"
     }
 
 

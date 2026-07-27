@@ -44,7 +44,7 @@ const boolConfig = (value: unknown, fallback: boolean): boolean => {
 
 export const OPS_CONSOLE_ENABLED = boolConfig(
   runtimeConfig.OPS_CONSOLE_ENABLED ?? import.meta.env.VITE_OPS_CONSOLE_ENABLED,
-  true,
+  false,
 );
 
 const normalisedBase = API_BASE ? API_BASE.replace(/\/$/, "") : "";

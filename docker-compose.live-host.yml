@@ -29,8 +29,11 @@ services:
 
   frontend:
     environment:
-      OPS_CONSOLE_ENABLED: "${TRANSIT_OPS_CONSOLE_ENABLED:-0}"
-      API_BEARER_TOKEN: "${TRANSIT_FRONTEND_API_BEARER_TOKEN:-}"
+      # This overlay is the public status host, never the Operations console.
+      OPS_CONSOLE_ENABLED: "0"
+      # The public runtime config is browser-visible; never place an API
+      # credential in this deployment, even when one exists in the host env.
+      API_BEARER_TOKEN: ""
     ports: !override
       - "127.0.0.1:8080:80"
 

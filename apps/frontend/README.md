@@ -9,6 +9,9 @@ React and Vite frontend for the LA Metro Transit Sentinel API.
 - lazy-loaded map view backed by `/api/transit/map`
 - corridor and vehicle drilldowns backed by `/api/transit/history`
 - scorecards backed by `/api/transit/scorecard`
+- operator-only alternative-service preview backed by
+  `/api/transit/alternative-advisories/options` and
+  `/api/transit/alternative-advisories`
 
 The current copy should stay technical and operational. Avoid campaign-specific
 or external-audience copy in the product UI.
@@ -33,7 +36,7 @@ specific lightweight endpoint before increasing global polling frequency.
 cd apps/frontend
 npm install
 npm run typecheck
-npm run dev
+VITE_OPS_CONSOLE_ENABLED=1 npm run dev
 ```
 
 Production build:
@@ -51,9 +54,19 @@ The app reads runtime config from `public/transit-sentinel-config.js` and
 defaults to same-origin API requests unless `API_URL` or `VITE_API_HOST` is
 set.
 
-Set `API_BEARER_TOKEN` in the frontend container runtime config only for
-trusted deployments where the ops API requires bearer auth. Public
-`/api/status/*` requests do not need a token. The live public deployment uses
-`OPS_CONSOLE_ENABLED=0` and no browser-visible bearer token.
+`API_BEARER_TOKEN` is legacy browser-side configuration and must never contain
+an operator or admin credential. The generated runtime config is public
+JavaScript, so every browser user can read it. An Operations deployment should
+use a same-origin authenticated proxy or BFF that injects the backend operator
+credential server-side after stripping client-supplied authorization. The live
+public deployment uses `OPS_CONSOLE_ENABLED=0` and an empty
+`API_BEARER_TOKEN`; `/api/status/*` requests do not need a token.
+Operations is disabled when runtime configuration is missing and must be
+enabled explicitly only on its protected host.
+
+The alternative-service preview intentionally bypasses browser token config
+and only works through that protected same-origin deployment. See
+`../../docs/ADVISORY_OPERATOR_PREVIEW.md` for the trust boundary and endpoint
+contract.
 
 The bundled API schema lives at `public/static/transit.openapi.yaml`.

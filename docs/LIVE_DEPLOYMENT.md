@@ -182,7 +182,9 @@ Key live-host controls:
 - `TRANSIT_HISTORY_TTL_SECONDS=7200`
 - `TRANSIT_GTFS_LIGHTWEIGHT=1`
 
-Conditional JSON GET via `ETag`/`If-None-Match` is active for all endpoints.
+Conditional JSON GET via `ETag`/`If-None-Match` is active for ordinary read
+endpoints. The protected alternative-service preview is deliberately excluded
+and returns `Cache-Control: no-store`.
 
 ### Architecture Fit
 
@@ -322,9 +324,10 @@ Host-local `.env` values:
 ```bash
 TRANSIT_API_REQUIRE_AUTH=1
 TRANSIT_API_TOKENS='readonly-token:viewer,operator-token:operator,admin-token:admin'
-TRANSIT_OPS_CONSOLE_ENABLED=0
-TRANSIT_FRONTEND_API_BEARER_TOKEN=
 ```
+
+The public live-host Compose overlay pins `OPS_CONSOLE_ENABLED=0` and
+`API_BEARER_TOKEN` empty; host environment values cannot override either.
 
 ## Caddy
 

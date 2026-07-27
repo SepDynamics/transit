@@ -310,6 +310,10 @@ class TransitAPIService:
             return self._advisory_unavailable_payload(
                 generated_at_ms,
                 self._advisory_topology_error or "topology_unavailable",
+                origin_stop_id=origin_stop_id,
+                destination_stop_id=destination_stop_id,
+                disrupted_route_id=disrupted_route_id,
+                direction_id=direction_id,
             )
 
         resolved_direction_id = self._resolve_advisory_direction(
@@ -328,6 +332,9 @@ class TransitAPIService:
             return self._advisory_unavailable_payload(
                 generated_at_ms,
                 "live_evidence_unavailable",
+                origin_stop_id=origin_stop_id,
+                destination_stop_id=destination_stop_id,
+                disrupted_route_id=disrupted_route_id,
                 direction_id=resolved_direction_id,
             )
 
@@ -347,13 +354,193 @@ class TransitAPIService:
             return self._advisory_unavailable_payload(
                 generated_at_ms,
                 "invalid_live_evidence",
+                origin_stop_id=origin_stop_id,
+                destination_stop_id=destination_stop_id,
+                disrupted_route_id=disrupted_route_id,
                 direction_id=resolved_direction_id,
             )
 
         return {
             **decision.to_json(),
+            "origin_stop_id": origin_stop_id,
+            "destination_stop_id": destination_stop_id,
+            "disrupted_route_id": disrupted_route_id,
             "release_stage": ADVISORY_RELEASE_STAGE,
             "resolved_direction_id": resolved_direction_id,
+            "product_boundary": dict(ADVISORY_PRODUCT_BOUNDARY),
+        }
+
+    def transit_alternative_advisory_options(
+        self,
+        *,
+        disrupted_route_id: str,
+        direction_id: int | None = None,
+        requested_at_ms: int | None = None,
+    ) -> Dict[str, Any]:
+        """Return bounded stop choices from the configured advisory topology."""
+
+        generated_at_ms = (
+            int(time.time() * 1000)
+            if requested_at_ms is None
+            else int(requested_at_ms)
+        )
+        topology = self._load_advisory_topology()
+        if topology is None:
+            return {
+                "status": "unavailable",
+                "generated_at_ms": generated_at_ms,
+                "disrupted_route_id": disrupted_route_id,
+                "route_label": None,
+                "resolved_direction_id": direction_id,
+                "directions": [],
+                "stops": [],
+                "suppression_reasons": [
+                    self._advisory_topology_error or "topology_unavailable"
+                ],
+                "release_stage": ADVISORY_RELEASE_STAGE,
+                "product_boundary": dict(ADVISORY_PRODUCT_BOUNDARY),
+            }
+
+        route_paths = [
+            path
+            for path in topology.trip_paths.values()
+            if path.route_id == disrupted_route_id
+        ]
+        if not route_paths:
+            raise AdvisoryRequestError(
+                "unknown_disrupted_route",
+                "disrupted_route_id is not present in the topology",
+            )
+        raw_candidate_directions = {path.direction_id for path in route_paths}
+        numbered_directions = {
+            candidate_direction
+            for candidate_direction in raw_candidate_directions
+            if candidate_direction is not None
+        }
+        # Directionless patterns cannot be explicitly selected through the
+        # integer GTFS direction_id contract. Use them only for routes that do
+        # not publish any numbered direction, rather than exposing a choice
+        # that the caller cannot submit.
+        candidate_directions = numbered_directions or raw_candidate_directions
+        directions = [
+            {
+                "direction_id": candidate_direction,
+                "label": (
+                    "Route level"
+                    if candidate_direction is None
+                    else f"Direction {candidate_direction}"
+                ),
+            }
+            for candidate_direction in sorted(
+                candidate_directions,
+                key=lambda value: (value is None, -1 if value is None else value),
+            )
+        ]
+        if direction_id is not None:
+            if direction_id not in candidate_directions:
+                raise AdvisoryRequestError(
+                    "unknown_direction",
+                    "direction_id is not present for disrupted_route_id",
+                )
+            resolved_direction_id = direction_id
+        elif len(candidate_directions) == 1:
+            resolved_direction_id = next(iter(candidate_directions))
+        else:
+            return {
+                "status": "selection_required",
+                "generated_at_ms": generated_at_ms,
+                "disrupted_route_id": disrupted_route_id,
+                "route_label": topology.route_labels.get(
+                    disrupted_route_id, disrupted_route_id
+                ),
+                "resolved_direction_id": None,
+                "directions": directions,
+                "stops": [],
+                "suppression_reasons": ["direction_required"],
+                "release_stage": ADVISORY_RELEASE_STAGE,
+                "product_boundary": dict(ADVISORY_PRODUCT_BOUNDARY),
+            }
+
+        matching_paths_by_stops = {
+            path.stops: path
+            for path in route_paths
+            if path.direction_id == resolved_direction_id
+        }
+        matching_paths = list(matching_paths_by_stops.values())
+        first_sequences: Dict[str, int] = {}
+        downstream_stop_ids: Dict[str, set[str]] = {}
+        for path in matching_paths:
+            for index, path_stop in enumerate(path.stops):
+                current_sequence = first_sequences.get(path_stop.stop_id)
+                if (
+                    current_sequence is None
+                    or path_stop.stop_sequence < current_sequence
+                ):
+                    first_sequences[path_stop.stop_id] = path_stop.stop_sequence
+                downstream = downstream_stop_ids.setdefault(path_stop.stop_id, set())
+                downstream.update(
+                    later_stop.stop_id
+                    for later_stop in path.stops[index + 1 :]
+                    if later_stop.stop_id != path_stop.stop_id
+                    and later_stop.stop_id in topology.stops
+                )
+
+        def stop_sort_key(stop_id: str) -> tuple[int, str, str]:
+            return (
+                first_sequences.get(stop_id, 2**31 - 1),
+                str(topology.stops[stop_id].stop_name or stop_id).casefold(),
+                stop_id,
+            )
+        stops = []
+        for stop_id, sequence in first_sequences.items():
+            stop = topology.stops.get(stop_id)
+            if stop is None:
+                continue
+            stops.append(
+                {
+                    "stop_id": stop_id,
+                    "stop_name": stop.stop_name or stop_id,
+                    "sequence": sequence,
+                    "downstream_stop_ids": sorted(
+                        downstream_stop_ids.get(stop_id, set()),
+                        key=stop_sort_key,
+                    ),
+                }
+            )
+        stops.sort(
+            key=lambda row: (
+                int(row["sequence"]),
+                str(row["stop_name"]).casefold(),
+                str(row["stop_id"]),
+            )
+        )
+        if len(stops) < 2 or not any(row["downstream_stop_ids"] for row in stops):
+            return {
+                "status": "unavailable",
+                "generated_at_ms": generated_at_ms,
+                "disrupted_route_id": disrupted_route_id,
+                "route_label": topology.route_labels.get(
+                    disrupted_route_id, disrupted_route_id
+                ),
+                "resolved_direction_id": resolved_direction_id,
+                "directions": directions,
+                "stops": [],
+                "suppression_reasons": ["no_valid_stop_pair"],
+                "release_stage": ADVISORY_RELEASE_STAGE,
+                "product_boundary": dict(ADVISORY_PRODUCT_BOUNDARY),
+            }
+        return {
+            "status": "available",
+            "generated_at_ms": generated_at_ms,
+            "disrupted_route_id": disrupted_route_id,
+            "route_label": topology.route_labels.get(
+                disrupted_route_id, disrupted_route_id
+            ),
+            "resolved_direction_id": resolved_direction_id,
+            "directions": directions,
+            "stops": stops,
+            "suppression_reasons": [],
+            "release_stage": ADVISORY_RELEASE_STAGE,
             "product_boundary": dict(ADVISORY_PRODUCT_BOUNDARY),
         }
 
@@ -365,9 +552,9 @@ class TransitAPIService:
         with self._advisory_topology_lock:
             if self._advisory_topology_attempted:
                 return self._advisory_topology
-            self._advisory_topology_attempted = True
             if not self._advisory_topology_path:
                 self._advisory_topology_error = "topology_not_configured"
+                self._advisory_topology_attempted = True
                 return None
             try:
                 self._advisory_topology = load_transit_topology(
@@ -385,6 +572,11 @@ class TransitAPIService:
                     self._advisory_topology_path,
                     exc,
                 )
+            finally:
+                # Publish completion only after loading (or failure) finishes.
+                # Concurrent first requests will wait on the lock instead of
+                # observing a transient None topology.
+                self._advisory_topology_attempted = True
             return self._advisory_topology
 
     @staticmethod
@@ -523,11 +715,17 @@ class TransitAPIService:
         generated_at_ms: int,
         reason: str,
         *,
+        origin_stop_id: str,
+        destination_stop_id: str,
+        disrupted_route_id: str,
         direction_id: int | None = None,
     ) -> Dict[str, Any]:
         return {
             "status": "unavailable",
             "generated_at_ms": generated_at_ms,
+            "origin_stop_id": origin_stop_id,
+            "destination_stop_id": destination_stop_id,
+            "disrupted_route_id": disrupted_route_id,
             "advisories": [],
             "suppression_reasons": [reason],
             "evaluated_candidate_count": 0,
@@ -1520,9 +1718,13 @@ class TransitAPIHandler(BaseHTTPRequestHandler):
             "utf-8"
         )
         etag = f'"{hashlib.sha256(body).hexdigest()}"'
+        operator_preview = urlparse(self.path).path.startswith(
+            "/api/transit/alternative-advisories"
+        )
         conditional_get = (
             status == 200
             and self.command == "GET"
+            and not operator_preview
             and str(os.getenv("TRANSIT_API_ETAG_ENABLED", "1")).strip().lower()
             not in {"0", "false", "no", "off"}
         )
@@ -1538,7 +1740,9 @@ class TransitAPIHandler(BaseHTTPRequestHandler):
         self._send_cors_headers()
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
-        if conditional_get:
+        if operator_preview:
+            self.send_header("Cache-Control", "no-store")
+        elif conditional_get:
             self.send_header("ETag", etag)
             self.send_header("Cache-Control", "no-cache")
         self.end_headers()
@@ -1703,8 +1907,56 @@ class TransitAPIHandler(BaseHTTPRequestHandler):
             self._send_json({"error": "not_found"}, status=404)
             return
 
-        # Alternative-service advice is an operator preview, not a public
-        # /api/status surface and not a viewer-level operations read.
+        # Alternative-service choices and advice are an operator preview, not
+        # a public /api/status surface or viewer-level operations read.
+        if parsed.path == "/api/transit/alternative-advisories/options":
+            ok, _token, _role = self._require_operator_preview_token()
+            if not ok:
+                return
+            disrupted_route_id = str(
+                (params.get("disrupted_route_id") or [""])[0]
+            ).strip()
+            if not disrupted_route_id:
+                self._send_json(
+                    _advisory_request_error_payload(
+                        "missing_query_parameter",
+                        "required query parameters are missing",
+                        missing_parameters=["disrupted_route_id"],
+                    ),
+                    status=400,
+                )
+                return
+            direction_id: int | None = None
+            if "direction_id" in params:
+                raw_direction_id = str(
+                    (params.get("direction_id") or [""])[0]
+                ).strip()
+                try:
+                    direction_id = int(raw_direction_id)
+                except ValueError:
+                    self._send_json(
+                        _advisory_request_error_payload(
+                            "invalid_direction_id", "direction_id must be an integer"
+                        ),
+                        status=400,
+                    )
+                    return
+            try:
+                payload = self.svc.transit_alternative_advisory_options(
+                    disrupted_route_id=disrupted_route_id,
+                    direction_id=direction_id,
+                )
+            except AdvisoryRequestError as exc:
+                self._send_json(
+                    _advisory_request_error_payload(exc.code, exc.message), status=400
+                )
+                return
+            self._send_json(
+                payload,
+                status=503 if payload.get("status") == "unavailable" else 200,
+            )
+            return
+
         if parsed.path == "/api/transit/alternative-advisories":
             ok, _token, _role = self._require_operator_preview_token()
             if not ok:

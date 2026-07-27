@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
-import LiveConsole from "./pages/LiveConsole/LiveConsole";
+import { lazy, Suspense, useEffect, useState } from "react";
 import StatusPage from "./pages/StatusPage/StatusPage";
 import { OPS_CONSOLE_ENABLED } from "./utils/api";
+
+const LiveConsole = lazy(() => import("./pages/LiveConsole/LiveConsole"));
 
 type View = "ops" | "status";
 
@@ -40,7 +41,19 @@ export default function App() {
           Service Status
         </a>
       </nav>
-      {view === "status" ? <StatusPage /> : <LiveConsole />}
+      {view === "status" ? (
+        <StatusPage />
+      ) : (
+        <Suspense
+          fallback={
+            <div className="app-loading" role="status" aria-live="polite">
+              Loading Operations…
+            </div>
+          }
+        >
+          <LiveConsole />
+        </Suspense>
+      )}
     </>
   );
 }
