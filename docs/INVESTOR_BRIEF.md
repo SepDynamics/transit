@@ -167,6 +167,7 @@ curl -fsS https://sepdynamics.co/api/status/routes
 Demo sequence:
 
 1. Open `https://sepdynamics.co/` and show the public MBTA status page.
+<<<<<<< Updated upstream
 2. Point out the network banner with live route count, disruption count, and
    feed freshness indicator.
 3. Click "Show map" to reveal the live vehicle position map — 300+ vehicles
@@ -187,6 +188,18 @@ Demo sequence:
     board; Transit Sentinel is the triage desk.
 11. Show this repo's MBTA case packs and calibration workflow as the proof path.
 12. Show the live health report to prove this is deployed software, not a mock.
+=======
+2. Point out the network banner, active route count, priority alerts, and
+   source data.
+3. Show `/api/status/network` as the public integration surface.
+4. Explain that `/api/transit/*` is the protected operations surface and is not
+   exposed to anonymous browsers.
+5. Use [the one-sheet](/sep/transit-sentinel/docs/MEETING_ONE_SHEET.md) for the
+   simple comparison to `mbta.com/alerts/bus`: MBTA alerts are the bulletin
+   board; Transit Sentinel is the triage desk.
+6. Show this repo's MBTA case packs and calibration workflow as the proof path.
+7. Show the live health report to prove this is deployed software, not a mock.
+>>>>>>> Stashed changes
 
 Do not position the public host as a dispatch replacement. The sharper claim is
 that Transit Sentinel is an explainable intelligence and proof layer built on
