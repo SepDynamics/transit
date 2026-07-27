@@ -7,14 +7,12 @@ services:
       - "127.0.0.1:6379:6379"
 
   archive:
-    env_file:
-      - path: ${TRANSIT_LAMETRO_ENV_FILE:-/root/.config/transit-sentinel/transit-sentinel-lametro.env}
-        required: false
     environment:
       TRANSIT_AGENCY: "lametro"
       TRANSIT_SYSTEM_NAME: "LA Metro"
       TRANSIT_ARCHIVE_ROOT: "/app/data/feeds/lametro"
       TRANSIT_ARCHIVE_CURRENT_ONLY: "1"
+      SWIFTLY_API_KEY: "${SWIFTLY_API_KEY:-}"
 
   api:
     environment:

@@ -9,6 +9,15 @@ set -Eeuo pipefail
 repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 cd "$repo_dir"
 
+lametro_env="${TRANSIT_LAMETRO_ENV_FILE:-/root/.config/transit-sentinel/transit-sentinel-lametro.env}"
+if [ -r "$lametro_env" ]; then
+  set -a
+  # Host-local LA credentials are exported only for Compose interpolation.
+  # shellcheck disable=SC1090
+  . "$lametro_env"
+  set +a
+fi
+
 compose=(
   docker compose
   -f docker-compose.transit.yml
