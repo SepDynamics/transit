@@ -9,8 +9,10 @@ WorkingDirectory=/root/transit
 EnvironmentFile=/root/.config/transit-sentinel/transit-sentinel-lametro.env
 Environment=PYTHONPATH=/root/transit
 ExecStart=/usr/bin/python3 scripts/transit/lametro_capture.py --root-dir data/feeds/lametro --interval 60 --min-free-gb 3
-Restart=on-failure
-RestartSec=10
+# The disk guard exits cleanly when capacity is low. Retry periodically so
+# capture resumes after the verified local pull frees remote space.
+Restart=always
+RestartSec=300
 TimeoutStopSec=30
 
 [Install]

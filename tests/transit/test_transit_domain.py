@@ -334,6 +334,50 @@ def test_transit_snapshot_requires_corroboration_before_warn_riders_on_bus(tmp_p
     assert incidents["incidents"] == []
 
 
+def test_transit_snapshot_ignores_future_service_alerts(tmp_path, monkeypatch):
+    static_zip = tmp_path / "mbta-bus-future-alert.zip"
+    static_zip.write_bytes(_build_sparse_bus_static_feed())
+    vehicles_path = tmp_path / "vehicles.json"
+    trip_updates_path = tmp_path / "trip_updates.json"
+    alerts_path = tmp_path / "alerts.json"
+    vehicles_path.write_text(_single_bus_vehicle_positions_payload(), encoding="utf-8")
+    trip_updates_path.write_text(_single_bus_trip_updates_payload(), encoding="utf-8")
+    alerts_path.write_text(
+        """{
+  "header": {"timestamp": 1710000100},
+  "entity": [{
+    "id": "alert-future",
+    "alert": {
+      "effect": "DETOUR",
+      "cause": "CONSTRUCTION",
+      "active_period": [{"start": 1710086400, "end": 1710090000}],
+      "header_text": {"translation": [{"text": "Tomorrow's Route 66 detour"}]},
+      "informed_entity": [{"route_id": "66"}]
+    }
+  }]
+}""",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("time.time", lambda: 1_710_000_160)
+
+    service = TransitSnapshotService(
+        TransitRuntimeConfig(
+            system_name="MBTA",
+            static_feed=str(static_zip),
+            vehicle_positions_feed=str(vehicles_path),
+            trip_updates_feed=str(trip_updates_path),
+            alerts_feed=str(alerts_path),
+            stale_after_seconds=120,
+            feed_timezone="America/New_York",
+        )
+    )
+
+    assert service.incidents()["incidents"] == []
+    regime = service.regimes()["regimes"][0]
+    assert regime["regime"] == "healthy"
+    assert regime["metrics"]["active_alert_count"] == 0
+
+
 def test_transit_snapshot_filters_far_future_trip_updates(tmp_path, monkeypatch):
     static_zip = tmp_path / "mbta-future-trip.zip"
     static_zip.write_bytes(_build_future_trip_filter_static_feed())

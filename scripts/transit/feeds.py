@@ -458,6 +458,14 @@ def _normalize_alert_entity(
             if _field(row, "trip_id", "tripId")
         }
     )
+    active_periods: List[Dict[str, Optional[int]]] = []
+    for raw_period in _field(payload, "active_period", "activePeriod") or []:
+        period = _mapping(raw_period)
+        start_ms = _unix_value_ms(_field(period, "start"))
+        end_ms = _unix_value_ms(_field(period, "end"))
+        if start_ms is None and end_ms is None:
+            continue
+        active_periods.append({"start_ms": start_ms, "end_ms": end_ms})
     return TransitAlertObservation(
         alert_id=entity_id,
         timestamp_ms=feed_timestamp_ms or 0,
@@ -470,10 +478,18 @@ def _normalize_alert_entity(
         route_ids=route_ids,
         stop_ids=stop_ids,
         trip_ids=trip_ids,
+        active_periods=active_periods,
         source="live",
         collection_source=collection_source,
         trace_id=trace_id,
     )
+
+
+def _unix_value_ms(value: Any) -> Optional[int]:
+    parsed = _optional_int(value)
+    if parsed is None:
+        return None
+    return parsed if parsed >= 10_000_000_000 else parsed * 1000
 
 
 def _read_resource(source: str | Path | bytes) -> bytes:

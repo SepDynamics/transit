@@ -1,0 +1,108 @@
+{
+  "agency": "LA Metro",
+  "agency_key": "lametro",
+  "capture_schema": 1,
+  "captured_at": "2026-08-01T16:04:06.770000+00:00",
+  "feeds": [
+    {
+      "captured_at": "2026-08-01T16:04:06.770000+00:00",
+      "content_length": 22244988,
+      "filename": "bus_gtfs.zip",
+      "mode": "bus",
+      "name": "bus_static_gtfs",
+      "path": "anchors/bus_gtfs_93275d4b50eb22af.zip",
+      "sha256": "93275d4b50eb22afcfe64f3fe8fd918dfb5fa43600be2e267658e5f2719eda33",
+      "status": "reused_current",
+      "timestamp_ms": 1785600246770,
+      "url": "https://gitlab.com/LACMTA/gtfs_bus/raw/master/gtfs_bus.zip"
+    },
+    {
+      "captured_at": "2026-08-01T16:04:06.770000+00:00",
+      "content_length": 118462,
+      "filename": "bus_vehicle_positions.pb",
+      "mode": "bus",
+      "name": "bus_vehicle_positions",
+      "path": "archive/2026/08/01/160406Z/bus_vehicle_positions.pb",
+      "sha256": "fd483cfca285ec50093e93d9c433ac625a3acd67dafb2ff5115e06f942455971",
+      "status": "captured",
+      "timestamp_ms": 1785600246770,
+      "url": "https://api.goswift.ly/real-time/lametro/gtfs-rt-vehicle-positions"
+    },
+    {
+      "captured_at": "2026-08-01T16:04:06.770000+00:00",
+      "content_length": 893220,
+      "filename": "bus_trip_updates.pb",
+      "mode": "bus",
+      "name": "bus_trip_updates",
+      "path": "archive/2026/08/01/160406Z/bus_trip_updates.pb",
+      "sha256": "66c9c8c457d6c6971b50ae7355ef7246357de5ef0f035f643cbd6b4a363fb5cc",
+      "status": "captured",
+      "timestamp_ms": 1785600246770,
+      "url": "https://api.goswift.ly/real-time/lametro/gtfs-rt-trip-updates"
+    },
+    {
+      "captured_at": "2026-08-01T16:04:06.770000+00:00",
+      "content_length": 37125,
+      "filename": "bus_alerts.pb",
+      "mode": "bus",
+      "name": "bus_alerts",
+      "path": "archive/2026/08/01/160406Z/bus_alerts.pb",
+      "sha256": "5a1f7c200fa86f0f9b51e4c863cad3c71b34e67371d51ab8008ec6a19180973c",
+      "status": "captured",
+      "timestamp_ms": 1785600246770,
+      "url": "https://api.goswift.ly/real-time/lametro/gtfs-rt-alerts"
+    },
+    {
+      "captured_at": "2026-08-01T16:04:06.770000+00:00",
+      "content_length": 1418644,
+      "filename": "rail_gtfs.zip",
+      "mode": "rail",
+      "name": "rail_static_gtfs",
+      "path": "anchors/rail_gtfs_c547f076b6c44b26.zip",
+      "sha256": "c547f076b6c44b26b5b56a9ff8c7a6dbd27736c44b6856584147607644891ab6",
+      "status": "reused_current",
+      "timestamp_ms": 1785600246770,
+      "url": "https://gitlab.com/LACMTA/gtfs_rail/raw/master/gtfs_rail.zip"
+    },
+    {
+      "captured_at": "2026-08-01T16:04:06.770000+00:00",
+      "error": "403 Client Error: Forbidden for url: https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-vehicle-positions",
+      "filename": "rail_vehicle_positions.pb",
+      "mode": "rail",
+      "name": "rail_vehicle_positions",
+      "path": null,
+      "status": "failed",
+      "timestamp_ms": 1785600246770,
+      "url": "https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-vehicle-positions"
+    },
+    {
+      "captured_at": "2026-08-01T16:04:06.770000+00:00",
+      "error": "403 Client Error: Forbidden for url: https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-trip-updates",
+      "filename": "rail_trip_updates.pb",
+      "mode": "rail",
+      "name": "rail_trip_updates",
+      "path": null,
+      "status": "failed",
+      "timestamp_ms": 1785600246770,
+      "url": "https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-trip-updates"
+    },
+    {
+      "captured_at": "2026-08-01T16:04:06.770000+00:00",
+      "error": "403 Client Error: Forbidden for url: https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-alerts",
+      "filename": "rail_alerts.pb",
+      "mode": "rail",
+      "name": "rail_alerts",
+      "path": null,
+      "status": "failed",
+      "timestamp_ms": 1785600246770,
+      "url": "https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-alerts"
+    }
+  ],
+  "history_enabled": true,
+  "mode_status": {
+    "bus": "available",
+    "rail": "unavailable"
+  },
+  "snapshot_path": "archive/2026/08/01/160406Z",
+  "timestamp_ms": 1785600246770
+}

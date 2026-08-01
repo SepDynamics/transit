@@ -1,0 +1,9 @@
+{
+  "agency_keys": ["lametro"],
+  "case_pack_id": "lametro-saturday-mixed-alert-controls",
+  "category": "mixed_bus_controls",
+  "city_key": "los-angeles",
+  "city_name": "Los Angeles",
+  "event_key": "saturday-mixed-alert-controls",
+  "event_name": "Saturday active and future-alert controls"
+}

@@ -171,6 +171,9 @@ def test_normalize_gtfs_rt_payloads_extracts_vehicles_trip_updates_and_alerts():
                     "alert": {
                         "effect": "SIGNIFICANT_DELAYS",
                         "cause": "CONGESTION",
+                        "active_period": [
+                            {"start": 1_710_000_000, "end": 1_710_000_200}
+                        ],
                         "header_text": {"translation": [{"text": "Red Line delays"}]},
                         "informed_entity": [{"route_id": "Red"}],
                     },
@@ -192,6 +195,11 @@ def test_normalize_gtfs_rt_payloads_extracts_vehicles_trip_updates_and_alerts():
     assert merged.trip_updates[0].stop_time_updates[0].arrival_time_unix is None
     assert merged.alerts[0].route_ids == ["Red"]
     assert merged.alerts[0].header_text == "Red Line delays"
+    assert merged.alerts[0].active_periods == [
+        {"start_ms": 1_710_000_000_000, "end_ms": 1_710_000_200_000}
+    ]
+    assert merged.alerts[0].is_active_at(1_710_000_100_000) is True
+    assert merged.alerts[0].is_active_at(1_710_000_300_000) is False
 
 
 def test_gtfs_rt_parser_accepts_gzip_json_and_rejects_empty_payloads():

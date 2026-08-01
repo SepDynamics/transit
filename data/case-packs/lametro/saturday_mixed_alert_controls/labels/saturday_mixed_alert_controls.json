@@ -1,0 +1,62 @@
+{
+  "dataset_id": "lametro-saturday-mixed-alert-controls",
+  "use_case": "Warn on active bus degradation while suppressing future planned alerts and monitor-only corridor conditions.",
+  "incidents": [
+    {
+      "incident_id": "route-20-eastbound-active-service-degradation",
+      "snapshot_path": "archive/2026/08/01/161406Z",
+      "entity_id": "route:20-13201:1",
+      "route_id": "20-13201",
+      "direction_id": 1,
+      "expected_regime": "service_degraded",
+      "expected_action": "warn_riders",
+      "note": "An active service alert and contemporaneous operating evidence support a rider warning."
+    },
+    {
+      "incident_id": "route-4-eastbound-active-service-degradation",
+      "snapshot_path": "archive/2026/08/01/161406Z",
+      "entity_id": "route:4-13201:1",
+      "route_id": "4-13201",
+      "direction_id": 1,
+      "expected_regime": "service_degraded",
+      "expected_action": "warn_riders",
+      "note": "Active degradation on Route 4 warrants a rider-facing warning."
+    },
+    {
+      "incident_id": "route-102-westbound-future-detour-control",
+      "snapshot_path": "archive/2026/08/01/161406Z",
+      "entity_id": "route:102-13201:0",
+      "route_id": "102-13201",
+      "direction_id": 0,
+      "expected_detection": false,
+      "note": "The feed contains an August 17 planned detour, which is not active at the August 1 capture time."
+    },
+    {
+      "incident_id": "route-102-eastbound-future-detour-control",
+      "snapshot_path": "archive/2026/08/01/161406Z",
+      "entity_id": "route:102-13201:1",
+      "route_id": "102-13201",
+      "direction_id": 1,
+      "expected_detection": false,
+      "note": "The opposite direction is also a control for the future August 17 planned detour."
+    },
+    {
+      "incident_id": "route-217-westbound-future-closure-control",
+      "snapshot_path": "archive/2026/08/01/161406Z",
+      "entity_id": "route:217-13201:0",
+      "route_id": "217-13201",
+      "direction_id": 0,
+      "expected_detection": false,
+      "note": "An August 6 closure notice must not be escalated five days early."
+    },
+    {
+      "incident_id": "route-720-westbound-monitor-only-control",
+      "snapshot_path": "archive/2026/08/01/161406Z",
+      "entity_id": "route:720-13201:0",
+      "route_id": "720-13201",
+      "direction_id": 0,
+      "expected_detection": false,
+      "note": "Moderate compression with an active advisory remains below the incident-escalation threshold and should stay monitor-only."
+    }
+  ]
+}

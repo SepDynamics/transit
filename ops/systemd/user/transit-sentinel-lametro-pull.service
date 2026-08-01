@@ -1,5 +1,5 @@
 [Unit]
-Description=Pull and verify LA Metro discovery bundles
+Description=Pull and verify LA Metro discovery bundles and durable evidence
 After=network-online.target
 Wants=network-online.target
 
@@ -7,4 +7,5 @@ Wants=network-online.target
 Type=oneshot
 WorkingDirectory=/sep/transit-sentinel
 Environment=PYTHONPATH=/sep/transit-sentinel
+ExecStart=/usr/bin/python3 scripts/transit/pull_lametro_evidence.py --local-root data/evidence --min-free-gb 8 --local-retention-days 8
 ExecStart=/usr/bin/python3 scripts/transit/pull_lametro.py --local-root data/case-pack-sources/lametro/incoming --min-free-gb 8 --remote-retention-days 3 --local-retention-days 8

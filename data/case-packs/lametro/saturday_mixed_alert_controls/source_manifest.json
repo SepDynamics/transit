@@ -1,0 +1,242 @@
+{
+  "agency_key": "lametro",
+  "agency_name": "LA Metro",
+  "integrity": "Every source bundle was verified against its adjacent SHA-256 file before extraction.",
+  "promoted_at": "2026-08-01T16:51:23.707812+00:00",
+  "schema_version": 1,
+  "snapshots": [
+    {
+      "captured_at": "2026-08-01T16:04:06.770000+00:00",
+      "feeds": [
+        {
+          "mode": "bus",
+          "name": "bus_static_gtfs",
+          "path": "anchors/bus_gtfs_93275d4b50eb22af.zip",
+          "sha256": "93275d4b50eb22afcfe64f3fe8fd918dfb5fa43600be2e267658e5f2719eda33",
+          "status": "reused_current",
+          "url": "https://gitlab.com/LACMTA/gtfs_bus/raw/master/gtfs_bus.zip"
+        },
+        {
+          "mode": "bus",
+          "name": "bus_vehicle_positions",
+          "path": "archive/2026/08/01/160406Z/bus_vehicle_positions.pb",
+          "sha256": "fd483cfca285ec50093e93d9c433ac625a3acd67dafb2ff5115e06f942455971",
+          "status": "captured",
+          "url": "https://api.goswift.ly/real-time/lametro/gtfs-rt-vehicle-positions"
+        },
+        {
+          "mode": "bus",
+          "name": "bus_trip_updates",
+          "path": "archive/2026/08/01/160406Z/bus_trip_updates.pb",
+          "sha256": "66c9c8c457d6c6971b50ae7355ef7246357de5ef0f035f643cbd6b4a363fb5cc",
+          "status": "captured",
+          "url": "https://api.goswift.ly/real-time/lametro/gtfs-rt-trip-updates"
+        },
+        {
+          "mode": "bus",
+          "name": "bus_alerts",
+          "path": "archive/2026/08/01/160406Z/bus_alerts.pb",
+          "sha256": "5a1f7c200fa86f0f9b51e4c863cad3c71b34e67371d51ab8008ec6a19180973c",
+          "status": "captured",
+          "url": "https://api.goswift.ly/real-time/lametro/gtfs-rt-alerts"
+        },
+        {
+          "mode": "rail",
+          "name": "rail_static_gtfs",
+          "path": "anchors/rail_gtfs_c547f076b6c44b26.zip",
+          "sha256": "c547f076b6c44b26b5b56a9ff8c7a6dbd27736c44b6856584147607644891ab6",
+          "status": "reused_current",
+          "url": "https://gitlab.com/LACMTA/gtfs_rail/raw/master/gtfs_rail.zip"
+        },
+        {
+          "error": "403 Client Error: Forbidden for url: https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-vehicle-positions",
+          "mode": "rail",
+          "name": "rail_vehicle_positions",
+          "status": "failed",
+          "url": "https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-vehicle-positions"
+        },
+        {
+          "error": "403 Client Error: Forbidden for url: https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-trip-updates",
+          "mode": "rail",
+          "name": "rail_trip_updates",
+          "status": "failed",
+          "url": "https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-trip-updates"
+        },
+        {
+          "error": "403 Client Error: Forbidden for url: https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-alerts",
+          "mode": "rail",
+          "name": "rail_alerts",
+          "status": "failed",
+          "url": "https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-alerts"
+        }
+      ],
+      "mode_status": {
+        "bus": "available",
+        "rail": "unavailable"
+      },
+      "snapshot_path": "archive/2026/08/01/160406Z",
+      "timestamp_ms": 1785600246770
+    },
+    {
+      "captured_at": "2026-08-01T16:14:06.773000+00:00",
+      "feeds": [
+        {
+          "mode": "bus",
+          "name": "bus_static_gtfs",
+          "path": "anchors/bus_gtfs_93275d4b50eb22af.zip",
+          "sha256": "93275d4b50eb22afcfe64f3fe8fd918dfb5fa43600be2e267658e5f2719eda33",
+          "status": "reused_current",
+          "url": "https://gitlab.com/LACMTA/gtfs_bus/raw/master/gtfs_bus.zip"
+        },
+        {
+          "mode": "bus",
+          "name": "bus_vehicle_positions",
+          "path": "archive/2026/08/01/161406Z/bus_vehicle_positions.pb",
+          "sha256": "52fdf0cf038f6ee13e5db61e1f5ab8f7ca0c8edcba55f2e985f292ef11421c7b",
+          "status": "captured",
+          "url": "https://api.goswift.ly/real-time/lametro/gtfs-rt-vehicle-positions"
+        },
+        {
+          "mode": "bus",
+          "name": "bus_trip_updates",
+          "path": "archive/2026/08/01/161406Z/bus_trip_updates.pb",
+          "sha256": "c468406f5bd831aaa6b132d78465e1fbe3b4f141002440e91eb9f0325021a52c",
+          "status": "captured",
+          "url": "https://api.goswift.ly/real-time/lametro/gtfs-rt-trip-updates"
+        },
+        {
+          "mode": "bus",
+          "name": "bus_alerts",
+          "path": "archive/2026/08/01/161406Z/bus_alerts.pb",
+          "sha256": "ba33e1f98f547ef219c6316c0b9dbf79474e5ba4f32222d558169b517aa8fa0d",
+          "status": "captured",
+          "url": "https://api.goswift.ly/real-time/lametro/gtfs-rt-alerts"
+        },
+        {
+          "mode": "rail",
+          "name": "rail_static_gtfs",
+          "path": "anchors/rail_gtfs_c547f076b6c44b26.zip",
+          "sha256": "c547f076b6c44b26b5b56a9ff8c7a6dbd27736c44b6856584147607644891ab6",
+          "status": "reused_current",
+          "url": "https://gitlab.com/LACMTA/gtfs_rail/raw/master/gtfs_rail.zip"
+        },
+        {
+          "error": "403 Client Error: Forbidden for url: https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-vehicle-positions",
+          "mode": "rail",
+          "name": "rail_vehicle_positions",
+          "status": "failed",
+          "url": "https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-vehicle-positions"
+        },
+        {
+          "error": "403 Client Error: Forbidden for url: https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-trip-updates",
+          "mode": "rail",
+          "name": "rail_trip_updates",
+          "status": "failed",
+          "url": "https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-trip-updates"
+        },
+        {
+          "error": "403 Client Error: Forbidden for url: https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-alerts",
+          "mode": "rail",
+          "name": "rail_alerts",
+          "status": "failed",
+          "url": "https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-alerts"
+        }
+      ],
+      "mode_status": {
+        "bus": "available",
+        "rail": "unavailable"
+      },
+      "snapshot_path": "archive/2026/08/01/161406Z",
+      "timestamp_ms": 1785600846773
+    },
+    {
+      "captured_at": "2026-08-01T16:24:06.775000+00:00",
+      "feeds": [
+        {
+          "mode": "bus",
+          "name": "bus_static_gtfs",
+          "path": "anchors/bus_gtfs_93275d4b50eb22af.zip",
+          "sha256": "93275d4b50eb22afcfe64f3fe8fd918dfb5fa43600be2e267658e5f2719eda33",
+          "status": "reused_current",
+          "url": "https://gitlab.com/LACMTA/gtfs_bus/raw/master/gtfs_bus.zip"
+        },
+        {
+          "mode": "bus",
+          "name": "bus_vehicle_positions",
+          "path": "archive/2026/08/01/162406Z/bus_vehicle_positions.pb",
+          "sha256": "2c52fbca2857441f1b46347db54001fbb7483a6692891a09dd4a59ab7a6a1188",
+          "status": "captured",
+          "url": "https://api.goswift.ly/real-time/lametro/gtfs-rt-vehicle-positions"
+        },
+        {
+          "mode": "bus",
+          "name": "bus_trip_updates",
+          "path": "archive/2026/08/01/162406Z/bus_trip_updates.pb",
+          "sha256": "0782644f740a293ebff763f5899a7ce674f86ad23819ab1e1052ddaaa2db7097",
+          "status": "captured",
+          "url": "https://api.goswift.ly/real-time/lametro/gtfs-rt-trip-updates"
+        },
+        {
+          "mode": "bus",
+          "name": "bus_alerts",
+          "path": "archive/2026/08/01/162406Z/bus_alerts.pb",
+          "sha256": "f1dbcee522afffe8251d2dcb464b351f5dab0a103048de285ca0ba21bfd1e5d8",
+          "status": "captured",
+          "url": "https://api.goswift.ly/real-time/lametro/gtfs-rt-alerts"
+        },
+        {
+          "mode": "rail",
+          "name": "rail_static_gtfs",
+          "path": "anchors/rail_gtfs_c547f076b6c44b26.zip",
+          "sha256": "c547f076b6c44b26b5b56a9ff8c7a6dbd27736c44b6856584147607644891ab6",
+          "status": "reused_current",
+          "url": "https://gitlab.com/LACMTA/gtfs_rail/raw/master/gtfs_rail.zip"
+        },
+        {
+          "error": "403 Client Error: Forbidden for url: https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-vehicle-positions",
+          "mode": "rail",
+          "name": "rail_vehicle_positions",
+          "status": "failed",
+          "url": "https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-vehicle-positions"
+        },
+        {
+          "error": "403 Client Error: Forbidden for url: https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-trip-updates",
+          "mode": "rail",
+          "name": "rail_trip_updates",
+          "status": "failed",
+          "url": "https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-trip-updates"
+        },
+        {
+          "error": "403 Client Error: Forbidden for url: https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-alerts",
+          "mode": "rail",
+          "name": "rail_alerts",
+          "status": "failed",
+          "url": "https://api.goswift.ly/real-time/lametro-rail/gtfs-rt-alerts"
+        }
+      ],
+      "mode_status": {
+        "bus": "available",
+        "rail": "unavailable"
+      },
+      "snapshot_path": "archive/2026/08/01/162406Z",
+      "timestamp_ms": 1785601446775
+    }
+  ],
+  "source_bundles": [
+    {
+      "checksum_path": "/sep/transit-sentinel/data/case-pack-sources/lametro/incoming/2026/08/01/16.tar.gz.sha256",
+      "path": "/sep/transit-sentinel/data/case-pack-sources/lametro/incoming/2026/08/01/16.tar.gz",
+      "sha256": "7347e3f4224fb05a2854dd1e32dc31435343c714566a83016819e9a21fa68676"
+    },
+    {
+      "checksum_path": "/sep/transit-sentinel/data/case-pack-sources/lametro/incoming/2026/08/01/16.tar.gz.sha256",
+      "path": "/sep/transit-sentinel/data/case-pack-sources/lametro/incoming/2026/08/01/16.tar.gz",
+      "sha256": "7347e3f4224fb05a2854dd1e32dc31435343c714566a83016819e9a21fa68676"
+    },
+    {
+      "checksum_path": "/sep/transit-sentinel/data/case-pack-sources/lametro/incoming/2026/08/01/16.tar.gz.sha256",
+      "path": "/sep/transit-sentinel/data/case-pack-sources/lametro/incoming/2026/08/01/16.tar.gz",
+      "sha256": "7347e3f4224fb05a2854dd1e32dc31435343c714566a83016819e9a21fa68676"
+    }
+  ]
+}

@@ -106,7 +106,9 @@ def _summarize_snapshot(
                 and timestamp_ms_from_manifest(manifest) - realtime.latest_timestamp_ms() > 90_000
             ):
                 signals.add("stale_feed")
-            for alert in realtime.alerts:
+            active_alerts = [alert for alert in realtime.alerts if alert.is_active_at(timestamp_ms_from_manifest(manifest))]
+            alert_count -= len(realtime.alerts) - len(active_alerts)
+            for alert in active_alerts:
                 effect = str(alert.effect or "").upper()
                 effects.add(effect)
                 text = f"{alert.header_text or ''} {alert.description_text or ''}".lower()

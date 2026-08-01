@@ -1,0 +1,76 @@
+{
+  "dataset_id": "lametro-weekday-bus-instability-sequence",
+  "use_case": "Detect distinct operational instability patterns across LA Metro bus corridors and recommend the corresponding intervention.",
+  "incidents": [
+    {
+      "incident_id": "route-4-eastbound-terminal-congestion-2026-07-30",
+      "snapshot_path": "archive/2026/07/30/233005Z",
+      "entity_id": "route:4-13201:1",
+      "route_id": "4-13201",
+      "direction_id": 1,
+      "expected_regime": "terminal_congestion",
+      "expected_action": "inspect_terminal",
+      "note": "Seven-vehicle terminal backlog with roughly 199 seconds median delay and three active high-impact alerts."
+    },
+    {
+      "incident_id": "route-720-westbound-corridor-instability-2026-07-30",
+      "snapshot_path": "archive/2026/07/30/233005Z",
+      "entity_id": "route:720-13201:0",
+      "route_id": "720-13201",
+      "direction_id": 0,
+      "expected_regime": "corridor_unstable",
+      "expected_action": "dispatch_relief",
+      "note": "High headway compression, delay burden, and active alerts support dispatch relief."
+    },
+    {
+      "incident_id": "route-720-eastbound-corridor-instability-2026-07-30",
+      "snapshot_path": "archive/2026/07/30/233005Z",
+      "entity_id": "route:720-13201:1",
+      "route_id": "720-13201",
+      "direction_id": 1,
+      "expected_regime": "corridor_unstable",
+      "expected_action": "dispatch_relief",
+      "note": "Compressed spacing and a three-vehicle terminal backlog identify instability in the opposite direction."
+    },
+    {
+      "incident_id": "route-20-eastbound-bunching-onset-2026-07-31",
+      "snapshot_path": "archive/2026/07/31/053005Z",
+      "entity_id": "route:20-13201:1",
+      "route_id": "20-13201",
+      "direction_id": 1,
+      "expected_regime": "bunching_onset",
+      "expected_action": "hold",
+      "note": "Half the observed headways are compressed while median delay is roughly 290 seconds."
+    },
+    {
+      "incident_id": "route-4-eastbound-terminal-congestion-2026-07-31",
+      "snapshot_path": "archive/2026/07/31/053005Z",
+      "entity_id": "route:4-13201:1",
+      "route_id": "4-13201",
+      "direction_id": 1,
+      "expected_regime": "terminal_congestion",
+      "expected_action": "inspect_terminal",
+      "note": "A three-vehicle terminal backlog coincides with roughly 218 seconds median delay."
+    },
+    {
+      "incident_id": "route-910-eastbound-headway-collapse-2026-07-31",
+      "snapshot_path": "archive/2026/07/31/113006Z",
+      "entity_id": "route:910-13201:1",
+      "route_id": "910-13201",
+      "direction_id": 1,
+      "expected_regime": "headway_collapse",
+      "expected_action": "dispatch_relief",
+      "note": "Severe headway compression on the Silver Line corridor requires dispatch relief."
+    },
+    {
+      "incident_id": "route-217-westbound-dwell-instability-2026-07-31",
+      "snapshot_path": "archive/2026/07/31/113006Z",
+      "entity_id": "route:217-13201:0",
+      "route_id": "217-13201",
+      "direction_id": 0,
+      "expected_regime": "stop_dwell_instability",
+      "expected_action": "inspect_terminal",
+      "note": "Elevated delay and dwell irregularity appear without an active alert, exercising operations-only detection."
+    }
+  ]
+}

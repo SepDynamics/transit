@@ -41,6 +41,11 @@ def resolve_snapshot_feed_paths(snapshot_dir: Path) -> Dict[str, str]:
         if not isinstance(row, dict):
             continue
         name = str(row.get("name") or "").strip()
+        # Discovery captures preserve bus and rail lanes separately. Replay
+        # currently scores the authorized LA bus lane, so its explicit feed
+        # names map onto the generic runtime slots.
+        if name.startswith("bus_"):
+            name = name.removeprefix("bus_")
         relative_path = str(row.get("path") or "").strip()
         if name not in resolved or not relative_path:
             continue

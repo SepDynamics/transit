@@ -1,0 +1,9 @@
+{
+  "agency_keys": ["lametro"],
+  "case_pack_id": "lametro-weekday-bus-instability-sequence",
+  "category": "bus_operations",
+  "city_key": "los-angeles",
+  "city_name": "Los Angeles",
+  "event_key": "weekday-bus-instability-sequence",
+  "event_name": "Weekday bus instability sequence"
+}

@@ -974,6 +974,7 @@ def _score_routes(
 ) -> Tuple[
     List[Dict[str, Any]], List[TransitRegimeRecord], List[TransitIncidentRecord]
 ]:
+    alerts = [alert for alert in alerts if alert.is_active_at(now_ms)]
     route_groups: Dict[Tuple[str, Optional[int]], Dict[str, Any]] = {}
     for vehicle in vehicles:
         route_id = vehicle.route_id or "unassigned"

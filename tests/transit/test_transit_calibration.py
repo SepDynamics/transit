@@ -301,16 +301,19 @@ def test_committed_mbta_combined_case_pack_suite_passes():
     assert "mbta-red-line-midday-delay-spike" in markdown
 
 
-def test_committed_case_pack_catalog_is_mbta_only_and_passes():
+def test_committed_lametro_case_pack_catalog_passes():
     repo_root = Path(__file__).resolve().parents[2]
-    case_pack_root = repo_root / "data" / "case-packs"
+    case_pack_root = repo_root / "data" / "case-packs" / "lametro"
 
     report = build_transit_calibration_suite_report(case_pack_root, case_pack_root)
 
     assert report["case_pack_count"] == 2
-    assert report["label_set_count"] == 4
-    assert report["label_count"] == 8
-    assert report["city_keys"] == ["boston"]
+    assert report["label_set_count"] == 2
+    assert report["label_count"] == 13
+    assert report["city_keys"] == ["los-angeles"]
+    assert report["sentinel"]["matched_incident_count"] == 9
+    assert report["sentinel"]["control_violation_count"] == 0
+    assert report["sentinel"]["label_success_rate"] == 1.0
     assert report["comparison"]["passing_case_pack_count"] == 2
     assert report["comparison"]["value_case_supported"] is True
 

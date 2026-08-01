@@ -668,12 +668,28 @@ class TransitAlertObservation:
     route_ids: List[str] = field(default_factory=list)
     stop_ids: List[str] = field(default_factory=list)
     trip_ids: List[str] = field(default_factory=list)
+    active_periods: List[Dict[str, Optional[int]]] = field(default_factory=list)
     source: str = "live"
     collection_source: str = "gtfs_rt"
     trace_id: Optional[str] = None
 
     def to_json(self) -> Dict[str, Any]:
         return asdict(self)
+
+    def is_active_at(self, timestamp_ms: int) -> bool:
+        """Return whether the alert applies at a millisecond Unix timestamp."""
+
+        if not self.active_periods:
+            return True
+        for period in self.active_periods:
+            start_ms = period.get("start_ms")
+            end_ms = period.get("end_ms")
+            if start_ms is not None and timestamp_ms < int(start_ms):
+                continue
+            if end_ms is not None and timestamp_ms >= int(end_ms):
+                continue
+            return True
+        return False
 
 
 @dataclass
