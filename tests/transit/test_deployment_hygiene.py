@@ -57,6 +57,8 @@ def test_live_compose_is_explicitly_lametro_only():
     assert live_compose.count('TRANSIT_AGENCY: "lametro"') == 3
     assert 'TRANSIT_SYSTEM_NAME: "LA Metro Live"' in live_compose
     assert 'TRANSIT_REPLAY_ENABLED: "1"' in live_compose
+    assert '"--maxmemory", "1024mb"' in live_compose
+    assert "mem_limit: 1200m" in live_compose
     assert "MBTA Live" not in live_compose
 
 
