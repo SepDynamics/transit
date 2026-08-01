@@ -56,4 +56,15 @@ def test_live_compose_is_explicitly_lametro_only():
     assert 'TRANSIT_AGENCY: "lametro"' in live_compose
     assert live_compose.count('TRANSIT_AGENCY: "lametro"') == 3
     assert 'TRANSIT_SYSTEM_NAME: "LA Metro Live"' in live_compose
+    assert 'TRANSIT_REPLAY_ENABLED: "1"' in live_compose
     assert "MBTA Live" not in live_compose
+
+
+def test_live_deploy_seeds_only_curated_lametro_replay_without_clearing_live():
+    deploy = (REPO_ROOT / "deploy.sh").read_text(encoding="utf-8")
+
+    assert "--skip-live" in deploy
+    assert "--clear-store" not in deploy
+    assert "--replay-case-pack-catalog /app/data/case-packs/lametro" in deploy
+    assert "casepack-lametro-saturday-mixed-alert-controls" in deploy
+    assert "casepack-lametro-weekday-bus-instability-sequence" in deploy

@@ -98,5 +98,37 @@ PYTHONPATH=. python3 scripts/transit/smoke.py --base-url http://127.0.0.1:8000
 curl --fail --silent --show-error http://127.0.0.1:8080/health >/dev/null
 curl --fail --silent --show-error http://127.0.0.1:8080/api/status/network >/dev/null
 
+printf '%s\n' 'Loading curated LA case packs as replay traces (live state is preserved)...'
+"${compose[@]}" run --rm --no-deps ingest \
+  python3 /app/scripts/transit/demo_seed.py \
+  --redis redis://valkey:6379/0 \
+  --skip-live \
+  --replay-case-pack-catalog /app/data/case-packs/lametro \
+  --trace-prefix casepack \
+  --output /app/logs/lametro-case-pack-seed.json
+
+printf '%s\n' 'Verifying LA replay traces through the public read-only API...'
+for trace_id in \
+  casepack-lametro-saturday-mixed-alert-controls \
+  casepack-lametro-weekday-bus-instability-sequence
+do
+  TRACE_ID="$trace_id" python3 - <<'PY'
+import json
+import os
+from urllib.parse import urlencode
+from urllib.request import urlopen
+
+trace_id = os.environ["TRACE_ID"]
+query = urlencode({"scope": "replay", "trace_id": trace_id})
+with urlopen(f"http://127.0.0.1:8000/api/status/map?{query}", timeout=20) as response:
+    payload = json.load(response)
+if payload.get("trace_id") != trace_id:
+    raise SystemExit(f"deploy: replay trace unavailable: {trace_id}")
+if int(payload.get("corridor_count") or 0) < 1:
+    raise SystemExit(f"deploy: replay trace is empty: {trace_id}")
+print(f"ok replay trace {trace_id}")
+PY
+done
+
 "${compose[@]}" ps
 printf '%s\n' 'Deployment complete. The frontend is listening on http://127.0.0.1:8080.'

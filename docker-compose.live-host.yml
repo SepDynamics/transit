@@ -16,7 +16,9 @@ services:
 
   api:
     environment:
-      TRANSIT_REPLAY_ENABLED: "0"
+      # Keep rider-facing endpoints live by default while allowing the curated
+      # LA case-pack traces to support replay and operator comparison views.
+      TRANSIT_REPLAY_ENABLED: "1"
       TRANSIT_AGENCY: "lametro"
       TRANSIT_SYSTEM_NAME: "LA Metro Live"
       TRANSIT_API_CACHE_TTL_SECONDS: "15"
