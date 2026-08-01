@@ -46,6 +46,10 @@ services:
     environment:
       TRANSIT_AGENCY: "lametro"
       TRANSIT_SYSTEM_NAME: "LA Metro"
+      # Discovery evidence is collected only during explicit calibration runs.
+      # The normal public stack keeps current state in Valkey without writing
+      # multi-gigabyte historical JSONL snapshots to the droplet.
+      TRANSIT_EVIDENCE_ROOT: ""
       TRANSIT_GTFS_STATIC_PATH: "/app/data/feeds/lametro/current/lametro_gtfs.zip"
       TRANSIT_GTFS_RT_VEHICLE_POSITIONS_PATH: "/app/data/feeds/lametro/current/VehiclePositions_enhanced.json"
       TRANSIT_GTFS_RT_TRIP_UPDATES_PATH: "/app/data/feeds/lametro/current/TripUpdates_enhanced.json"
